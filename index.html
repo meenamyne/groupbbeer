@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Group B Beer — CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1e3a2f;--primary-h:#2d5a47;
+  --accent:#c8942a;--accent-l:#f4c85a;
+  --bg:#f0f4f2;--card:#fff;
+  --text:#1a2e25;--muted:#6b8a7a;
+  --border:#d0e0d8;
+  --danger:#e53e3e;--success:#38a169;--warning:#dd6b20;--info:#3182ce;
+  --sidebar:240px;
+}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── LOGIN ─────────────────────────────────────────── */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#1e3a2f,#2d5a47 50%,#1e3a2f)}
+.login-card{background:#fff;border-radius:16px;padding:48px;max-width:420px;width:90%;
+  text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-icon{width:80px;height:80px;background:var(--accent);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:38px}
+.login-card h1{font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px}
+.login-card .subtitle{color:var(--muted);margin-bottom:8px;font-size:15px}
+.login-card .tagline{color:var(--muted);margin-bottom:32px;font-size:13px;
+  background:#f0f4f2;border-radius:8px;padding:8px 12px}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;
+  padding:14px 24px;border:2px solid var(--border);border-radius:10px;background:#fff;
+  cursor:pointer;font-family:'Sarabun',sans-serif;font-size:16px;font-weight:500;
+  color:var(--text);transition:all .2s}
+.google-btn:hover{border-color:var(--accent);background:#fffbf0;
+  box-shadow:0 2px 8px rgba(200,148,42,.2)}
+
+/* ── APP LAYOUT ─────────────────────────────────────── */
+#app{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+.sidebar{width:var(--sidebar);background:var(--primary);display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sidebar-header{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+.sidebar-logo-icon{width:34px;height:34px;background:var(--accent);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sidebar-header h2{color:#fff;font-size:17px;font-weight:700}
+.sidebar-header p{color:rgba(255,255,255,.45);font-size:11px;margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 10px}
+.nav-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:rgba(255,255,255,.3);padding:8px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
+  color:rgba(255,255,255,.72);cursor:pointer;transition:all .15s;font-size:14px;
+  margin-bottom:2px;border:none;background:none;width:100%;text-align:left;
+  font-family:'Sarabun',sans-serif}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:var(--accent);color:#fff;font-weight:600}
+.nav-item .ni{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:11px;
+  font-weight:700;padding:2px 7px;border-radius:10px;min-width:20px;text-align:center}
+.sidebar-footer{padding:14px 10px;border-top:1px solid rgba(255,255,255,.1)}
+.user-info{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:8px}
+.user-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;
+  font-weight:700;font-size:15px}
+.user-name{color:#fff;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-email{color:rgba(255,255,255,.4);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.signout-btn{width:100%;padding:8px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.14);border-radius:8px;color:rgba(255,255,255,.65);
+  cursor:pointer;font-family:'Sarabun',sans-serif;font-size:13px;transition:all .15s}
+.signout-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+
+/* ── MAIN ─────────────────────────────────────────── */
+.main-content{margin-left:var(--sidebar);flex:1;min-height:100vh}
+.page{display:none;padding:28px;max-width:1400px}
+.page.active{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-title h1{font-size:24px;font-weight:700;color:var(--primary)}
+.page-title p{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* ── BUTTONS ─────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;
+  font-family:'Sarabun',sans-serif;font-size:14px;font-weight:500;cursor:pointer;
+  transition:all .15s;border:none;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-h)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#b07d22}
+.btn-outline{background:#fff;color:var(--text);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#c53030}
+.btn-sm{padding:6px 14px;font-size:13px}
+.btn-icon{padding:8px;width:36px;height:36px;justify-content:center}
+
+/* ── CARDS ─────────────────────────────────────────── */
+.card{background:var(--card);border-radius:12px;padding:24px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--border)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:600;color:var(--primary)}
+
+/* ── STAT CARDS ─────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border-radius:12px;padding:20px;
+  border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-inner{display:flex;align-items:flex-start;gap:14px}
+.stat-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:22px;flex-shrink:0}
+.si-green{background:#dcfce7}.si-amber{background:#fef3c7}.si-blue{background:#dbeafe}
+.si-red{background:#fee2e2}.si-purple{background:#ede9fe}.si-teal{background:#ccfbf1}
+.stat-label{font-size:12px;color:var(--muted);margin-bottom:4px}
+.stat-value{font-size:26px;font-weight:700;color:var(--primary);line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ── CHARTS ─────────────────────────────────────────── */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px}
+.chart-box{background:var(--card);border-radius:12px;padding:20px;
+  border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.chart-box h3{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:16px}
+.chart-container{position:relative;height:240px}
+
+/* ── FILTERS ─────────────────────────────────────────── */
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-input{flex:1;min-width:200px;padding:10px 16px 10px 40px;
+  border:1.5px solid var(--border);border-radius:8px;font-family:'Sarabun',sans-serif;
+  font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%236b8a7a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center;
+  transition:border-color .15s;color:var(--text)}
+.search-input:focus{outline:none;border-color:var(--accent)}
+.filter-select{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;
+  font-family:'Sarabun',sans-serif;font-size:14px;background:#fff;color:var(--text);
+  cursor:pointer;transition:border-color .15s}
+.filter-select:focus{outline:none;border-color:var(--accent)}
+.filter-count{font-size:13px;color:var(--muted);padding:10px 4px;white-space:nowrap}
+
+/* ── TABLE ─────────────────────────────────────────── */
+.table-wrapper{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;background:#fff}
+thead th{background:#f0f4f2;padding:11px 14px;text-align:left;font-size:12px;font-weight:600;
+  color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);
+  text-transform:uppercase;letter-spacing:.3px}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8fbf9}
+tbody td{padding:12px 14px;font-size:13px;color:var(--text)}
+td.td-store{font-weight:600;color:var(--primary)}
+
+/* ── BADGES ─────────────────────────────────────────── */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.bg{background:#dcfce7;color:#166534}.bb{background:#fef3c7;color:#92400e}
+.bi{background:#dbeafe;color:#1e40af}.br{background:#fee2e2;color:#991b1b}
+.bk{background:#f3f4f6;color:#374151}.bp{background:#ede9fe;color:#6b21a8}
+.bt{background:#ccfbf1;color:#134e4a}.bo{background:#fff7ed;color:#9a3412}
+
+/* ── MODAL ─────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:580px;
+  max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0}
+.modal-title{font-size:17px;font-weight:700;color:var(--primary)}
+.modal-close{width:30px;height:30px;border:none;background:var(--bg);border-radius:6px;
+  cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);transition:all .15s}
+.modal-close:hover{background:var(--border);color:var(--text)}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);
+  display:flex;justify-content:flex-end;gap:10px}
+
+/* ── FORMS ─────────────────────────────────────────── */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
+.form-label.req::after{content:' *';color:var(--danger)}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 13px;
+  border:1.5px solid var(--border);border-radius:8px;font-family:'Sarabun',sans-serif;
+  font-size:14px;color:var(--text);transition:border-color .15s;background:#fff}
+.form-input:focus,.form-select:focus,.form-textarea:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,148,42,.1)}
+.form-textarea{min-height:90px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ── LOADING ─────────────────────────────────────────── */
+#globalLoader{display:none;position:fixed;inset:0;background:rgba(255,255,255,.7);
+  z-index:9000;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#globalLoader.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--muted)}
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:14px}
+.empty-state h3{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty-state p{font-size:13px}
+
+/* ── CLIENT DETAIL ─────────────────────────────────── */
+.detail-grid{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+.info-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
+  border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:11px;color:var(--muted);width:110px;flex-shrink:0;
+  font-weight:600;padding-top:2px;text-transform:uppercase;letter-spacing:.3px}
+.info-value{font-size:14px;color:var(--text);font-weight:500;flex:1}
+.client-banner{background:linear-gradient(135deg,var(--primary),var(--primary-h));
+  border-radius:12px;padding:18px 20px;color:#fff;margin-bottom:16px}
+.client-banner h2{font-size:18px;font-weight:700;margin-bottom:4px}
+.client-banner p{font-size:12px;opacity:.7}
+
+/* ── TIMELINE ─────────────────────────────────────── */
+.timeline{position:relative;padding-left:0}
+.timeline-item{display:flex;gap:12px;margin-bottom:14px}
+.t-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:15px;z-index:1;
+  background:#fff;border:2px solid var(--border)}
+.t-body{flex:1;background:var(--bg);border-radius:10px;padding:11px 14px;
+  border:1px solid var(--border)}
+.t-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.t-type{font-size:13px;font-weight:600;color:var(--primary)}
+.t-date{font-size:11px;color:var(--muted)}
+.t-text{font-size:13px;color:var(--text);line-height:1.55}
+.t-person{font-size:11px;color:var(--muted);margin-top:5px}
+
+/* ── REMINDERS ─────────────────────────────────────── */
+.reminder-item{background:#fff;border-radius:10px;padding:15px 16px;
+  border:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;
+  margin-bottom:10px;transition:all .15s}
+.reminder-item:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.reminder-item.overdue{border-left:4px solid var(--danger)}
+.reminder-item.today{border-left:4px solid var(--warning)}
+.reminder-item.upcoming{border-left:4px solid var(--success)}
+.reminder-item.done{opacity:.5}
+.r-date-block{text-align:center;background:var(--bg);border-radius:8px;
+  padding:8px 12px;min-width:56px;flex-shrink:0}
+.r-day{font-size:20px;font-weight:700;color:var(--primary);line-height:1}
+.r-month{font-size:10px;color:var(--muted);text-transform:uppercase}
+.r-content{flex:1}
+.r-title{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:3px}
+.r-detail{font-size:13px;color:var(--text);margin-bottom:4px}
+.r-meta{font-size:11px;color:var(--muted)}
+.r-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+
+/* ── TOAST ─────────────────────────────────────────── */
+#toastContainer{position:fixed;bottom:24px;right:24px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--primary);color:#fff;padding:12px 18px;border-radius:10px;
+  font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.2);animation:slideIn .3s ease;
+  pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:250px;max-width:360px}
+.toast.success{background:var(--success)}.toast.error{background:var(--danger)}
+.toast.warning{background:var(--warning)}
+@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── BACK BTN ─────────────────────────────────────── */
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;
+  border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;
+  font-family:'Sarabun',sans-serif;font-size:13px;color:var(--muted);
+  margin-bottom:16px;transition:all .15s}
+.back-btn:hover{border-color:var(--primary);color:var(--primary)}
+
+/* ── TABS ─────────────────────────────────────────── */
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);margin-bottom:18px}
+.tab{padding:10px 18px;border:none;background:none;font-family:'Sarabun',sans-serif;
+  font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-2px;transition:all .15s;font-weight:500}
+.tab:hover{color:var(--primary)}
+.tab.active{color:var(--primary);border-bottom-color:var(--accent);font-weight:700}
+
+/* ── SETUP BANNER ─────────────────────────────────── */
+.setup-banner{background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;
+  padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px}
+.setup-banner .sb-icon{font-size:20px;flex-shrink:0}
+.setup-banner .sb-text{font-size:13px;color:#92400e;line-height:1.6}
+.setup-banner code{background:rgba(245,158,11,.15);padding:2px 6px;
+  border-radius:4px;font-family:monospace;font-size:12px}
+
+/* ── UTILS ─────────────────────────────────────────── */
+.flex{display:flex}.gap-2{gap:8px}.gap-3{gap:12px}.items-center{align-items:center}
+.justify-between{justify-content:space-between}.flex-wrap{flex-wrap:wrap}
+.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
+.text-right{text-align:right}.text-center{text-align:center}
+.font-bold{font-weight:700}.text-sm{font-size:12px}.text-muted{color:var(--muted)}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.w-full{width:100%}
+.section-title{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px}
+
+/* ── MOBILE ─────────────────────────────────────────── */
+.mobile-bar{display:none;align-items:center;gap:10px;padding:12px 16px;
+  background:var(--primary);color:#fff;position:sticky;top:0;z-index:50}
+.menu-btn{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px;
+  line-height:1}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform .3s}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .main-content{margin-left:0}
+  .mobile-bar{display:flex}
+  .form-row{grid-template-columns:1fr}
+  .detail-grid{grid-template-columns:1fr}
+  .page{padding:16px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ── GLOBAL LOADER ─────────────────────────── -->
+<div id="globalLoader">
+  <div class="spinner"></div>
+  <div class="loading-text">กำลังโหลดข้อมูล...</div>
+</div>
+
+<!-- ── TOAST ─────────────────────────────────── -->
+<div id="toastContainer"></div>
+
+<!-- ══════════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-icon">🍺</div>
+    <h1>Group B Beer</h1>
+    <p class="subtitle">ระบบจัดการลูกค้า (CRM)</p>
+    <p class="tagline">Local Craft Beer Distributor · Thailand</p>
+    <button class="google-btn" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      เข้าสู่ระบบด้วย Google
+    </button>
+    <p style="margin-top:18px;font-size:12px;color:var(--muted)">เฉพาะสมาชิกทีม Group B Beer เท่านั้น</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════ -->
+<div id="app" style="display:none">
+
+  <!-- Mobile top bar -->
+  <div class="mobile-bar">
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    <span style="font-weight:700;font-size:16px">Group B Beer CRM</span>
+  </div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🍺</div>
+        <div>
+          <h2>Group B Beer</h2>
+          <p>CRM System</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">หลัก</div>
+      <button class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard')">
+        <span class="ni">📊</span> Dashboard
+      </button>
+      <button class="nav-item" id="nav-clients" onclick="navigate('clients')">
+        <span class="ni">👥</span> รายชื่อลูกค้า
+      </button>
+      <div class="nav-section-label" style="margin-top:8px">การขาย</div>
+      <button class="nav-item" id="nav-orders" onclick="navigate('orders')">
+        <span class="ni">🛒</span> คำสั่งซื้อ
+      </button>
+      <button class="nav-item" id="nav-reminders" onclick="navigate('reminders')">
+        <span class="ni">🔔</span> การแจ้งเตือน
+        <span class="nav-badge" id="reminderBadge" style="display:none">0</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div style="overflow:hidden">
+          <div class="user-name" id="userName">กำลังโหลด...</div>
+          <div class="user-email" id="userEmail"></div>
+        </div>
+      </div>
+      <button class="signout-btn" onclick="signOut()">🚪 ออกจากระบบ</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ══ DASHBOARD PAGE ══════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">
+          <h1>📊 Dashboard</h1>
+          <p>ภาพรวมยอดขายและลูกค้า</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadAllData()">🔄 รีเฟรช</button>
+      </div>
+      <div id="setupBanner" class="setup-banner" style="display:none">
+        <span class="sb-icon">⚙️</span>
+        <div class="sb-text">
+          <strong>ต้องตั้งค่าก่อนใช้งาน:</strong> แก้ไขไฟล์ <code>index.html</code> บรรทัดที่มี <code>CLIENT_ID</code> และ <code>SHEET_ID</code>
+          ด้วยข้อมูลจาก Google Cloud Console และ Google Sheets ของคุณ
+          — <a href="#" onclick="showSetupHelp()" style="color:#92400e;font-weight:600">ดูคู่มือการตั้งค่า</a>
+        </div>
+      </div>
+      <div class="stats-grid" id="dashStats">
+        <div class="stat-card"><div class="stat-inner">
+          <div class="stat-icon si-green">👥</div>
+          <div><div class="stat-label">ลูกค้าทั้งหมด</div>
+          <div class="stat-value" id="s-total">—</div></div>
+        </div></div>
+        <div class="stat-card"><div class="stat-inner">
+          <div class="stat-icon si-amber">⚡</div>
+          <div><div class="stat-label">ซื้อทุกเดือน</div>
+          <div class="stat-value" id="s-monthly">—</div>
+          <div class="stat-sub">ลูกค้า</div></div>
+        </div></div>
+        <div class="stat-card"><div class="stat-inner">
+          <div class="stat-icon si-blue">📅</div>
+          <div><div class="stat-label">ซื้อรายไตรมาส</div>
+          <div class="stat-value" id="s-quarterly">—</div>
+          <div class="stat-sub">ลูกค้า</div></div>
+        </div></div>
+        <div class="stat-card"><div class="stat-inner">
+          <div class="stat-icon si-red">💤</div>
+          <div><div class="stat-label">ยังไม่มีการสั่ง</div>
+          <div class="stat-value" id="s-inactive">—</div>
+          <div class="stat-sub">ลูกค้า</div></div>
+        </div></div>
+        <div class="stat-card"><div class="stat-inner">
+          <div class="stat-icon si-purple">💰</div>
+          <div><div class="stat-label">ยอดขายรวม (ปีนี้)</div>
+          <div class="stat-value" id="s-revenue">—</div>
+          <div class="stat-sub">บาท</div></div>
+        </div></div>
+        <div class="stat-card"><div class="stat-inner">
+          <div class="stat-icon si-teal">🔔</div>
+          <div><div class="stat-label">แจ้งเตือนที่รอ</div>
+          <div class="stat-value" id="s-reminders">—</div>
+          <div class="stat-sub">รายการ</div></div>
+        </div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>👤 ลูกค้าแยกตาม Salesperson</h3>
+          <div class="chart-container"><canvas id="chartSales"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h3>🏪 ประเภทร้านค้า</h3>
+          <div class="chart-container"><canvas id="chartTypes"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h3>📈 ความถี่การซื้อ</h3>
+          <div class="chart-container"><canvas id="chartFreq"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h3>🗺️ ลูกค้าแยกตามจังหวัด (Top 8)</h3>
+          <div class="chart-container"><canvas id="chartProvince"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔔 แจ้งเตือนที่ใกล้ถึง</span>
+          <button class="btn btn-outline btn-sm" onclick="navigate('reminders')">ดูทั้งหมด</button>
+        </div>
+        <div id="dashReminders"></div>
+      </div>
+    </div>
+
+    <!-- ══ CLIENTS PAGE ═══════════════════════════ -->
+    <div class="page" id="page-clients">
+      <div class="page-header">
+        <div class="page-title">
+          <h1>👥 รายชื่อลูกค้า</h1>
+          <p id="clientCountLabel">กำลังโหลด...</p>
+        </div>
+        <button class="btn btn-primary" onclick="openClientModal()">+ เพิ่มลูกค้าใหม่</button>
+      </div>
+      <div class="filters-bar">
+        <input class="search-input" type="text" placeholder="ค้นหาชื่อร้าน, ชื่อลูกค้า, รหัส..." id="clientSearch" oninput="renderClientsTable()">
+        <select class="filter-select" id="filterSalesperson" onchange="renderClientsTable()">
+          <option value="">— Salesperson ทั้งหมด —</option>
+        </select>
+        <select class="filter-select" id="filterType" onchange="renderClientsTable()">
+          <option value="">— ประเภทร้านทั้งหมด —</option>
+          <option>Bottle shop</option><option>Taproom/craft beer bar</option>
+          <option>Hotel</option><option>Restaurant</option><option>Fine Dining</option>
+          <option>Cafe</option><option>Brewery</option><option>Dealer</option>
+          <option>Moderntrade</option><option>Cocktail Bar</option><option>Event</option>
+          <option>ลูกค้าออนไลน์</option>
+        </select>
+        <select class="filter-select" id="filterFreq" onchange="renderClientsTable()">
+          <option value="">— ความถี่ทั้งหมด —</option>
+          <option>ซื้อทุกเดือน</option>
+          <option>ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง</option>
+          <option>ยังไม่มีการสั่งซื้อ</option>
+        </select>
+        <span class="filter-count" id="filteredCount"></span>
+      </div>
+      <div class="table-wrapper">
+        <table id="clientsTable">
+          <thead><tr>
+            <th>ชื่อร้านค้า</th><th>ชื่อลูกค้า</th><th>ประเภท</th>
+            <th>จังหวัด</th><th>Salesperson</th><th>ความถี่</th>
+            <th>คำสั่งซื้อล่าสุด</th><th>ยอดขายรวม</th><th>สถานะ</th>
+          </tr></thead>
+          <tbody id="clientsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ CLIENT DETAIL PAGE ═════════════════════ -->
+    <div class="page" id="page-client-detail">
+      <button class="back-btn" onclick="navigate('clients')">← กลับ</button>
+      <div id="clientDetailContent"></div>
+    </div>
+
+    <!-- ══ ORDERS PAGE ═════════════════════════════ -->
+    <div class="page" id="page-orders">
+      <div class="page-header">
+        <div class="page-title">
+          <h1>🛒 คำสั่งซื้อ</h1>
+          <p>บันทึกและติดตามคำสั่งซื้อ</p>
+        </div>
+        <button class="btn btn-primary" onclick="openOrderModal()">+ บันทึกคำสั่งซื้อใหม่</button>
+      </div>
+      <div class="filters-bar">
+        <input class="search-input" type="text" placeholder="ค้นหาร้านค้า, สินค้า..." id="orderSearch" oninput="renderOrdersTable()">
+        <select class="filter-select" id="filterOrderSales" onchange="renderOrdersTable()">
+          <option value="">— Salesperson ทั้งหมด —</option>
+        </select>
+        <span class="filter-count" id="ordersCount"></span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>วันที่</th><th>ชื่อร้านค้า</th><th>ประเภทสินค้า</th>
+            <th>จำนวน</th><th class="text-right">ยอดรวม (บาท)</th>
+            <th>Salesperson</th><th>หมายเหตุ</th>
+          </tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ REMINDERS PAGE ═════════════════════════ -->
+    <div class="page" id="page-reminders">
+      <div class="page-header">
+        <div class="page-title">
+          <h1>🔔 การแจ้งเตือน</h1>
+          <p>ติดตามและนัดหมายกับลูกค้า</p>
+        </div>
+        <button class="btn btn-primary" onclick="openReminderModal()">+ เพิ่มการแจ้งเตือน</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchReminderTab('pending',this)">รอดำเนินการ</button>
+        <button class="tab" onclick="switchReminderTab('all',this)">ทั้งหมด</button>
+        <button class="tab" onclick="switchReminderTab('done',this)">เสร็จสิ้นแล้ว</button>
+      </div>
+      <div id="remindersContent"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════ -->
+
+<!-- Client Modal -->
+<div class="modal-overlay" id="clientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="clientModalTitle">เพิ่มลูกค้าใหม่</span>
+      <button class="modal-close" onclick="closeModal('clientModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">ชื่อร้านค้า</label>
+          <input class="form-input" id="f-store" placeholder="เช่น Babylon Buds & Brew">
+        </div>
+        <div class="form-group">
+          <label class="form-label req">ชื่อลูกค้า (เจ้าของ/ผู้ติดต่อ)</label>
+          <input class="form-input" id="f-name" placeholder="ชื่อ-นามสกุล">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">รหัสลูกค้า (ContactCode)</label>
+          <input class="form-input" id="f-code" placeholder="เช่น BKK-C-0001">
+          <p class="form-hint">จาก Flowaccount (ถ้ามี)</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label req">ประเภทร้าน</label>
+          <select class="form-select" id="f-type">
+            <option value="">— เลือก —</option>
+            <option>Bottle shop</option><option>Taproom/craft beer bar</option>
+            <option>Hotel</option><option>Restaurant</option><option>Fine Dining</option>
+            <option>Cafe</option><option>Brewery</option><option>Dealer</option>
+            <option>Moderntrade</option><option>Cocktail Bar</option>
+            <option>Event</option><option>ลูกค้าออนไลน์</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">Salesperson</label>
+          <input class="form-input" id="f-salesperson" placeholder="ชื่อ Salesperson">
+        </div>
+        <div class="form-group">
+          <label class="form-label req">จังหวัด</label>
+          <input class="form-input" id="f-province" placeholder="เช่น กรุงเทพฯ">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Monthly Progress</label>
+          <select class="form-select" id="f-progress">
+            <option value="">— เลือก —</option>
+            <option>First Order</option>
+            <option>ซื้อแล้ว</option>
+            <option>ส่งใบราคาแล้ว</option>
+            <option>ลูกค้าใหม่ เสนอแล้ว รอการตัดสินใจ</option>
+            <option>เสนอแล้ว ลูกค้าไม่ซื้อ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ประเภทสินค้าที่ซื้อ</label>
+          <select class="form-select" id="f-products">
+            <option value="">— เลือก —</option>
+            <option>เบียร์สด</option><option>ขวด/กระป๋อง</option>
+            <option>สุราชุมชน</option><option>ขวด/กระป๋อง, เบียร์สด</option>
+            <option>ขวด/กระป๋อง, สุราชุมชน</option>
+            <option>ขวด/กระป๋อง, สุราชุมชน, เบียร์สด</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="f-editRow">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('clientModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveClient()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Modal -->
+<div class="modal-overlay" id="activityModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📝 บันทึกกิจกรรม</span>
+      <button class="modal-close" onclick="closeModal('activityModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">วันที่</label>
+          <input class="form-input" type="date" id="fa-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label req">ประเภทกิจกรรม</label>
+          <select class="form-select" id="fa-type">
+            <option>โทรศัพท์</option><option>เยี่ยมลูกค้า</option>
+            <option>ส่งข้อความ/Line</option><option>อีเมล</option>
+            <option>ประชุม</option><option>เสนอสินค้า</option><option>อื่นๆ</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label req">บันทึก/รายละเอียด</label>
+        <textarea class="form-textarea" id="fa-note" placeholder="สรุปสิ่งที่พูดคุย..."></textarea>
+      </div>
+      <input type="hidden" id="fa-code">
+      <input type="hidden" id="fa-store">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('activityModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveActivity()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🛒 บันทึกคำสั่งซื้อ</span>
+      <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">วันที่สั่งซื้อ</label>
+          <input class="form-input" type="date" id="fo-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label req">ลูกค้า / ร้านค้า</label>
+          <select class="form-select" id="fo-client" onchange="autoFillOrderSales()">
+            <option value="">— เลือกลูกค้า —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">ประเภทสินค้า</label>
+          <select class="form-select" id="fo-products">
+            <option>เบียร์สด</option><option>ขวด/กระป๋อง</option>
+            <option>สุราชุมชน</option><option>ขวด/กระป๋อง, เบียร์สด</option>
+            <option>ขวด/กระป๋อง, สุราชุมชน</option>
+            <option>ขวด/กระป๋อง, สุราชุมชน, เบียร์สด</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">จำนวน (ลัง/ขวด)</label>
+          <input class="form-input" type="text" id="fo-qty" placeholder="เช่น 2 ลัง">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">ยอดรวม (บาท)</label>
+          <input class="form-input" type="number" id="fo-total" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Salesperson</label>
+          <input class="form-input" id="fo-salesperson" placeholder="ชื่อ Salesperson">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">หมายเหตุ</label>
+        <textarea class="form-textarea" id="fo-note" placeholder="รายละเอียดเพิ่มเติม..." style="min-height:70px"></textarea>
+      </div>
+      <input type="hidden" id="fo-code">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('orderModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveOrder()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reminder Modal -->
+<div class="modal-overlay" id="reminderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🔔 เพิ่มการแจ้งเตือน</span>
+      <button class="modal-close" onclick="closeModal('reminderModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label req">วันที่แจ้งเตือน</label>
+          <input class="form-input" type="date" id="fr-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label req">ลูกค้า / ร้านค้า</label>
+          <select class="form-select" id="fr-client" onchange="autoFillReminderSales()">
+            <option value="">— เลือกลูกค้า —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Salesperson</label>
+        <input class="form-input" id="fr-salesperson" placeholder="ชื่อ Salesperson">
+      </div>
+      <div class="form-group">
+        <label class="form-label req">รายละเอียด</label>
+        <textarea class="form-textarea" id="fr-detail" placeholder="เช่น ติดตามผลการสั่งซื้อ, ส่งใบราคาใหม่..."></textarea>
+      </div>
+      <input type="hidden" id="fr-code">
+      <input type="hidden" id="fr-store">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('reminderModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveReminder()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Setup Help Modal -->
+<div class="modal-overlay" id="setupModal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <span class="modal-title">⚙️ คู่มือการตั้งค่าระบบ</span>
+      <button class="modal-close" onclick="closeModal('setupModal')">✕</button>
+    </div>
+    <div class="modal-body" style="line-height:1.8;font-size:14px">
+      <p style="color:var(--muted);margin-bottom:16px">ทำตามขั้นตอนด้านล่างเพื่อเชื่อมต่อ Google OAuth และ Google Sheets</p>
+      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
+        <strong style="color:var(--primary)">ขั้นที่ 1 — สร้าง Google Cloud Project</strong><br>
+        ไปที่ <code style="background:#ddd;padding:2px 6px;border-radius:4px">console.cloud.google.com</code> → สร้าง Project ใหม่ → Enable APIs: <strong>Google Sheets API</strong> และ <strong>OAuth 2.0</strong>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
+        <strong style="color:var(--primary)">ขั้นที่ 2 — ตั้งค่า OAuth Consent Screen</strong><br>
+        APIs &amp; Services → OAuth consent screen → เลือก External → กรอกชื่อ App → ในส่วน <strong>Test users</strong> ให้ใส่ Gmail ของทีมทุกคน
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
+        <strong style="color:var(--primary)">ขั้นที่ 3 — สร้าง OAuth Client ID</strong><br>
+        APIs &amp; Services → Credentials → Create Credentials → OAuth client ID → ประเภท <strong>Web application</strong> → Authorized JavaScript origins: <code style="background:#ddd;padding:2px 6px;border-radius:4px">https://ชื่อของคุณ.github.io</code>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
+        <strong style="color:var(--primary)">ขั้นที่ 4 — สร้าง Google Sheet</strong><br>
+        สร้าง Google Sheet ใหม่ → เพิ่ม 4 ชีต: <strong>ลูกค้า, กิจกรรม, คำสั่งซื้อ, การแจ้งเตือน</strong> → Share กับทุกคนในทีม (Editor) → คัดลอก Sheet ID จาก URL (ส่วนที่อยู่ระหว่าง /d/ และ /edit)
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
+        <strong style="color:var(--primary)">ขั้นที่ 5 — แก้ไขไฟล์ index.html</strong><br>
+        ค้นหา <code style="background:#ddd;padding:2px 6px;border-radius:4px">YOUR_CLIENT_ID_HERE</code> และ <code style="background:#ddd;padding:2px 6px;border-radius:4px">YOUR_SHEET_ID_HERE</code> แล้วแทนที่ด้วยค่าของคุณ
+      </div>
+      <div style="background:#dcfce7;border-radius:8px;padding:16px;">
+        <strong style="color:#166534">ขั้นที่ 6 — Deploy บน GitHub Pages</strong><br>
+        สร้าง GitHub repository (public) → อัปโหลด index.html → Settings → Pages → Source: main branch → บันทึก → รอ ~1 นาที แล้วเข้า URL ที่ได้
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('setupModal')">เข้าใจแล้ว</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+
+// ════════════════════════════════════════════════
+// ██  CONFIG  — แก้ไขค่าเหล่านี้ก่อนใช้งาน ██
+// ════════════════════════════════════════════════
+const CONFIG = {
+  CLIENT_ID: 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com',
+  SHEET_ID:  'YOUR_SHEET_ID_HERE',
+};
+
+// ════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════
+const SHEETS = {
+  CLIENTS:    'ลูกค้า',
+  ACTIVITIES: 'กิจกรรม',
+  ORDERS:     'คำสั่งซื้อ',
+  REMINDERS:  'การแจ้งเตือน',
+};
+
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+
+const FREQ_BADGE = {
+  'ซื้อทุกเดือน':                       'badge bg',
+  'ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง':     'badge bi',
+  'ยังไม่มีการสั่งซื้อ':               'badge br',
+};
+
+const PROGRESS_BADGE = {
+  'ซื้อแล้ว':                                    'badge bg',
+  'First Order':                                  'badge bt',
+  'ส่งใบราคาแล้ว':                              'badge bb',
+  'ลูกค้าใหม่ เสนอแล้ว รอการตัดสินใจ':        'badge bi',
+  'เสนอแล้ว ลูกค้าไม่ซื้อ':                    'badge br',
+};
+
+const ACT_ICONS = {
+  'โทรศัพท์':'📞','เยี่ยมลูกค้า':'🏃','ส่งข้อความ/Line':'💬',
+  'อีเมล':'📧','ประชุม':'🤝','เสนอสินค้า':'📋','อื่นๆ':'📌',
+};
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+const state = {
+  user: null, accessToken: null, tokenExpiry: null, tokenClient: null,
+  clients: [], activities: [], orders: [], reminders: [],
+  currentPage: 'dashboard', selectedClientCode: null,
+  charts: {}, reminderTab: 'pending',
+};
+
+// ════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════
+window.onload = () => {
+  if (CONFIG.CLIENT_ID.includes('YOUR_CLIENT_ID')) {
+    document.getElementById('setupBanner').style.display = 'flex';
+  }
+  const saved = localStorage.getItem('crm_user');
+  const expiry = localStorage.getItem('crm_expiry');
+  if (saved && expiry && Date.now() < parseInt(expiry)) {
+    state.user = JSON.parse(saved);
+    state.accessToken = localStorage.getItem('crm_token');
+    state.tokenExpiry = parseInt(expiry);
+    showApp();
+    loadAllData();
+  }
+};
+
+function gisReady() {
+  if (!window.google) { setTimeout(gisReady, 200); return; }
+  state.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: SCOPES,
+    callback: handleToken,
+  });
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(gisReady, 500));
+
+function handleToken(resp) {
+  if (resp.error) { showToast('เข้าสู่ระบบไม่สำเร็จ: ' + resp.error, 'error'); return; }
+  state.accessToken = resp.access_token;
+  state.tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+  localStorage.setItem('crm_token', state.accessToken);
+  localStorage.setItem('crm_expiry', state.tokenExpiry);
+  fetchUserInfo();
+}
+
+async function fetchUserInfo() {
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${state.accessToken}` }
+    });
+    state.user = await r.json();
+    localStorage.setItem('crm_user', JSON.stringify(state.user));
+    showApp();
+    loadAllData();
+  } catch(e) { showToast('ไม่สามารถดึงข้อมูลผู้ใช้', 'error'); }
+}
+
+function signIn() {
+  if (CONFIG.CLIENT_ID.includes('YOUR_CLIENT_ID')) { showSetupHelp(); return; }
+  if (!state.tokenClient) { showToast('กรุณารอสักครู่ แล้วลองใหม่', 'warning'); return; }
+  state.tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function signOut() {
+  if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, ()=>{});
+  state.user = null; state.accessToken = null;
+  localStorage.removeItem('crm_user'); localStorage.removeItem('crm_token'); localStorage.removeItem('crm_expiry');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  if (state.user) {
+    const u = state.user;
+    if (u.picture) {
+      document.getElementById('userAvatar').innerHTML = `<img src="${u.picture}" style="width:34px;height:34px;border-radius:50%;object-fit:cover">`;
+    } else {
+      document.getElementById('userAvatar').textContent = (u.name||'?')[0].toUpperCase();
+    }
+    document.getElementById('userName').textContent = u.name || u.email;
+    document.getElementById('userEmail').textContent = u.email || '';
+  }
+}
+
+// ════════════════════════════════════════════════
+// SHEETS API
+// ════════════════════════════════════════════════
+async function apiCall(url, opts={}) {
+  if (Date.now() > (state.tokenExpiry||0)) {
+    showToast('Session หมดอายุ กรุณา Login ใหม่', 'warning');
+    signOut(); throw new Error('Token expired');
+  }
+  const r = await fetch(url, {
+    ...opts,
+    headers: { Authorization: `Bearer ${state.accessToken}`, 'Content-Type':'application/json', ...(opts.headers||{}) }
+  });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || 'API Error'); }
+  return r.json();
+}
+
+const BASE = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}`;
+
+async function sheetsGet(range) {
+  const d = await apiCall(`${BASE}/values/${encodeURIComponent(range)}`);
+  return d.values || [];
+}
+
+async function sheetsAppend(sheet, values) {
+  return apiCall(`${BASE}/values/${encodeURIComponent(sheet)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+    method:'POST', body: JSON.stringify({ values })
+  });
+}
+
+async function sheetsUpdate(range, values) {
+  return apiCall(`${BASE}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, {
+    method:'PUT', body: JSON.stringify({ values })
+  });
+}
+
+async function initSheets() {
+  const headers = {
+    [SHEETS.CLIENTS]:    [['Salesperson','ContactCode','ชื่อลูกค้า','ชื่อร้านค้า','ประเภทร้าน','Monthly Progress','จังหวัด','วันที่สั่งซื้อล่าสุด','ประเภทสินค้าที่ซื้อ','ความถี่ในการซื้อ','จำนวนครั้งสั่งซื้อ','ยอดขายเฉลี่ยต่อครั้ง','ยอดขายรวมทั้งปี']],
+    [SHEETS.ACTIVITIES]: [['ID','วันที่','ContactCode','ชื่อร้านค้า','Salesperson','ประเภทกิจกรรม','บันทึก']],
+    [SHEETS.ORDERS]:     [['ID','วันที่','ContactCode','ชื่อร้านค้า','Salesperson','ประเภทสินค้า','จำนวน','ยอดรวม (บาท)','หมายเหตุ']],
+    [SHEETS.REMINDERS]:  [['ID','วันที่แจ้งเตือน','ContactCode','ชื่อร้านค้า','Salesperson','รายละเอียด','สถานะ']],
+  };
+  showLoader(true);
+  try {
+    for (const [sh, rows] of Object.entries(headers)) {
+      await sheetsUpdate(`${sh}!A1`, rows);
+    }
+    showToast('สร้างโครงสร้างชีทสำเร็จ!', 'success');
+    await loadAllData();
+  } catch(e) { showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
+  finally { showLoader(false); }
+}
+
+// ════════════════════════════════════════════════
+// DATA LOADING
+// ════════════════════════════════════════════════
+async function loadAllData() {
+  if (!state.accessToken) return;
+  if (CONFIG.SHEET_ID === 'YOUR_SHEET_ID_HERE') return;
+  showLoader(true);
+  try {
+    await Promise.all([loadClients(), loadActivities(), loadOrders(), loadReminders()]);
+    renderCurrentPage();
+    updateReminderBadge();
+  } catch(e) {
+    showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
+  } finally { showLoader(false); }
+}
+
+async function loadClients() {
+  try {
+    const rows = await sheetsGet(`${SHEETS.CLIENTS}!A:M`);
+    state.clients = rows.slice(1).map((r,i) => ({
+      row:i+2, salesperson:r[0]||'', code:r[1]||'', name:r[2]||'',
+      store:r[3]||'', type:r[4]||'', progress:r[5]||'', province:r[6]||'',
+      lastOrder:r[7]||'', products:r[8]||'', frequency:r[9]||'',
+      orderCount:parseInt(r[10])||0, avgSales:parseFloat(r[11])||0,
+      totalSales:parseFloat(r[12])||0,
+    })).filter(c=>c.store||c.name||c.code);
+  } catch(e) { if (!e.message.includes('Unable to parse')) throw e; state.clients=[]; }
+}
+
+async function loadActivities() {
+  try {
+    const rows = await sheetsGet(`${SHEETS.ACTIVITIES}!A:G`);
+    state.activities = rows.slice(1).map((r,i) => ({
+      row:i+2, id:r[0]||'', date:r[1]||'', code:r[2]||'',
+      store:r[3]||'', salesperson:r[4]||'', actType:r[5]||'', note:r[6]||'',
+    })).filter(a=>a.id||a.note);
+  } catch(e) { state.activities=[]; }
+}
+
+async function loadOrders() {
+  try {
+    const rows = await sheetsGet(`${SHEETS.ORDERS}!A:I`);
+    state.orders = rows.slice(1).map((r,i) => ({
+      row:i+2, id:r[0]||'', date:r[1]||'', code:r[2]||'', store:r[3]||'',
+      salesperson:r[4]||'', products:r[5]||'', qty:r[6]||'',
+      total:parseFloat(r[7])||0, note:r[8]||'',
+    })).filter(o=>o.id||o.store);
+  } catch(e) { state.orders=[]; }
+}
+
+async function loadReminders() {
+  try {
+    const rows = await sheetsGet(`${SHEETS.REMINDERS}!A:G`);
+    state.reminders = rows.slice(1).map((r,i) => ({
+      row:i+2, id:r[0]||'', dueDate:r[1]||'', code:r[2]||'', store:r[3]||'',
+      salesperson:r[4]||'', detail:r[5]||'', status:r[6]||'รอดำเนินการ',
+    })).filter(r=>r.id||r.detail);
+  } catch(e) { state.reminders=[]; }
+}
+
+// ════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════
+function navigate(page, params={}) {
+  state.currentPage = page;
+  state.selectedClientCode = params.code || null;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById(`page-${page}`);
+  if (el) el.classList.add('active');
+  const nav = document.getElementById(`nav-${page}`);
+  if (nav) nav.classList.add('active');
+  else if (page === 'client-detail') {
+    document.getElementById('nav-clients').classList.add('active');
+  }
+  renderCurrentPage();
+  if (window.innerWidth <= 768) closeSidebar();
+  window.scrollTo(0,0);
+}
+
+function renderCurrentPage() {
+  const p = state.currentPage;
+  if (p === 'dashboard') renderDashboard();
+  else if (p === 'clients') renderClientsTable();
+  else if (p === 'client-detail') renderClientDetail();
+  else if (p === 'orders') renderOrdersTable();
+  else if (p === 'reminders') renderRemindersPage();
+}
+
+// ════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════
+function renderDashboard() {
+  const c = state.clients;
+  const monthly = c.filter(x=>x.frequency==='ซื้อทุกเดือน').length;
+  const quarterly = c.filter(x=>x.frequency==='ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง').length;
+  const inactive = c.filter(x=>x.frequency==='ยังไม่มีการสั่งซื้อ'||!x.frequency).length;
+  const revenue = c.reduce((s,x)=>s+x.totalSales,0);
+  const pending = state.reminders.filter(r=>r.status==='รอดำเนินการ').length;
+
+  setText('s-total', c.length.toLocaleString());
+  setText('s-monthly', monthly.toLocaleString());
+  setText('s-quarterly', quarterly.toLocaleString());
+  setText('s-inactive', inactive.toLocaleString());
+  setText('s-revenue', revenue >= 1000000 ? (revenue/1000000).toFixed(1)+'M' : revenue >= 1000 ? (revenue/1000).toFixed(0)+'K' : revenue.toLocaleString());
+  setText('s-reminders', pending.toLocaleString());
+
+  renderCharts();
+  renderDashReminders();
+}
+
+function renderCharts() {
+  const c = state.clients;
+
+  // Salesperson chart
+  const spMap = {};
+  c.forEach(x=>{ if(x.salesperson) spMap[x.salesperson] = (spMap[x.salesperson]||0)+1; });
+  const spNames = Object.keys(spMap).sort((a,b)=>spMap[b]-spMap[a]).slice(0,8);
+  drawChart('chartSales','bar',spNames,spNames.map(k=>spMap[k]),
+    '#2d5a47',{indexAxis:'y',responsive:true,maintainAspectRatio:false});
+
+  // Store type donut
+  const typeMap = {};
+  c.forEach(x=>{ if(x.type) typeMap[x.type]=(typeMap[x.type]||0)+1; });
+  const typeKeys = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
+  const palette = ['#2d5a47','#c8942a','#3182ce','#e53e3e','#38a169','#dd6b20','#6b21a8','#134e4a','#92400e','#1e40af','#166534','#9a3412'];
+  drawChart('chartTypes','doughnut',typeKeys,typeKeys.map(k=>typeMap[k]),palette.slice(0,typeKeys.length));
+
+  // Frequency bar
+  const freqData = [
+    c.filter(x=>x.frequency==='ซื้อทุกเดือน').length,
+    c.filter(x=>x.frequency==='ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง').length,
+    c.filter(x=>x.frequency==='ยังไม่มีการสั่งซื้อ'||!x.frequency).length,
+  ];
+  drawChart('chartFreq','bar',
+    ['ซื้อทุกเดือน','ซื้อรายไตรมาส','ยังไม่สั่ง'], freqData,
+    ['#38a169','#3182ce','#e53e3e']);
+
+  // Province chart
+  const provMap = {};
+  c.forEach(x=>{ if(x.province) provMap[x.province]=(provMap[x.province]||0)+1; });
+  const provKeys = Object.keys(provMap).sort((a,b)=>provMap[b]-provMap[a]).slice(0,8);
+  drawChart('chartProvince','bar',provKeys,provKeys.map(k=>provMap[k]),'#c8942a');
+}
+
+function drawChart(id, type, labels, data, color, extraOpts={}) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (state.charts[id]) state.charts[id].destroy();
+  state.charts[id] = new Chart(ctx, {
+    type,
+    data: {
+      labels,
+      datasets:[{
+        data,
+        backgroundColor: Array.isArray(color) ? color : (type==='bar' ? color+'cc' : color),
+        borderColor: Array.isArray(color) ? color : color,
+        borderWidth: type==='doughnut'?2:0,
+        borderRadius: type==='bar'?6:0,
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:type==='doughnut', position:'right',
+        labels:{font:{family:'Sarabun'},boxWidth:12,padding:8} }},
+      scales: type!=='doughnut' ? {
+        x:{ticks:{font:{family:'Sarabun',size:11}},grid:{display:false}},
+        y:{ticks:{font:{family:'Sarabun',size:11}},grid:{color:'#f0f0f0'}},
+      } : undefined,
+      ...extraOpts,
+    }
+  });
+}
+
+function renderDashReminders() {
+  const today = todayStr();
+  const upcoming = state.reminders
+    .filter(r=>r.status==='รอดำเนินการ' && r.dueDate >= today)
+    .sort((a,b)=>a.dueDate.localeCompare(b.dueDate))
+    .slice(0,5);
+  const el = document.getElementById('dashReminders');
+  if (!upcoming.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">✅</div><p>ไม่มีการแจ้งเตือนที่รอดำเนินการ</p></div>';
+    return;
+  }
+  el.innerHTML = upcoming.map(r => reminderItemHTML(r)).join('');
+}
+
+// ════════════════════════════════════════════════
+// CLIENTS TABLE
+// ════════════════════════════════════════════════
+function renderClientsTable() {
+  const search = (document.getElementById('clientSearch')?.value||'').toLowerCase();
+  const spFilter = document.getElementById('filterSalesperson')?.value||'';
+  const typeFilter = document.getElementById('filterType')?.value||'';
+  const freqFilter = document.getElementById('filterFreq')?.value||'';
+
+  // Populate salesperson filter
+  const spSel = document.getElementById('filterSalesperson');
+  if (spSel && spSel.options.length <= 1) {
+    const sps = [...new Set(state.clients.map(c=>c.salesperson).filter(Boolean))].sort();
+    sps.forEach(sp=>{ const o=document.createElement('option'); o.value=sp; o.text=sp; spSel.appendChild(o); });
+  }
+
+  let list = state.clients.filter(c => {
+    const txt = `${c.store} ${c.name} ${c.code} ${c.province}`.toLowerCase();
+    return (!search || txt.includes(search))
+      && (!spFilter || c.salesperson===spFilter)
+      && (!typeFilter || c.type===typeFilter)
+      && (!freqFilter || c.frequency===freqFilter);
+  });
+
+  setText('clientCountLabel', `ลูกค้าทั้งหมด ${state.clients.length} ราย`);
+  setText('filteredCount', search||spFilter||typeFilter||freqFilter ? `แสดง ${list.length} ราย` : '');
+
+  const tbody = document.getElementById('clientsBody');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔍</div><h3>ไม่พบลูกค้า</h3><p>ลองเปลี่ยนคำค้นหา</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(c => `
+    <tr onclick="navigate('client-detail',{code:'${esc(c.code||c.store)}'})">
+      <td class="td-store">${esc(c.store)||'—'}</td>
+      <td>${esc(c.name)||'—'}</td>
+      <td>${c.type ? `<span class="badge bk">${esc(c.type)}</span>`:'—'}</td>
+      <td>${esc(c.province)||'—'}</td>
+      <td>${esc(c.salesperson)||'—'}</td>
+      <td>${c.frequency ? `<span class="${FREQ_BADGE[c.frequency]||'badge bk'}">${esc(c.frequency)}</span>`:'—'}</td>
+      <td>${fmtDate(c.lastOrder)}</td>
+      <td class="text-right">${c.totalSales ? fmtThb(c.totalSales) : '—'}</td>
+      <td>${c.progress ? `<span class="${PROGRESS_BADGE[c.progress]||'badge bk'}">${esc(c.progress)}</span>`:'—'}</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// CLIENT DETAIL
+// ════════════════════════════════════════════════
+function renderClientDetail() {
+  const key = state.selectedClientCode;
+  const client = state.clients.find(c => (c.code||c.store)===key) || state.clients.find(c=>c.store===key);
+  const el = document.getElementById('clientDetailContent');
+  if (!client) { el.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><h3>ไม่พบข้อมูลลูกค้า</h3></div>'; return; }
+
+  const clientActivities = state.activities.filter(a=>a.code===client.code||a.store===client.store).sort((a,b)=>b.date.localeCompare(a.date));
+  const clientOrders = state.orders.filter(o=>o.code===client.code||o.store===client.store).sort((a,b)=>b.date.localeCompare(a.date));
+  const clientReminders = state.reminders.filter(r=>r.code===client.code||r.store===client.store);
+
+  el.innerHTML = `
+  <div class="client-banner">
+    <div class="flex justify-between items-center flex-wrap gap-2">
+      <div>
+        <h2>${esc(client.store)||esc(client.name)}</h2>
+        <p>${esc(client.name)} · ${esc(client.type)} · ${esc(client.province)}</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-outline btn-sm" style="background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.3)" onclick="openClientModal('${esc(client.code||client.store)}')">✏️ แก้ไข</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="openOrderModal('${esc(client.code||client.store)}')">🛒 บันทึกคำสั่งซื้อ</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="openActivityModal('${esc(client.code)}','${esc(client.store)}')">📝 บันทึกกิจกรรม</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <!-- Left: Info -->
+    <div>
+      <div class="card mb-4">
+        <div class="card-title mb-3">📋 ข้อมูลลูกค้า</div>
+        ${infoRow('รหัสลูกค้า', client.code||'—')}
+        ${infoRow('ประเภทร้าน', client.type||'—')}
+        ${infoRow('จังหวัด', client.province||'—')}
+        ${infoRow('Salesperson', client.salesperson||'—')}
+        ${infoRow('สินค้าที่ซื้อ', client.products||'—')}
+        ${infoRow('ความถี่', client.frequency ? `<span class="${FREQ_BADGE[client.frequency]||'badge bk'}">${esc(client.frequency)}</span>` : '—')}
+        ${infoRow('สั่งซื้อล่าสุด', fmtDate(client.lastOrder)||'—')}
+        ${infoRow('Monthly Progress', client.progress ? `<span class="${PROGRESS_BADGE[client.progress]||'badge bk'}">${esc(client.progress)}</span>` : '—')}
+      </div>
+      <div class="card mb-4">
+        <div class="card-title mb-3">💰 สถิติยอดขาย</div>
+        ${infoRow('จำนวนครั้งสั่งซื้อ', (client.orderCount||'—')+' ครั้ง')}
+        ${infoRow('ยอดเฉลี่ย/ครั้ง', client.avgSales ? fmtThb(client.avgSales)+' บาท' : '—')}
+        ${infoRow('ยอดรวมทั้งปี', client.totalSales ? fmtThb(client.totalSales)+' บาท' : '—')}
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔔 การแจ้งเตือน (${clientReminders.filter(r=>r.status==='รอดำเนินการ').length})</span>
+          <button class="btn btn-outline btn-sm" onclick="openReminderModal('${esc(client.code)}','${esc(client.store)}','${esc(client.salesperson)}')">+ เพิ่ม</button></div>
+        ${clientReminders.length ? clientReminders.slice(0,3).map(r=>reminderItemHTML(r,true)).join('') : '<p class="text-muted text-sm" style="padding:8px 0">ยังไม่มีการแจ้งเตือน</p>'}
+      </div>
+    </div>
+
+    <!-- Right: Tabs -->
+    <div>
+      <div class="tabs">
+        <button class="tab active" onclick="detailTab('activities',this)">📝 กิจกรรม (${clientActivities.length})</button>
+        <button class="tab" onclick="detailTab('orders',this)">🛒 คำสั่งซื้อ (${clientOrders.length})</button>
+      </div>
+      <div id="detailActivities">
+        ${clientActivities.length ? `<div class="timeline">${clientActivities.map(a=>`
+          <div class="timeline-item">
+            <div class="t-dot">${ACT_ICONS[a.actType]||'📌'}</div>
+            <div class="t-body">
+              <div class="t-head"><span class="t-type">${esc(a.actType)}</span><span class="t-date">${fmtDate(a.date)}</span></div>
+              <div class="t-text">${esc(a.note)}</div>
+              <div class="t-person">โดย ${esc(a.salesperson)}</div>
+            </div>
+          </div>`).join('')}</div>` :
+          '<div class="empty-state" style="padding:40px"><div class="empty-icon">📝</div><h3>ยังไม่มีกิจกรรม</h3><p>กดปุ่ม "บันทึกกิจกรรม" เพื่อเริ่มต้น</p></div>'}
+        <div class="mt-4">
+          <button class="btn btn-outline w-full" onclick="openActivityModal('${esc(client.code)}','${esc(client.store)}')">+ บันทึกกิจกรรมใหม่</button>
+        </div>
+      </div>
+      <div id="detailOrders" style="display:none">
+        ${clientOrders.length ? `<div class="table-wrapper"><table>
+          <thead><tr><th>วันที่</th><th>สินค้า</th><th>จำนวน</th><th class="text-right">ยอดรวม</th><th>หมายเหตุ</th></tr></thead>
+          <tbody>${clientOrders.map(o=>`<tr>
+            <td>${fmtDate(o.date)}</td><td>${esc(o.products)}</td><td>${esc(o.qty)||'—'}</td>
+            <td class="text-right font-bold">${o.total?fmtThb(o.total)+' ฿':'—'}</td><td>${esc(o.note)||'—'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>` :
+          '<div class="empty-state" style="padding:40px"><div class="empty-icon">🛒</div><h3>ยังไม่มีคำสั่งซื้อ</h3></div>'}
+        <div class="mt-4">
+          <button class="btn btn-outline w-full" onclick="openOrderModal('${esc(client.code||client.store)}')">+ บันทึกคำสั่งซื้อใหม่</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function detailTab(tab, btn) {
+  document.querySelectorAll('#page-client-detail .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('detailActivities').style.display = tab==='activities'?'block':'none';
+  document.getElementById('detailOrders').style.display = tab==='orders'?'block':'none';
+}
+
+function infoRow(label, val) {
+  return `<div class="info-row"><div class="info-label">${label}</div><div class="info-value">${val}</div></div>`;
+}
+
+// ════════════════════════════════════════════════
+// ORDERS TABLE
+// ════════════════════════════════════════════════
+function renderOrdersTable() {
+  const search = (document.getElementById('orderSearch')?.value||'').toLowerCase();
+  const spFilter = document.getElementById('filterOrderSales')?.value||'';
+
+  const spSel = document.getElementById('filterOrderSales');
+  if (spSel && spSel.options.length<=1) {
+    const sps = [...new Set(state.orders.map(o=>o.salesperson).filter(Boolean))].sort();
+    sps.forEach(sp=>{ const o=document.createElement('option'); o.value=sp; o.text=sp; spSel.appendChild(o); });
+  }
+
+  let list = [...state.orders].sort((a,b)=>b.date.localeCompare(a.date)).filter(o=>{
+    const txt = `${o.store} ${o.products} ${o.note}`.toLowerCase();
+    return (!search||txt.includes(search)) && (!spFilter||o.salesperson===spFilter);
+  });
+
+  setText('ordersCount', `${list.length} รายการ`);
+  const tbody = document.getElementById('ordersBody');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🛒</div><h3>ยังไม่มีคำสั่งซื้อ</h3></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(o=>`<tr onclick="navigate('client-detail',{code:'${esc(o.code||o.store)}'})">
+    <td>${fmtDate(o.date)}</td>
+    <td class="td-store">${esc(o.store)}</td>
+    <td>${esc(o.products)}</td>
+    <td>${esc(o.qty)||'—'}</td>
+    <td class="text-right font-bold">${o.total?fmtThb(o.total):'-'}</td>
+    <td>${esc(o.salesperson)||'—'}</td>
+    <td>${esc(o.note)||'—'}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// REMINDERS PAGE
+// ════════════════════════════════════════════════
+function renderRemindersPage() {
+  const tab = state.reminderTab;
+  const today = todayStr();
+  let list = [...state.reminders].sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  if (tab==='pending') list = list.filter(r=>r.status==='รอดำเนินการ');
+  else if (tab==='done') list = list.filter(r=>r.status==='เสร็จสิ้น');
+
+  const el = document.getElementById('remindersContent');
+  if (!list.length) {
+    el.innerHTML='<div class="empty-state"><div class="empty-icon">🔔</div><h3>ไม่มีการแจ้งเตือน</h3><p>กดปุ่มด้านบนเพื่อเพิ่มการแจ้งเตือนใหม่</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(r=>reminderItemHTML(r)).join('');
+  updateReminderBadge();
+}
+
+function reminderItemHTML(r, compact=false) {
+  const today = todayStr();
+  const cls = r.status==='เสร็จสิ้น' ? 'done' : r.dueDate < today ? 'overdue' : r.dueDate===today ? 'today' : 'upcoming';
+  const d = r.dueDate ? new Date(r.dueDate) : null;
+  const dayNum = d ? d.getDate() : '—';
+  const monthName = d ? d.toLocaleDateString('th-TH',{month:'short'}) : '';
+  return `<div class="reminder-item ${cls}">
+    <div class="r-date-block"><div class="r-day">${dayNum}</div><div class="r-month">${monthName}</div></div>
+    <div class="r-content">
+      <div class="r-title">${esc(r.store)}</div>
+      <div class="r-detail">${esc(r.detail)}</div>
+      <div class="r-meta">👤 ${esc(r.salesperson)||'—'} · ${statusLabel(cls)}</div>
+    </div>
+    ${!compact && r.status!=='เสร็จสิ้น' ? `<div class="r-actions">
+      <button class="btn btn-sm btn-outline" onclick="markReminderDone(${r.row},'${esc(r.id)}')">✅ เสร็จ</button>
+    </div>` : ''}
+  </div>`;
+}
+
+function statusLabel(cls) {
+  return cls==='overdue'?'<span class="badge br">เกินกำหนด</span>':
+         cls==='today'?'<span class="badge bb">วันนี้</span>':
+         cls==='done'?'<span class="badge bg">เสร็จสิ้น</span>':
+         '<span class="badge bk">รอดำเนินการ</span>';
+}
+
+function switchReminderTab(tab, btn) {
+  state.reminderTab = tab;
+  document.querySelectorAll('#page-reminders .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderRemindersPage();
+}
+
+function updateReminderBadge() {
+  const today = todayStr();
+  const cnt = state.reminders.filter(r=>r.status==='รอดำเนินการ' && r.dueDate<=today).length;
+  const badge = document.getElementById('reminderBadge');
+  if (!badge) return;
+  badge.style.display = cnt>0 ? 'inline-block' : 'none';
+  badge.textContent = cnt;
+}
+
+// ════════════════════════════════════════════════
+// MODAL HELPERS
+// ════════════════════════════════════════════════
+function openClientModal(key='') {
+  const c = key ? state.clients.find(x=>(x.code||x.store)===key) : null;
+  document.getElementById('clientModalTitle').textContent = c ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่';
+  setVal('f-store', c?.store||'');
+  setVal('f-name', c?.name||'');
+  setVal('f-code', c?.code||'');
+  setVal('f-type', c?.type||'');
+  setVal('f-salesperson', c?.salesperson||state.user?.name||'');
+  setVal('f-province', c?.province||'');
+  setVal('f-progress', c?.progress||'');
+  setVal('f-products', c?.products||'');
+  setVal('f-editRow', c?.row||'');
+  openModal('clientModal');
+}
+
+function openActivityModal(code='', store='') {
+  setVal('fa-date', todayStr());
+  setVal('fa-code', code);
+  setVal('fa-store', store);
+  setVal('fa-note', '');
+  openModal('activityModal');
+}
+
+function openOrderModal(key='') {
+  populateClientSelect('fo-client');
+  setVal('fo-date', todayStr());
+  setVal('fo-note', '');
+  setVal('fo-total', '');
+  setVal('fo-qty', '');
+  setVal('fo-code', '');
+  if (key) {
+    const c = state.clients.find(x=>(x.code||x.store)===key)||state.clients.find(x=>x.store===key);
+    if (c) {
+      setVal('fo-client', c.store);
+      setVal('fo-salesperson', c.salesperson||state.user?.name||'');
+      setVal('fo-code', c.code||'');
+    }
+  } else {
+    setVal('fo-salesperson', state.user?.name||'');
+  }
+  openModal('orderModal');
+}
+
+function openReminderModal(code='', store='', salesperson='') {
+  populateClientSelect('fr-client');
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7);
+  setVal('fr-date', tomorrow.toISOString().split('T')[0]);
+  setVal('fr-detail', '');
+  setVal('fr-code', code);
+  setVal('fr-store', store);
+  setVal('fr-salesperson', salesperson||state.user?.name||'');
+  if (store) {
+    const sel = document.getElementById('fr-client');
+    if (sel) { for(let o of sel.options) { if(o.value===store){o.selected=true;break;} } }
+  }
+  openModal('reminderModal');
+}
+
+function populateClientSelect(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— เลือกลูกค้า —</option>';
+  const sorted = [...state.clients].sort((a,b)=>a.store.localeCompare(b.store,'th'));
+  sorted.forEach(c=>{
+    const o = document.createElement('option');
+    o.value = c.store;
+    o.dataset.code = c.code||'';
+    o.dataset.sales = c.salesperson||'';
+    o.text = c.store + (c.province?` (${c.province})`:'');
+    sel.appendChild(o);
+  });
+}
+
+function autoFillOrderSales() {
+  const sel = document.getElementById('fo-client');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt?.dataset.sales) setVal('fo-salesperson', opt.dataset.sales);
+  if (opt?.dataset.code) setVal('fo-code', opt.dataset.code);
+}
+
+function autoFillReminderSales() {
+  const sel = document.getElementById('fr-client');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt?.dataset.sales) setVal('fr-salesperson', opt.dataset.sales);
+  if (opt?.dataset.code) setVal('fr-code', opt.dataset.code);
+  setVal('fr-store', opt?.value||'');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showSetupHelp() { openModal('setupModal'); }
+
+// ════════════════════════════════════════════════
+// SAVE FUNCTIONS
+// ════════════════════════════════════════════════
+async function saveClient() {
+  const store = val('f-store').trim();
+  const name  = val('f-name').trim();
+  const type  = val('f-type');
+  const sp    = val('f-salesperson').trim();
+  const prov  = val('f-province').trim();
+  if (!store||!sp) { showToast('กรุณากรอก ชื่อร้านค้า และ Salesperson', 'warning'); return; }
+
+  const row = val('f-editRow');
+  const data = [sp, val('f-code').trim(), name, store, type, val('f-progress'), prov,
+                '', val('f-products'), '', '', '', ''];
+  try {
+    showLoader(true);
+    if (row) {
+      await sheetsUpdate(`${SHEETS.CLIENTS}!A${row}:M${row}`, [data]);
+      showToast('อัปเดตข้อมูลสำเร็จ', 'success');
+    } else {
+      await sheetsAppend(SHEETS.CLIENTS, [data]);
+      showToast('เพิ่มลูกค้าใหม่สำเร็จ', 'success');
+    }
+    closeModal('clientModal');
+    await loadClients();
+    renderCurrentPage();
+  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
+  finally { showLoader(false); }
+}
+
+async function saveActivity() {
+  const date = val('fa-date');
+  const type = val('fa-type');
+  const note = val('fa-note').trim();
+  const code = val('fa-code');
+  const store = val('fa-store');
+  if (!note) { showToast('กรุณากรอกบันทึก', 'warning'); return; }
+
+  const id = `ACT-${Date.now()}`;
+  const data = [id, date, code, store, state.user?.name||'', type, note];
+  try {
+    showLoader(true);
+    await sheetsAppend(SHEETS.ACTIVITIES, [data]);
+    showToast('บันทึกกิจกรรมสำเร็จ', 'success');
+    closeModal('activityModal');
+    await loadActivities();
+    renderCurrentPage();
+  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
+  finally { showLoader(false); }
+}
+
+async function saveOrder() {
+  const date     = val('fo-date');
+  const clientSt = val('fo-client');
+  const products = val('fo-products');
+  const total    = parseFloat(val('fo-total'))||0;
+  const code     = val('fo-code');
+  const sp       = val('fo-salesperson').trim();
+  if (!clientSt||!total) { showToast('กรุณาเลือกลูกค้าและใส่ยอดรวม', 'warning'); return; }
+
+  const id = `ORD-${Date.now()}`;
+  const data = [id, date, code, clientSt, sp, products, val('fo-qty'), total, val('fo-note').trim()];
+  try {
+    showLoader(true);
+    await sheetsAppend(SHEETS.ORDERS, [data]);
+    // Update client last order date
+    const c = state.clients.find(x=>x.store===clientSt);
+    if (c) {
+      await sheetsUpdate(`${SHEETS.CLIENTS}!H${c.row}`, [[date]]);
+      // Update order count and total
+      const newCount = (c.orderCount||0)+1;
+      const newTotal = (c.totalSales||0)+total;
+      const newAvg   = newTotal/newCount;
+      const freq = newCount>=3 ? 'ซื้อทุกเดือน' : newCount>=1 ? 'ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง' : c.frequency;
+      await sheetsUpdate(`${SHEETS.CLIENTS}!J${c.row}:M${c.row}`, [[freq, newCount, newAvg.toFixed(2), newTotal.toFixed(2)]]);
+    }
+    showToast('บันทึกคำสั่งซื้อสำเร็จ', 'success');
+    closeModal('orderModal');
+    await loadAllData();
+  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
+  finally { showLoader(false); }
+}
+
+async function saveReminder() {
+  const date  = val('fr-date');
+  const store = val('fr-client')||val('fr-store');
+  const code  = val('fr-code');
+  const sp    = val('fr-salesperson').trim();
+  const det   = val('fr-detail').trim();
+  if (!store||!det) { showToast('กรุณาเลือกลูกค้าและกรอกรายละเอียด', 'warning'); return; }
+
+  const id = `REM-${Date.now()}`;
+  const data = [id, date, code, store, sp, det, 'รอดำเนินการ'];
+  try {
+    showLoader(true);
+    await sheetsAppend(SHEETS.REMINDERS, [data]);
+    showToast('เพิ่มการแจ้งเตือนสำเร็จ', 'success');
+    closeModal('reminderModal');
+    await loadReminders();
+    renderCurrentPage();
+    updateReminderBadge();
+  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
+  finally { showLoader(false); }
+}
+
+async function markReminderDone(row, id) {
+  try {
+    showLoader(true);
+    await sheetsUpdate(`${SHEETS.REMINDERS}!G${row}`, [['เสร็จสิ้น']]);
+    showToast('ทำเครื่องหมายเสร็จสิ้นแล้ว', 'success');
+    await loadReminders();
+    renderCurrentPage();
+    updateReminderBadge();
+  } catch(e) { showToast('เกิดข้อผิดพลาด: '+e.message, 'error'); }
+  finally { showLoader(false); }
+}
+
+// ════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════
+function val(id) { return document.getElementById(id)?.value||''; }
+function setVal(id, v) { const el=document.getElementById(id); if(el) el.value=v; }
+function setText(id, v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function esc(s) { if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(d) { if(!d) return '—'; try { return new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); } catch{return d;} }
+function fmtThb(n) { return Number(n).toLocaleString('th-TH',{maximumFractionDigits:0}); }
+
+function showToast(msg, type='info') {
+  const div = document.createElement('div');
+  div.className = `toast ${type}`;
+  const icon = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'}[type]||'ℹ️';
+  div.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  document.getElementById('toastContainer').appendChild(div);
+  setTimeout(()=>div.remove(), 4000);
+}
+
+function showLoader(show) {
+  document.getElementById('globalLoader').classList.toggle('show', show);
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay=>{
+  overlay.addEventListener('click', e=>{
+    if (e.target===overlay) overlay.classList.remove('open');
+  });
+});
+
+</script>
+</body>
+</html>
