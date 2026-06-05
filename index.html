@@ -304,6 +304,24 @@ td.tds{font-weight:600;color:var(--primary)}
 .stc-nums{display:flex;gap:14px;margin-bottom:8px}
 .stc-num .n{font-size:18px;font-weight:700}.stc-num .l{font-size:10px;color:var(--muted);text-transform:uppercase}
 
+
+/* PLANNING */
+.plan-status-draft{background:#f3f4f6;color:#374151}
+.plan-status-active{background:#dcfce7;color:#166534}
+.plan-status-completed{background:#dbeafe;color:#1e40af}
+.plan-status-cancelled{background:#fee2e2;color:#991b1b}
+.shop-sel-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);margin-bottom:6px;cursor:pointer;transition:all .15s}
+.shop-sel-item:hover{border-color:var(--accent)}
+.shop-sel-item.selected{border-color:var(--success);background:#f0fdf4}
+.plan-shop-row{background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;background:var(--card)}
+.task-done{opacity:.5;text-decoration:line-through}
+.ts-not-started{background:#f3f4f6;color:#374151}
+.ts-in-progress{background:#fef3c7;color:#92400e}
+.ts-done{background:#dcfce7;color:#166534}
+.ts-blocked{background:#fee2e2;color:#991b1b}
+.ts-cancelled{background:#f3f4f6;color:#9ca3af}
+.plan-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
 /* MOBILE */
 .mob-bar{display:none;align-items:center;gap:10px;padding:11px 14px;
   background:var(--primary);color:#fff;position:sticky;top:0;z-index:50}
@@ -394,6 +412,8 @@ td.tds{font-weight:600;color:var(--primary)}
       <button class="ni" id="nav-sales" onclick="navigate('sales')"><span class="ic">👤</span> Sales Team</button>
       <div class="snl" style="margin-top:6px">Reports</div>
       <button class="ni" id="nav-history" onclick="navigate('history')"><span class="ic">📜</span> Monthly History</button>
+      <div class="snl" style="margin-top:6px">Planning</div>
+      <button class="ni" id="nav-planning" onclick="navigate('planning')"><span class="ic">🎯</span> Planning / Campaigns</button>
     </nav>
     <div class="sf">
       <div class="ua"><div class="uav" id="uav">?</div><div style="overflow:hidden"><div class="un" id="uname">Loading</div><div class="ue" id="uemail"></div></div></div>
@@ -514,6 +534,55 @@ td.tds{font-weight:600;color:var(--primary)}
     </div>
 
     <!-- HISTORY -->
+    <!-- PLANNING / CAMPAIGNS -->
+    <div class="page" id="page-planning">
+      <div class="ph">
+        <div class="pt"><h1>🎯 Planning / Campaigns</h1><p id="planningLabel">Sales &amp; marketing plans</p></div>
+        <button class="btn bp" onclick="openPlanModal()">+ Create New Plan</button>
+      </div>
+      <!-- Sub-tabs -->
+      <div class="tabs" id="planTabs">
+        <button class="tab active" onclick="planTab('list',this)">📋 Plan List</button>
+        <button class="tab" id="planDetailTab" onclick="planTab('detail',this)" style="display:none">📄 Plan Detail</button>
+        <button class="tab" id="planDashTab" onclick="planTab('dashboard',this)" style="display:none">📊 Dashboard</button>
+      </div>
+      <!-- Plan List -->
+      <div id="plan-list">
+        <div class="fb">
+          <input class="si" type="text" placeholder="Search plans..." id="planSearch" oninput="renderPlansPage()">
+          <select class="fsel" id="planTypeF" onchange="renderPlansPage()">
+            <option value="">— All Types —</option>
+            <option>Sales Visit Plan</option><option>Marketing Campaign</option>
+            <option>Product Push</option><option>Reorder Follow-up</option>
+            <option>Payment Follow-up</option><option>Client Recovery</option>
+            <option>Event / Promotion</option><option>Other</option>
+          </select>
+          <select class="fsel" id="planStatusF" onchange="renderPlansPage()">
+            <option value="">— All Status —</option>
+            <option>Draft</option><option>Active</option><option>Completed</option><option>Cancelled</option>
+          </select>
+        </div>
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th>Plan Name</th><th>Type</th><th>Period</th><th>Owner</th>
+              <th>Salesperson</th><th>Shops</th><th>Tasks Done</th><th>Status</th><th>Action</th>
+            </tr></thead>
+            <tbody id="planBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Plan Detail -->
+      <div id="plan-detail" style="display:none">
+        <div id="planDetailContent"></div>
+      </div>
+      <!-- Plan Dashboard -->
+      <div id="plan-dashboard" style="display:none">
+        <div id="planDashContent"></div>
+      </div>
+    </div>
+
+
     <div class="page" id="page-history">
       <div class="ph">
         <div class="pt"><h1>📜 Monthly History</h1><p>Past activity records</p></div>
@@ -526,6 +595,179 @@ td.tds{font-weight:600;color:var(--primary)}
 </div>
 
 <!-- CLIENT MODAL -->
+
+<!-- PLAN MODAL -->
+<div class="mo" id="planModal">
+  <div class="modal" style="max-width:640px">
+    <div class="mh"><span class="mt" id="pmTitle">Create New Plan</span><button class="mc" onclick="closeModal('planModal')">✕</button></div>
+    <div class="mb">
+      <div class="fr">
+        <div class="fg"><label class="fl req">Plan Name</label><input class="fi" id="pm-name" placeholder="e.g. Q2 Bangkok Push"></div>
+        <div class="fg"><label class="fl req">Plan Type</label>
+          <select class="fsel2" id="pm-type">
+            <option value="">— Select —</option>
+            <option>Sales Visit Plan</option><option>Marketing Campaign</option>
+            <option>Product Push</option><option>Reorder Follow-up</option>
+            <option>Payment Follow-up</option><option>Client Recovery</option>
+            <option>Event / Promotion</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Objective</label><textarea class="fta" id="pm-objective" placeholder="What is the goal of this plan?" style="min-height:60px"></textarea></div>
+      <div class="fg"><label class="fl">Strategy</label><textarea class="fta" id="pm-strategy" placeholder="How will you achieve it?" style="min-height:60px"></textarea></div>
+      <div class="fr">
+        <div class="fg"><label class="fl req">Period Type</label>
+          <select class="fsel2" id="pm-period">
+            <option value="">— Select —</option>
+            <option>Weekly</option><option>Monthly</option><option>Specific Date Range</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl req">Status</label>
+          <select class="fsel2" id="pm-status">
+            <option value="Draft">Draft</option><option value="Active">Active</option>
+            <option value="Completed">Completed</option><option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl req">Start Date</label><input class="fi" type="date" id="pm-start"></div>
+        <div class="fg"><label class="fl req">End Date</label><input class="fi" type="date" id="pm-end"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Owner / Planner</label><input class="fi" id="pm-owner" placeholder="Name of planner"></div>
+        <div class="fg"><label class="fl">Assigned Salesperson</label>
+          <select class="fsel2" id="pm-sales"><option value="">— Select —</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Product Category</label>
+        <select class="fsel2" id="pm-product">
+          <option value="">— Select —</option>
+          <option>Bottle</option><option>Can</option><option>Kegs</option><option>Spirits</option><option>Multiple</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="pm-notes" style="min-height:50px"></textarea></div>
+      <input type="hidden" id="pm-id">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('planModal')">Cancel</button>
+      <button class="btn bp" onclick="savePlan()">💾 Save Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP SELECTOR MODAL -->
+<div class="mo" id="shopSelectorModal">
+  <div class="modal" style="max-width:780px">
+    <div class="mh">
+      <div><span class="mt">Select Shops for Plan</span>
+        <div id="shopSelCount" style="font-size:12px;color:var(--muted);margin-top:2px">0 selected</div>
+      </div>
+      <button class="mc" onclick="closeModal('shopSelectorModal')">✕</button>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#f8fbf9">
+      <div class="fb" style="margin-bottom:8px">
+        <input class="si" type="text" placeholder="Search shop name or code..." id="sss-search" oninput="filterSelectableShops()">
+        <select class="fsel" id="sss-sales" onchange="filterSelectableShops()"><option value="">— All Sales —</option></select>
+        <select class="fsel" id="sss-province" onchange="filterSelectableShops()"><option value="">— All Provinces —</option></select>
+      </div>
+      <div class="fb">
+        <select class="fsel" id="sss-tier" onchange="filterSelectableShops()"><option value="">— All Tiers —</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        <select class="fsel" id="sss-credit" onchange="filterSelectableShops()"><option value="">— All Credit —</option><option>Normal</option><option>Overdue</option><option>Suspended</option></select>
+        <select class="fsel" id="sss-status" onchange="filterSelectableShops()"><option value="">— All Status —</option><option>Grey</option><option>Yellow</option><option>Green</option><option>Red</option></select>
+        <select class="fsel" id="sss-potential" onchange="filterSelectableShops()"><option value="">— All Potential —</option><option>High</option><option>Medium</option><option>Low</option></select>
+      </div>
+    </div>
+    <div style="padding:10px 14px;max-height:55vh;overflow-y:auto" id="sss-list"></div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('shopSelectorModal')">Cancel</button>
+      <button class="btn bp" onclick="confirmShopSelection()">✅ Add Selected Shops</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN SHOP DETAIL MODAL -->
+<div class="mo" id="planShopModal">
+  <div class="modal" style="max-width:580px">
+    <div class="mh"><span class="mt" id="psmTitle">Shop Plan Details</span><button class="mc" onclick="closeModal('planShopModal')">✕</button></div>
+    <div class="mb">
+      <div class="fr">
+        <div class="fg"><label class="fl">Assigned Salesperson</label>
+          <select class="fsel2" id="psm-sales"><option value="">— Select —</option></select>
+        </div>
+        <div class="fg"><label class="fl">Visit Date</label><input class="fi" type="date" id="psm-visitdate"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Visit Time</label><input class="fi" type="time" id="psm-visittime"></div>
+        <div class="fg"><label class="fl">Task Status</label>
+          <select class="fsel2" id="psm-taskstatus">
+            <option value="Not Started">Not Started</option><option value="In Progress">In Progress</option>
+            <option value="Done">Done</option><option value="Blocked">Blocked</option><option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Visit Objective</label><input class="fi" id="psm-objective" placeholder="What to achieve at this visit"></div>
+      <div class="fg"><label class="fl">Strategy / Talking Point</label><textarea class="fta" id="psm-strategy" style="min-height:60px" placeholder="Key messages, approach..."></textarea></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Product to Push</label><input class="fi" id="psm-product" placeholder="e.g. IPA, Stout Kegs"></div>
+        <div class="fg"><label class="fl">Expected Outcome</label><input class="fi" id="psm-outcome" placeholder="e.g. Close order 2 kegs"></div>
+      </div>
+      <div class="fg"><label class="fl">Result / Feedback</label><textarea class="fta" id="psm-result" style="min-height:50px" placeholder="What actually happened..."></textarea></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Follow-up Date</label><input class="fi" type="date" id="psm-followup"></div>
+        <div class="fg"><label class="fl">Priority</label>
+          <select class="fsel2" id="psm-priority">
+            <option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Next Month Action Plan</label><input class="fi" id="psm-nextplan" placeholder="What to do next month..."></div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="psm-notes" style="min-height:50px"></textarea></div>
+      <input type="hidden" id="psm-row"><input type="hidden" id="psm-planid"><input type="hidden" id="psm-code">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('planShopModal')">Cancel</button>
+      <button class="btn bo" id="psm-applyBtn" style="color:var(--accent);border-color:var(--accent)" onclick="applyShopResultToActivity()">📋 Apply to Monthly Activity</button>
+      <button class="btn bp" onclick="savePlanShopDetails()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN TASK MODAL -->
+<div class="mo" id="planTaskModal">
+  <div class="modal" style="max-width:500px">
+    <div class="mh"><span class="mt" id="ptmTitle">Add Task</span><button class="mc" onclick="closeModal('planTaskModal')">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl req">Task Name</label><input class="fi" id="ptm-name" placeholder="e.g. Follow up payment"></div>
+      <div class="fg"><label class="fl">Task Description</label><textarea class="fta" id="ptm-desc" style="min-height:60px"></textarea></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Assigned To</label>
+          <select class="fsel2" id="ptm-assignee"><option value="">— Select —</option></select>
+        </div>
+        <div class="fg"><label class="fl">Due Date</label><input class="fi" type="date" id="ptm-due"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Priority</label>
+          <select class="fsel2" id="ptm-priority">
+            <option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Status</label>
+          <select class="fsel2" id="ptm-status">
+            <option value="Not Started">Not Started</option><option value="In Progress">In Progress</option>
+            <option value="Done">Done</option><option value="Blocked">Blocked</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="ptm-notes" style="min-height:40px"></textarea></div>
+      <input type="hidden" id="ptm-row"><input type="hidden" id="ptm-planid"><input type="hidden" id="ptm-shoprow">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('planTaskModal')">Cancel</button>
+      <button class="btn bp" onclick="savePlanTask()">💾 Save Task</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="clientModal">
   <div class="modal" style="max-width:620px">
     <div class="mh"><span class="mt" id="cmTitle">Add New Client</span><button class="mc" onclick="closeModal('clientModal')">✕</button></div>
@@ -827,7 +1069,7 @@ const CONFIG = {
   SHEET_ID:  '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U',
 };
 
-const SHEETS = { CLIENTS:'Clients', HISTORY:'History', SALES:'Sales Team' };
+const SHEETS = { CLIENTS:'Clients', HISTORY:'History', SALES:'Sales Team', PLANS:'Plans', PLAN_SHOPS:'PlanShops', PLAN_TASKS:'PlanTasks' };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const PRODUCTS = ['Bottle','Can','Kegs','Spirits'];
 const STORE_TYPES = ['Bottle shop','Taproom/craft beer bar','Hotel','Restaurant','Fine Dining','Cafe','Brewery','Dealer','Moderntrade','Cocktail Bar','Event','Online'];
@@ -838,7 +1080,7 @@ const CREDIT_DAYS = [0,15,30,45,60,90];
 // ══════════════════════════════════════════
 const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
-  clients:[], history:[], salesTeam:[],
+  clients:[], history:[], salesTeam:[], plans:[], planShops:[], planTasks:[],
   page:'dashboard', dashTab:'clients', statusFilter:'all',
   charts:{},
 };
@@ -929,6 +1171,9 @@ async function initSheets(){
     ]]);
     await shUpdate(`${SHEETS.HISTORY}!A1`,[['Month','ClientCode','ShopName','SalesPerson','Status','ActivityNote','ActivityDate','ProductTypes','CreditDays','CreditStatus','ArchivedAt','AccountTier','LastOrderDate','LastContactDate','NextAction','PriorityScore','PriorityLevel','ClientPotential','PreferredProducts','RiskNote']]);
     await shUpdate(`${SHEETS.SALES}!A1`,[['SalesName','Email','PhoneLine','MonthlyTarget','Notes']]);
+    await shUpdate(`${SHEETS.PLANS}!A1`,[['PlanID','PlanName','PlanType','Objective','Strategy','PeriodType','StartDate','EndDate','Owner','AssignedSalesperson','ProductCategory','Status','Notes','CreatedAt','UpdatedAt','CreatedBy']]);
+    await shUpdate(`${SHEETS.PLAN_SHOPS}!A1`,[['PlanShopID','PlanID','ClientCode','ShopName','Province','StoreType','OriginalSalesperson','AssignedSalesperson','ProductTypes','PreferredProducts','CurrentMonthlyStatus','LastOrderDate','LastContactDate','CreditStatus','PriorityLevel','VisitDate','VisitTime','VisitObjective','ShopStrategy','ProductToPush','ExpectedOutcome','TaskStatus','FollowUpDate','ResultFeedback','NextMonthActionPlan','Notes','CreatedAt','UpdatedAt']]);
+    await shUpdate(`${SHEETS.PLAN_TASKS}!A1`,[['TaskID','PlanID','PlanShopID','ClientCode','ShopName','TaskName','TaskDescription','AssignedTo','DueDate','Priority','Status','CompletionDate','Notes','CreatedAt','UpdatedAt']]);
     showToast('Sheet structure created successfully!','success');
     await loadAllData();
   }catch(e){ showToast('Error: '+e.message,'error'); }
@@ -943,7 +1188,7 @@ async function loadAllData(){
   showLoader(true);
   try{
     await upgradeHeaders(); // must complete before data load — columns must exist first
-    await Promise.all([loadClients(), loadHistory(), loadSalesTeam()]);
+    await Promise.all([loadClients(), loadHistory(), loadSalesTeam(), loadPlans(), loadPlanShops(), loadPlanTasks()]);
     await checkMonthReset();
     renderCurrentPage();
   }catch(e){ showToast('Failed to load data: '+e.message,'error'); }
@@ -1103,6 +1348,7 @@ function renderCurrentPage(){
   else if(p==='clients') renderClientsTable();
   else if(p==='sales') renderSalesPage();
   else if(p==='history') renderHistory();
+  else if(p==='planning') renderPlansPage();
 }
 
 // ══════════════════════════════════════════
@@ -2083,6 +2329,654 @@ function renderPriorityAccounts(){
 
 // ══════════════════════════════════════════
 // UTILS
+// ══════════════════════════════════════════
+// PLANNING / CAMPAIGNS MODULE
+// ══════════════════════════════════════════
+
+// ── Data Loading ──────────────────────────
+async function loadPlans(){
+  try{
+    const rows=await shGet(`${SHEETS.PLANS}!A:P`);
+    S.plans=rows.slice(1).map((r,i)=>({
+      row:i+2, id:r[0]||'', name:r[1]||'', type:r[2]||'',
+      objective:r[3]||'', strategy:r[4]||'', periodType:r[5]||'',
+      startDate:r[6]||'', endDate:r[7]||'', owner:r[8]||'',
+      salesperson:r[9]||'', productCategory:r[10]||'',
+      status:r[11]||'Draft', notes:r[12]||'', createdAt:r[13]||'',
+      updatedAt:r[14]||'', createdBy:r[15]||'',
+    })).filter(p=>p.name);
+  }catch(e){ S.plans=[]; }
+}
+
+async function loadPlanShops(){
+  try{
+    const rows=await shGet(`${SHEETS.PLAN_SHOPS}!A:AB`);
+    S.planShops=rows.slice(1).map((r,i)=>({
+      row:i+2, shopId:r[0]||'', planId:r[1]||'', clientCode:r[2]||'',
+      shopName:r[3]||'', province:r[4]||'', storeType:r[5]||'',
+      originalSP:r[6]||'', assignedSP:r[7]||'', productTypes:r[8]||'',
+      preferredProducts:r[9]||'', currentStatus:r[10]||'',
+      lastOrderDate:r[11]||'', lastContactDate:r[12]||'',
+      creditStatus:r[13]||'', priorityLevel:r[14]||'',
+      visitDate:r[15]||'', visitTime:r[16]||'', visitObjective:r[17]||'',
+      shopStrategy:r[18]||'', productToPush:r[19]||'', expectedOutcome:r[20]||'',
+      taskStatus:r[21]||'Not Started', followUpDate:r[22]||'',
+      resultFeedback:r[23]||'', nextMonthPlan:r[24]||'',
+      notes:r[25]||'', createdAt:r[26]||'', updatedAt:r[27]||'',
+    })).filter(ps=>ps.planId);
+  }catch(e){ S.planShops=[]; }
+}
+
+async function loadPlanTasks(){
+  try{
+    const rows=await shGet(`${SHEETS.PLAN_TASKS}!A:O`);
+    S.planTasks=rows.slice(1).map((r,i)=>({
+      row:i+2, id:r[0]||'', planId:r[1]||'', shopRowId:r[2]||'',
+      clientCode:r[3]||'', shopName:r[4]||'', taskName:r[5]||'',
+      desc:r[6]||'', assignedTo:r[7]||'', dueDate:r[8]||'',
+      priority:r[9]||'Medium', status:r[10]||'Not Started',
+      completionDate:r[11]||'', notes:r[12]||'',
+      createdAt:r[13]||'', updatedAt:r[14]||'',
+    })).filter(t=>t.taskName);
+  }catch(e){ S.planTasks=[]; }
+}
+
+// ── ID generators ─────────────────────────
+function genId(prefix){ return prefix+'-'+Date.now().toString(36).toUpperCase(); }
+
+// ── Plan List Page ────────────────────────
+let S_planSubTab='list';
+let S_activePlanId='';
+
+function planTab(tab,btn){
+  S_planSubTab=tab;
+  document.querySelectorAll('#planTabs .tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('plan-list').style.display=tab==='list'?'block':'none';
+  document.getElementById('plan-detail').style.display=tab==='detail'?'block':'none';
+  document.getElementById('plan-dashboard').style.display=tab==='dashboard'?'block':'none';
+  if(tab==='list') renderPlansPage();
+  else if(tab==='detail'&&S_activePlanId) renderPlanDetail(S_activePlanId);
+  else if(tab==='dashboard'&&S_activePlanId) renderPlanDashboard(S_activePlanId);
+}
+
+function renderPlansPage(){
+  const search=(document.getElementById('planSearch')?.value||'').toLowerCase();
+  const typeF=document.getElementById('planTypeF')?.value||'';
+  const statusF=document.getElementById('planStatusF')?.value||'';
+  const list=S.plans.filter(p=>{
+    const txt=(p.name+' '+p.owner+' '+p.salesperson).toLowerCase();
+    return(!search||txt.includes(search))&&(!typeF||p.type===typeF)&&(!statusF||p.status===statusF);
+  });
+  const tbody=document.getElementById('planBody');
+  if(!tbody) return;
+  if(!list.length){
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="ei">🎯</div><h3>No plans yet</h3><p>Click "+ Create New Plan" to get started</p></div></td></tr>`;
+    return;
+  }
+  const statusCls={Draft:'plan-status-draft',Active:'plan-status-active',Completed:'plan-status-completed',Cancelled:'plan-status-cancelled'};
+  tbody.innerHTML=list.map(p=>{
+    const shops=S.planShops.filter(ps=>ps.planId===p.id);
+    const tasks=S.planTasks.filter(t=>t.planId===p.id);
+    const done=tasks.filter(t=>t.status==='Done').length;
+    const pct=tasks.length?Math.round(done/tasks.length*100):0;
+    const period=p.startDate&&p.endDate?`${fmtDate(p.startDate)} – ${fmtDate(p.endDate)}`:p.periodType||'—';
+    return `<tr>
+      <td class="tds" style="cursor:pointer" onclick="openPlanDetail('${esc(p.id)}')">${esc(p.name)}</td>
+      <td><span class="badge bk2">${esc(p.type)||'—'}</span></td>
+      <td style="font-size:12px">${esc(period)}</td>
+      <td>${esc(p.owner)||'—'}</td>
+      <td>${esc(p.salesperson)||'—'}</td>
+      <td style="text-align:center;font-weight:700">${shops.length}</td>
+      <td>
+        ${tasks.length?`<div style="display:flex;align-items:center;gap:6px">
+          <div class="prog-bar" style="flex:1;min-width:50px"><div class="prog-fill" style="width:${pct}%;background:var(--success)"></div></div>
+          <span style="font-size:11px;white-space:nowrap">${done}/${tasks.length}</span>
+        </div>`:'<span style="color:var(--muted);font-size:12px">—</span>'}
+      </td>
+      <td><span class="badge ${statusCls[p.status]||'plan-status-draft'}">${p.status}</span></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn bo bxs" title="View detail" onclick="openPlanDetail('${esc(p.id)}')">📄</button>
+        <button class="btn bo bxs" title="Edit" onclick="openPlanModal('${esc(p.id)}')">✏️</button>
+        <button class="btn bxs" style="background:#dbeafe;color:#1e40af" title="Duplicate" onclick="duplicatePlan('${esc(p.id)}')">⧉</button>
+        <button class="btn bxs" style="background:#dcfce7;color:#166534" title="Mark complete" onclick="updatePlanStatus('${esc(p.id)}','Completed')">✅</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Create / Edit Plan ───────────────────
+function openPlanModal(planId=''){
+  const p=planId?S.plans.find(x=>x.id===planId):null;
+  setText('pmTitle', p?'Edit Plan':'Create New Plan');
+  setVal('pm-name',p?.name||''); setVal('pm-type',p?.type||'');
+  setVal('pm-objective',p?.objective||''); setVal('pm-strategy',p?.strategy||'');
+  setVal('pm-period',p?.periodType||''); setVal('pm-status',p?.status||'Draft');
+  setVal('pm-start',p?.startDate||''); setVal('pm-end',p?.endDate||'');
+  setVal('pm-owner',p?.owner||S.user?.name||''); setVal('pm-notes',p?.notes||'');
+  setVal('pm-product',p?.productCategory||'');
+  setVal('pm-id',p?.id||'');
+  const sel=document.getElementById('pm-sales');
+  if(sel){
+    sel.innerHTML='<option value="">— Select —</option>';
+    S.salesTeam.forEach(s=>{ const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o); });
+    setVal('pm-sales',p?.salesperson||'');
+  }
+  openModal('planModal');
+}
+
+async function savePlan(){
+  const name=val('pm-name').trim();
+  const type=val('pm-type');
+  if(!name){ showToast('Plan name is required','warning'); return; }
+  if(!type){ showToast('Plan type is required','warning'); return; }
+  const existId=val('pm-id');
+  const now=new Date().toISOString();
+  showLoader(true);
+  try{
+    if(existId){
+      const p=S.plans.find(x=>x.id===existId);
+      if(!p){ showToast('Plan not found','error'); return; }
+      const row=[existId,name,type,val('pm-objective'),val('pm-strategy'),
+        val('pm-period'),val('pm-start'),val('pm-end'),val('pm-owner'),
+        val('pm-sales'),val('pm-product'),val('pm-status'),val('pm-notes'),
+        p.createdAt,now,p.createdBy];
+      await shUpdate(`${SHEETS.PLANS}!A${p.row}:P${p.row}`,[row]);
+      showToast('Plan updated','success');
+    } else {
+      const id=genId('PLN');
+      const row=[id,name,type,val('pm-objective'),val('pm-strategy'),
+        val('pm-period'),val('pm-start'),val('pm-end'),val('pm-owner'),
+        val('pm-sales'),val('pm-product'),val('pm-status'),val('pm-notes'),
+        now,now,S.user?.email||''];
+      await shAppend(SHEETS.PLANS,[row]);
+      showToast('Plan created','success');
+    }
+    closeModal('planModal');
+    await loadPlans();
+    renderPlansPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function duplicatePlan(planId){
+  const p=S.plans.find(x=>x.id===planId);
+  if(!p) return;
+  if(!confirm(`Duplicate "${p.name}"?`)) return;
+  showLoader(true);
+  try{
+    const newId=genId('PLN');
+    const now=new Date().toISOString();
+    const row=[newId,'Copy of '+p.name,p.type,p.objective,p.strategy,p.periodType,
+      p.startDate,p.endDate,p.owner,p.salesperson,p.productCategory,'Draft',
+      p.notes,now,now,S.user?.email||''];
+    await shAppend(SHEETS.PLANS,[row]);
+    showToast('Plan duplicated','success');
+    await loadPlans(); renderPlansPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function updatePlanStatus(planId,status){
+  const p=S.plans.find(x=>x.id===planId);
+  if(!p) return;
+  if(!confirm(`Mark "${p.name}" as ${status}?`)) return;
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.PLANS}!L${p.row}`,[[status]]);
+    p.status=status;
+    showToast(`Plan marked as ${status}`,'success');
+    renderPlansPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ── Plan Detail ───────────────────────────
+function openPlanDetail(planId){
+  S_activePlanId=planId;
+  document.getElementById('planDetailTab').style.display='';
+  document.getElementById('planDashTab').style.display='';
+  planTab('detail', document.getElementById('planDetailTab'));
+}
+
+function renderPlanDetail(planId){
+  const p=S.plans.find(x=>x.id===planId);
+  const el=document.getElementById('planDetailContent');
+  if(!p||!el){ el&&(el.innerHTML='<div class="empty"><div class="ei">🎯</div><h3>Plan not found</h3></div>'); return; }
+  const shops=S.planShops.filter(ps=>ps.planId===planId);
+  const tasks=S.planTasks.filter(t=>t.planId===planId);
+  const statusCls={Draft:'plan-status-draft',Active:'plan-status-active',Completed:'plan-status-completed',Cancelled:'plan-status-cancelled'};
+  const tsCls={'Not Started':'ts-not-started','In Progress':'ts-in-progress','Done':'ts-done','Blocked':'ts-blocked','Cancelled':'ts-cancelled'};
+
+  el.innerHTML=`
+    <!-- Plan header -->
+    <div class="card mb4">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:18px;font-weight:700;color:var(--primary)">${esc(p.name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">
+            <span class="badge bk2">${esc(p.type)}</span>&nbsp;
+            <span class="badge ${statusCls[p.status]||''}">${p.status}</span>&nbsp;
+            ${p.startDate?`📅 ${fmtDate(p.startDate)} – ${fmtDate(p.endDate)}`:''}
+            ${p.owner?` &nbsp;·&nbsp; 👤 ${esc(p.owner)}`:''}
+          </div>
+          ${p.objective?`<div style="font-size:13px;color:var(--text);margin-top:8px">🎯 ${esc(p.objective)}</div>`:''}
+          ${p.strategy?`<div style="font-size:12px;color:var(--muted);margin-top:4px">💡 ${esc(p.strategy)}</div>`:''}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn bo bsm" onclick="openPlanModal('${esc(planId)}')">✏️ Edit Plan</button>
+          <button class="btn ba bsm" onclick="openShopSelector('${esc(planId)}')">+ Add Shops</button>
+          <button class="btn bp bsm" onclick="planTab('dashboard',document.getElementById('planDashTab'))">📊 Dashboard</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shops in this plan -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:700;color:var(--primary)">🏪 Shops in this Plan <span class="badge bk2">${shops.length}</span></div>
+    </div>
+    ${shops.length===0?'<div class="empty" style="padding:30px"><div class="ei">🏪</div><h3>No shops added yet</h3><p>Click "+ Add Shops" to select shops from your client list</p></div>':''}
+    ${shops.map(ps=>{
+      const shopTasks=tasks.filter(t=>t.shopRowId===String(ps.row));
+      const doneTasks=shopTasks.filter(t=>t.status==='Done').length;
+      return `<div class="plan-shop-row">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:14px;font-weight:700;color:var(--primary)">${esc(ps.shopName)}</div>
+            <div style="font-size:12px;color:var(--muted)">${esc(ps.province)||'—'} · ${esc(ps.storeType)||'—'} · 👤 ${esc(ps.assignedSP||ps.originalSP)||'—'}</div>
+            ${ps.visitDate?`<div style="font-size:12px;margin-top:4px">📅 Visit: ${fmtDate(ps.visitDate)}${ps.visitTime?' '+ps.visitTime:''}</div>`:''}
+            ${ps.productToPush?`<div style="font-size:12px;color:var(--accent)">📦 Push: ${esc(ps.productToPush)}</div>`:''}
+            ${ps.shopStrategy?`<div style="font-size:12px;color:var(--muted);margin-top:2px">💡 ${esc(ps.shopStrategy)}</div>`:''}
+            ${ps.resultFeedback?`<div style="font-size:12px;color:var(--success);margin-top:2px">✅ ${esc(ps.resultFeedback)}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="badge ${(tsCls[ps.taskStatus]||'ts-not-started')}">${ps.taskStatus||'Not Started'}</span>
+            <span class="s-pill ${{Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'}[ps.currentStatus]||'sp-grey'}">${ps.currentStatus||'Grey'}</span>
+            <button class="btn bo bxs" onclick="openPlanShopModal('${esc(planId)}',${ps.row})">✏️ Details</button>
+            <button class="btn bp bxs" onclick="openPlanTaskModal('${esc(planId)}',${ps.row},'${esc(ps.shopName)}')">+ Task</button>
+            <button class="btn bxs" style="background:#fee2e2;color:#991b1b" onclick="removePlanShop(${ps.row})">🗑️</button>
+          </div>
+        </div>
+        ${shopTasks.length?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">TASKS (${doneTasks}/${shopTasks.length} done)</div>
+          ${shopTasks.map(t=>`<div class="task-item ${t.status==='Done'?'task-done':''}">
+            <span class="badge ${tsCls[t.status]||'ts-not-started'}" style="flex-shrink:0">${t.status}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">${esc(t.taskName)}</div>
+              ${t.desc?`<div style="font-size:12px;color:var(--muted)">${esc(t.desc)}</div>`:''}
+              ${t.dueDate?`<div style="font-size:11px;color:var(--muted)">Due: ${fmtDate(t.dueDate)} · ${esc(t.assignedTo)||'Unassigned'}</div>`:''}
+            </div>
+            <select class="fsel" style="font-size:11px;padding:4px 8px" onchange="updateTaskStatus(${t.row},this.value)">
+              ${['Not Started','In Progress','Done','Blocked','Cancelled'].map(s=>`<option${t.status===s?' selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>`).join('')}
+        </div>`:''}
+      </div>`;
+    }).join('')}
+
+    <!-- Plan-level tasks -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px">
+      <div style="font-size:14px;font-weight:700;color:var(--primary)">📋 Plan-level Tasks <span class="badge bk2">${tasks.filter(t=>!t.shopRowId).length}</span></div>
+      <button class="btn bp bsm" onclick="openPlanTaskModal('${esc(planId)}','','')">+ Add Task</button>
+    </div>
+    ${tasks.filter(t=>!t.shopRowId).map(t=>{
+      const tsCls2={'Not Started':'ts-not-started','In Progress':'ts-in-progress','Done':'ts-done','Blocked':'ts-blocked','Cancelled':'ts-cancelled'};
+      return`<div class="task-item ${t.status==='Done'?'task-done':''}">
+        <span class="badge ${tsCls2[t.status]||'ts-not-started'}" style="flex-shrink:0">${t.status}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(t.taskName)}</div>
+          ${t.desc?`<div style="font-size:12px;color:var(--muted)">${esc(t.desc)}</div>`:''}
+          ${t.dueDate?`<div style="font-size:11px;color:var(--muted)">Due: ${fmtDate(t.dueDate)} · ${esc(t.assignedTo)||'Unassigned'}</div>`:''}
+        </div>
+        <select class="fsel" style="font-size:11px;padding:4px 8px" onchange="updateTaskStatus(${t.row},this.value)">
+          ${['Not Started','In Progress','Done','Blocked','Cancelled'].map(s=>`<option${t.status===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── Shop Selector ─────────────────────────
+let S_shopSelPlanId='';
+let S_selectedShopRows=new Set();
+
+function openShopSelector(planId){
+  S_shopSelPlanId=planId;
+  S_selectedShopRows=new Set();
+  // Pre-mark shops already in this plan
+  S.planShops.filter(ps=>ps.planId===planId).forEach(ps=>{
+    const c=S.clients.find(x=>x.code===ps.clientCode&&x.shop===ps.shopName);
+    if(c) S_selectedShopRows.add(c.row);
+  });
+  // Populate filter dropdowns
+  const spSel=document.getElementById('sss-sales');
+  if(spSel&&spSel.options.length<=1){
+    [...new Set(S.clients.map(c=>c.salesperson).filter(Boolean))].sort()
+      .forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;spSel.appendChild(o);});
+  }
+  const provSel=document.getElementById('sss-province');
+  if(provSel&&provSel.options.length<=1){
+    [...new Set(S.clients.map(c=>c.province).filter(Boolean))].sort()
+      .forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;provSel.appendChild(o);});
+  }
+  setVal('sss-search','');
+  filterSelectableShops();
+  openModal('shopSelectorModal');
+}
+
+function filterSelectableShops(){
+  const search=(document.getElementById('sss-search')?.value||'').toLowerCase();
+  const spF=document.getElementById('sss-sales')?.value||'';
+  const provF=document.getElementById('sss-province')?.value||'';
+  const tierF=document.getElementById('sss-tier')?.value||'';
+  const creditF=document.getElementById('sss-credit')?.value||'';
+  const statusF=document.getElementById('sss-status')?.value||'';
+  const potF=document.getElementById('sss-potential')?.value||'';
+  const list=S.clients.filter(c=>{
+    const txt=`${c.shop} ${c.code} ${c.province} ${c.salesperson}`.toLowerCase();
+    return(!search||txt.includes(search))&&(!spF||c.salesperson===spF)&&
+      (!provF||c.province===provF)&&(!tierF||c.accountTier===tierF)&&
+      (!creditF||c.creditStatus===creditF)&&(!statusF||c.monthlyStatus===statusF)&&
+      (!potF||c.clientPotential===potF);
+  });
+  const el=document.getElementById('sss-list');
+  if(!el) return;
+  if(!list.length){ el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">🔍</div><h3>No clients match</h3></div>'; return; }
+  const pills={Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'};
+  el.innerHTML=list.map(c=>{
+    const sel=S_selectedShopRows.has(c.row);
+    return`<div class="shop-sel-item${sel?' selected':''}" id="ssi-${c.row}" onclick="toggleShopSel(${c.row})">
+      <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleShopSel(${c.row})" style="accent-color:var(--success)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--primary)">${esc(c.shop)}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(c.code)||'—'} · ${esc(c.province)||'—'} · ${esc(c.storeType)||'—'} · 👤 ${esc(c.salesperson)||'—'}</div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+        ${c.accountTier?`<span class="badge ${({A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d'}[c.accountTier]||'tier-d')}">${c.accountTier}</span>`:''}
+        <span class="s-pill ${pills[c.monthlyStatus]||'sp-grey'}" style="font-size:10px">${c.monthlyStatus||'Grey'}</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('shopSelCount').textContent=`${S_selectedShopRows.size} selected`;
+}
+
+function toggleShopSel(row){
+  if(S_selectedShopRows.has(row)) S_selectedShopRows.delete(row);
+  else S_selectedShopRows.add(row);
+  const item=document.getElementById(`ssi-${row}`);
+  if(item){
+    item.classList.toggle('selected',S_selectedShopRows.has(row));
+    const cb=item.querySelector('input[type=checkbox]');
+    if(cb) cb.checked=S_selectedShopRows.has(row);
+  }
+  document.getElementById('shopSelCount').textContent=`${S_selectedShopRows.size} selected`;
+}
+
+async function confirmShopSelection(){
+  if(!S_selectedShopRows.size){ showToast('No shops selected','warning'); return; }
+  const plan=S.plans.find(x=>x.id===S_shopSelPlanId);
+  if(!plan){ showToast('Plan not found','error'); return; }
+  const existingCodes=new Set(S.planShops.filter(ps=>ps.planId===S_shopSelPlanId).map(ps=>ps.clientCode+'|'+ps.shopName));
+  const toAdd=[];
+  S_selectedShopRows.forEach(row=>{
+    const c=S.clients.find(x=>x.row===row);
+    if(!c) return;
+    if(existingCodes.has(c.code+'|'+c.shop)) return; // already in plan
+    const{level}=calcPriority(c); // live UI calc — intentional
+    const now=new Date().toISOString();
+    const id=genId('PSH');
+    toAdd.push([id,S_shopSelPlanId,c.code,c.shop,c.province,c.storeType,
+      c.salesperson,c.salesperson,c.products,c.preferredProducts,
+      c.monthlyStatus,c.lastOrderDate,c.lastContactDate,c.creditStatus,level,
+      '','','','','','','Not Started','','','','',now,now]);
+  });
+  if(!toAdd.length){ showToast('All selected shops are already in this plan','info'); closeModal('shopSelectorModal'); return; }
+  showLoader(true);
+  try{
+    await shAppend(SHEETS.PLAN_SHOPS,toAdd);
+    showToast(`${toAdd.length} shop(s) added to plan`,'success');
+    closeModal('shopSelectorModal');
+    await loadPlanShops();
+    renderPlanDetail(S_shopSelPlanId);
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function removePlanShop(shopRow){
+  if(!confirm('Remove this shop from the plan?')) return;
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.PLAN_SHOPS}!A${shopRow}:AB${shopRow}`,[Array(28).fill('')]);
+    S.planShops=S.planShops.filter(ps=>ps.row!==shopRow);
+    showToast('Shop removed','success');
+    renderPlanDetail(S_activePlanId);
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ── Plan Shop Detail Modal ─────────────────
+function openPlanShopModal(planId, shopRow){
+  const ps=S.planShops.find(x=>x.row===shopRow);
+  if(!ps){ showToast('Shop detail not found','error'); return; }
+  setText('psmTitle',`📋 ${ps.shopName}`);
+  setVal('psm-row',shopRow); setVal('psm-planid',planId); setVal('psm-code',ps.clientCode);
+  const sel=document.getElementById('psm-sales');
+  if(sel){
+    sel.innerHTML='<option value="">— Select —</option>';
+    S.salesTeam.forEach(s=>{const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o);});
+    setVal('psm-sales',ps.assignedSP||ps.originalSP||'');
+  }
+  setVal('psm-visitdate',ps.visitDate||''); setVal('psm-visittime',ps.visitTime||'');
+  setVal('psm-objective',ps.visitObjective||''); setVal('psm-strategy',ps.shopStrategy||'');
+  setVal('psm-product',ps.productToPush||''); setVal('psm-outcome',ps.expectedOutcome||'');
+  setVal('psm-result',ps.resultFeedback||''); setVal('psm-followup',ps.followUpDate||'');
+  setVal('psm-priority',ps.priority||'Medium'); setVal('psm-taskstatus',ps.taskStatus||'Not Started');
+  setVal('psm-nextplan',ps.nextMonthPlan||''); setVal('psm-notes',ps.notes||'');
+  openModal('planShopModal');
+}
+
+async function savePlanShopDetails(){
+  const shopRow=parseInt(val('psm-row'));
+  const ps=S.planShops.find(x=>x.row===shopRow);
+  if(!ps){ showToast('Not found','error'); return; }
+  const now=new Date().toISOString();
+  const updRow=[
+    ps.shopId,ps.planId,ps.clientCode,ps.shopName,ps.province,ps.storeType,
+    ps.originalSP,val('psm-sales'),ps.productTypes,ps.preferredProducts,
+    ps.currentStatus,ps.lastOrderDate,ps.lastContactDate,ps.creditStatus,ps.priorityLevel,
+    val('psm-visitdate'),val('psm-visittime'),val('psm-objective'),val('psm-strategy'),
+    val('psm-product'),val('psm-outcome'),val('psm-taskstatus'),val('psm-followup'),
+    val('psm-result'),val('psm-nextplan'),val('psm-notes'),ps.createdAt,now
+  ];
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.PLAN_SHOPS}!A${shopRow}:AB${shopRow}`,[updRow]);
+    Object.assign(ps,{assignedSP:val('psm-sales'),visitDate:val('psm-visitdate'),visitTime:val('psm-visittime'),
+      visitObjective:val('psm-objective'),shopStrategy:val('psm-strategy'),productToPush:val('psm-product'),
+      expectedOutcome:val('psm-outcome'),taskStatus:val('psm-taskstatus'),followUpDate:val('psm-followup'),
+      resultFeedback:val('psm-result'),nextMonthPlan:val('psm-nextplan'),notes:val('psm-notes'),updatedAt:now});
+    showToast('Shop details saved','success');
+    closeModal('planShopModal');
+    renderPlanDetail(S_activePlanId);
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ── Apply Result to Monthly Activity ─────
+async function applyShopResultToActivity(){
+  const code=val('psm-code');
+  const c=S.clients.find(x=>x.code===code)||S.clients.find(x=>x.shop===document.getElementById('psmTitle')?.textContent?.replace('📋 ',''));
+  if(!c){ showToast('Client record not found in Clients tab','warning'); return; }
+  const visitDate=val('psm-visitdate');
+  const result=val('psm-result');
+  const nextPlan=val('psm-nextplan');
+  if(!confirm(`Apply results to Monthly Activity for "${c.shop}"?
+
+This will update:
+• Last Contact Date → ${visitDate||'(unchanged)'}
+• Activity Note → visit result
+• Next Action → next month plan
+
+This cannot be undone.`)) return;
+  showLoader(true);
+  try{
+    const{score,level}=calcPriority({...c,lastContactDate:visitDate||c.lastContactDate,nextAction:nextPlan||c.nextAction});
+    const updateRow=[
+      c.code,c.shop,c.contact,c.phone,c.line,c.province,c.storeType,c.salesperson,
+      c.products,c.creditDays,c.creditStatus,c.monthlyStatus,
+      result||c.actNote,visitDate||c.actDate,currMonth(),c.notes,
+      c.accountTier,c.lastOrderDate,visitDate||c.lastContactDate,
+      nextPlan||c.nextAction,score,level,c.clientPotential,c.preferredProducts,c.riskNote
+    ];
+    await shUpdate(`${SHEETS.CLIENTS}!A${c.row}:Y${c.row}`,[updateRow]);
+    c.actNote=result||c.actNote; c.lastContactDate=visitDate||c.lastContactDate;
+    c.nextAction=nextPlan||c.nextAction; c.priorityScore=score; c.priorityLevel=level;
+    showToast(`Monthly Activity updated for ${c.shop}`,'success');
+    closeModal('planShopModal');
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ── Tasks ─────────────────────────────────
+function openPlanTaskModal(planId, shopRow, shopName){
+  setText('ptmTitle', shopName?`Add Task — ${shopName}`:'Add Plan Task');
+  setVal('ptm-row',''); setVal('ptm-planid',planId);
+  setVal('ptm-shoprow',shopRow||'');
+  setVal('ptm-name',''); setVal('ptm-desc','');
+  setVal('ptm-due',''); setVal('ptm-priority','Medium');
+  setVal('ptm-status','Not Started'); setVal('ptm-notes','');
+  const sel=document.getElementById('ptm-assignee');
+  if(sel){
+    sel.innerHTML='<option value="">— Select —</option>';
+    S.salesTeam.forEach(s=>{const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o);});
+  }
+  openModal('planTaskModal');
+}
+
+async function savePlanTask(){
+  const name=val('ptm-name').trim();
+  if(!name){ showToast('Task name is required','warning'); return; }
+  const planId=val('ptm-planid');
+  const shopRow=val('ptm-shoprow');
+  const existingPlanShop=shopRow?S.planShops.find(x=>x.row===parseInt(shopRow)):null;
+  const now=new Date().toISOString();
+  const id=genId('TSK');
+  const row=[
+    id,planId,shopRow,existingPlanShop?.clientCode||'',existingPlanShop?.shopName||'',
+    name,val('ptm-desc'),val('ptm-assignee'),val('ptm-due'),
+    val('ptm-priority'),val('ptm-status'),'',val('ptm-notes'),now,now
+  ];
+  showLoader(true);
+  try{
+    await shAppend(SHEETS.PLAN_TASKS,[row]);
+    showToast('Task added','success');
+    closeModal('planTaskModal');
+    await loadPlanTasks();
+    renderPlanDetail(planId);
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function updateTaskStatus(taskRow, status){
+  const t=S.planTasks.find(x=>x.row===taskRow);
+  if(!t) return;
+  const now=new Date().toISOString();
+  const completion=status==='Done'?now.split('T')[0]:'';
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.PLAN_TASKS}!K${taskRow}:L${taskRow}`,[[status,completion]]);
+    t.status=status; t.completionDate=completion;
+    showToast('Task updated','success');
+    renderPlanDetail(S_activePlanId);
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ── Plan Dashboard ────────────────────────
+function renderPlanDashboard(planId){
+  const p=S.plans.find(x=>x.id===planId);
+  const el=document.getElementById('planDashContent');
+  if(!p||!el) return;
+  const shops=S.planShops.filter(ps=>ps.planId===planId);
+  const tasks=S.planTasks.filter(t=>t.planId===planId);
+  const visited=shops.filter(ps=>ps.visitDate).length;
+  const notVisited=shops.length-visited;
+  const doneTasks=tasks.filter(t=>t.status==='Done').length;
+  const pendingTasks=tasks.filter(t=>t.status==='Not Started'||t.status==='In Progress').length;
+  const blockedTasks=tasks.filter(t=>t.status==='Blocked').length;
+  const highPriShops=shops.filter(ps=>ps.priorityLevel==='High').length;
+  const today=new Date().toISOString().split('T')[0];
+  const overdueFollowups=shops.filter(ps=>ps.followUpDate&&ps.followUpDate<today&&ps.taskStatus!=='Done').length;
+  const withOrder=shops.filter(ps=>ps.currentStatus==='Green').length;
+  const noOrder=shops.filter(ps=>ps.currentStatus==='Grey'||ps.currentStatus==='Yellow').length;
+  const problem=shops.filter(ps=>ps.currentStatus==='Red').length;
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:17px;font-weight:700;color:var(--primary)">📊 ${esc(p.name)} — Dashboard</div>
+      <button class="btn bo bsm" onclick="planTab('detail',document.getElementById('planDetailTab'))">← Back to Detail</button>
+    </div>
+    <div class="plan-kpi-grid">
+      <div class="sc"><div class="sci"><div class="sic ig">🏪</div><div><div class="sl2">Total Shops</div><div class="sv">${shops.length}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ig">✅</div><div><div class="sl2">Visited</div><div class="sv">${visited}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ia">⏳</div><div><div class="sl2">Not Yet Visited</div><div class="sv">${notVisited}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ig">📋</div><div><div class="sl2">Tasks Done</div><div class="sv">${doneTasks}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ia">🔄</div><div><div class="sl2">Pending Tasks</div><div class="sv">${pendingTasks}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ir">🚫</div><div><div class="sl2">Blocked Tasks</div><div class="sv">${blockedTasks}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ir">🔥</div><div><div class="sl2">High Priority Shops</div><div class="sv">${highPriShops}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ir">⚠️</div><div><div class="sl2">Overdue Follow-ups</div><div class="sv">${overdueFollowups}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ig">🟢</div><div><div class="sl2">Order Placed</div><div class="sv">${withOrder}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ib">💤</div><div><div class="sl2">No Order Yet</div><div class="sv">${noOrder}</div></div></div></div>
+      <div class="sc"><div class="sci"><div class="sic ir">🔴</div><div><div class="sl2">Problem / Risk</div><div class="sv">${problem}</div></div></div></div>
+    </div>
+    <div class="cg" style="margin-bottom:20px">
+      <div class="cb"><h3>📊 Visit Status</h3><div class="cc2"><canvas id="pdChart1"></canvas></div></div>
+      <div class="cb"><h3>✅ Task Completion</h3><div class="cc2"><canvas id="pdChart2"></canvas></div></div>
+      <div class="cb"><h3>👤 Shops by Salesperson</h3><div class="cc2"><canvas id="pdChart3"></canvas></div></div>
+      <div class="cb"><h3>📦 Shops by Product Focus</h3><div class="cc2"><canvas id="pdChart4"></canvas></div></div>
+    </div>
+    <!-- Detail table -->
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>Shop</th><th>Salesperson</th><th>Visit Date</th><th>Product Push</th>
+          <th>Task Status</th><th>Monthly Status</th><th>Result</th><th>Follow-up</th>
+        </tr></thead>
+        <tbody>${shops.map(ps=>{
+          const tsCls={'Not Started':'ts-not-started','In Progress':'ts-in-progress','Done':'ts-done','Blocked':'ts-blocked','Cancelled':'ts-cancelled'};
+          return`<tr>
+            <td class="tds">${esc(ps.shopName)}</td>
+            <td>${esc(ps.assignedSP||ps.originalSP)||'—'}</td>
+            <td>${ps.visitDate?fmtDate(ps.visitDate):'<span style="color:var(--muted)">—</span>'}</td>
+            <td>${esc(ps.productToPush)||'—'}</td>
+            <td><span class="badge ${tsCls[ps.taskStatus]||'ts-not-started'}">${ps.taskStatus||'Not Started'}</span></td>
+            <td><span class="s-pill ${{Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'}[ps.currentStatus]||'sp-grey'}">${ps.currentStatus||'Grey'}</span></td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ps.resultFeedback)||'—'}</td>
+            <td>${ps.followUpDate?fmtDate(ps.followUpDate):'—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+  `;
+  // Draw charts
+  setTimeout(()=>{
+    const tsLabels=['Not Started','In Progress','Done','Blocked','Cancelled'];
+    const tsCounts=tsLabels.map(s=>shops.filter(ps=>ps.taskStatus===s).length);
+    drawChart('pdChart1','doughnut',tsLabels,tsCounts,['#9ca3af','#f59e0b','#10b981','#e53e3e','#d1d5db']);
+    const tkLabels=['Done','In Progress','Not Started','Blocked'];
+    const tkCounts=tkLabels.map(s=>tasks.filter(t=>t.status===s).length);
+    drawChart('pdChart2','doughnut',tkLabels,tkCounts,['#10b981','#f59e0b','#9ca3af','#e53e3e']);
+    const spMap={};shops.forEach(ps=>{ const k=ps.assignedSP||ps.originalSP||'Unassigned'; spMap[k]=(spMap[k]||0)+1; });
+    drawChart('pdChart3','bar',Object.keys(spMap),Object.values(spMap),'#2d5a47');
+    const prodMap={};shops.forEach(ps=>{ const k=ps.productToPush||'Not set'; prodMap[k]=(prodMap[k]||0)+1; });
+    drawChart('pdChart4','bar',Object.keys(prodMap),Object.values(prodMap),'#c8942a');
+  },50);
+}
+
+// ── upgradeHeaders: add Plans/PlanShops/PlanTasks ────────────────────────────
+// (Plans sheets are initialized via initSheets; upgradeHeaders handles Clients+History only)
+
+
 // ══════════════════════════════════════════
 function val(id){ return document.getElementById(id)?.value||''; }
 function setVal(id,v){ const el=document.getElementById(id); if(el)el.value=v; }
