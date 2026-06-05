@@ -675,6 +675,8 @@ td.tds{font-weight:600;color:var(--primary)}
         <select class="fsel" id="sss-credit" onchange="filterSelectableShops()"><option value="">— All Credit —</option><option>Normal</option><option>Overdue</option><option>Suspended</option></select>
         <select class="fsel" id="sss-status" onchange="filterSelectableShops()"><option value="">— All Status —</option><option>Grey</option><option>Yellow</option><option>Green</option><option>Red</option></select>
         <select class="fsel" id="sss-potential" onchange="filterSelectableShops()"><option value="">— All Potential —</option><option>High</option><option>Medium</option><option>Low</option></select>
+        <select class="fsel" id="sss-storetype" onchange="filterSelectableShops()"><option value="">— All Store Types —</option></select>
+        <select class="fsel" id="sss-producttype" onchange="filterSelectableShops()"><option value="">— All Product Types —</option></select>
       </div>
     </div>
     <div style="padding:10px 14px;max-height:55vh;overflow-y:auto" id="sss-list"></div>
@@ -2691,6 +2693,16 @@ function openShopSelector(planId){
     [...new Set(S.clients.map(c=>c.province).filter(Boolean))].sort()
       .forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;provSel.appendChild(o);});
   }
+  const stSel=document.getElementById('sss-storetype');
+  if(stSel&&stSel.options.length<=1){
+    [...new Set(S.clients.map(c=>c.storeType).filter(Boolean))].sort()
+      .forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;stSel.appendChild(o);});
+  }
+  const ptSel=document.getElementById('sss-producttype');
+  if(ptSel&&ptSel.options.length<=1){
+    [...new Set(S.clients.flatMap(c=>(c.productTypes||'').split(',').map(p=>p.trim())).filter(Boolean))].sort()
+      .forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;ptSel.appendChild(o);});
+  }
   setVal('sss-search','');
   filterSelectableShops();
   openModal('shopSelectorModal');
@@ -2704,12 +2716,16 @@ function filterSelectableShops(){
   const creditF=document.getElementById('sss-credit')?.value||'';
   const statusF=document.getElementById('sss-status')?.value||'';
   const potF=document.getElementById('sss-potential')?.value||'';
+  const stF=document.getElementById('sss-storetype')?.value||'';
+  const ptF=document.getElementById('sss-producttype')?.value||'';
   const list=S.clients.filter(c=>{
     const txt=`${c.shop} ${c.code} ${c.province} ${c.salesperson}`.toLowerCase();
     return(!search||txt.includes(search))&&(!spF||c.salesperson===spF)&&
       (!provF||c.province===provF)&&(!tierF||c.accountTier===tierF)&&
       (!creditF||c.creditStatus===creditF)&&(!statusF||c.monthlyStatus===statusF)&&
-      (!potF||c.clientPotential===potF);
+      (!potF||c.clientPotential===potF)&&
+      (!stF||c.storeType===stF)&&
+      (!ptF||(c.productTypes||'').split(',').map(p=>p.trim()).includes(ptF));
   });
   const el=document.getElementById('sss-list');
   if(!el) return;
