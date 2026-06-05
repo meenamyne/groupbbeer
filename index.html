@@ -942,8 +942,8 @@ async function loadAllData(){
   if(!S.token||CONFIG.SHEET_ID==='YOUR_SHEET_ID_HERE') return;
   showLoader(true);
   try{
+    await upgradeHeaders(); // must complete before data load — columns must exist first
     await Promise.all([loadClients(), loadHistory(), loadSalesTeam()]);
-    upgradeHeaders();
     await checkMonthReset();
     renderCurrentPage();
   }catch(e){ showToast('Failed to load data: '+e.message,'error'); }
@@ -1893,6 +1893,12 @@ function daysSince(dateStr){
   catch{return null;}
 }
 
+// ── Single source of truth for priority scoring ─────────────────────────────
+// Every create/update (saveClient, saveStatus, doArchive, doneNextAction) calls
+// calcPriority and persists the result to PriorityScore (col U) + PriorityLevel
+// (col V) in the Clients sheet.  UI rendering (clientCard, renderClientsTable,
+// renderPriorityAccounts, open360Modal, openSalesRepModal) also calls it live so
+// cards always reflect current in-memory data — intentional, no extra round-trip.
 function calcPriority(c){
   let s=0;
   if(c.monthlyStatus==='Red') s+=35;
@@ -1956,29 +1962,31 @@ async function upgradeHeaders(){
     'PriorityScore','PriorityLevel','ClientPotential','PreferredProducts','RiskNote'
   ];
 
+  // applyHeaders: reads row 1, writes ONLY the cells whose value does not already
+  // match the required header at that position. Consecutive missing cells are batched
+  // into a single API call. Data rows (row 2+) are never touched.
+  async function applyHeaders(sheet,required){
+    const res=await shGet(`${sheet}!A1:${colToLetter(required.length)}1`);
+    const cur=res[0]||[];
+    // Only collect positions where current cell != required header
+    const todo=required.map((h,i)=>({i,h})).filter(({i,h})=>cur[i]!==h);
+    if(!todo.length) return;
+    // Flush one consecutive batch as a single range write
+    const flush=async batch=>await shUpdate(
+      `${sheet}!${colToLetter(batch[0].i+1)}1`,
+      [batch.map(x=>x.h)]
+    );
+    let batch=[todo[0]];
+    for(let k=1;k<todo.length;k++){
+      if(todo[k].i===batch[batch.length-1].i+1){ batch.push(todo[k]); }
+      else{ await flush(batch); batch=[todo[k]]; }
+    }
+    await flush(batch);
+    console.log(`${sheet}: wrote ${todo.length} header cell(s)`,todo.map(x=>x.h));
+  }
   try{
-    // ── Clients sheet ──
-    const ch=await shGet(`${SHEETS.CLIENTS}!A1:Z1`);
-    const existC=new Set(ch[0]||[]);
-    const missingC=CLIENTS_REQUIRED.filter(h=>!existC.has(h));
-    if(missingC.length){
-      // Write from the position of the first missing header
-      const startIdx=CLIENTS_REQUIRED.findIndex(h=>!existC.has(h));
-      const startCol=colToLetter(startIdx+1);
-      await shUpdate(`${SHEETS.CLIENTS}!${startCol}1`,[CLIENTS_REQUIRED.slice(startIdx)]);
-      console.log('Clients headers upgraded: added',missingC);
-    }
-
-    // ── History sheet ──
-    const hh=await shGet(`${SHEETS.HISTORY}!A1:V1`);
-    const existH=new Set(hh[0]||[]);
-    const missingH=HISTORY_REQUIRED.filter(h=>!existH.has(h));
-    if(missingH.length){
-      const startIdx=HISTORY_REQUIRED.findIndex(h=>!existH.has(h));
-      const startCol=colToLetter(startIdx+1);
-      await shUpdate(`${SHEETS.HISTORY}!${startCol}1`,[HISTORY_REQUIRED.slice(startIdx)]);
-      console.log('History headers upgraded: added',missingH);
-    }
+    await applyHeaders(SHEETS.CLIENTS,CLIENTS_REQUIRED);
+    await applyHeaders(SHEETS.HISTORY,HISTORY_REQUIRED);
   }catch(e){ console.warn('Header upgrade skipped:',e.message); }
 }
 
