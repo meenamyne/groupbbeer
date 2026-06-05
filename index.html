@@ -1,1709 +1,2106 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Group B Beer — CRM</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --primary:#1e3a2f;--primary-h:#2d5a47;
-  --accent:#c8942a;--accent-l:#f4c85a;
+  --primary:#1e3a2f;--ph:#2d5a47;
+  --accent:#c8942a;--al:#f4c85a;
   --bg:#f0f4f2;--card:#fff;
   --text:#1a2e25;--muted:#6b8a7a;
   --border:#d0e0d8;
-  --danger:#e53e3e;--success:#38a169;--warning:#dd6b20;--info:#3182ce;
-  --sidebar:240px;
+  --danger:#e53e3e;--success:#10b981;--warning:#f59e0b;--info:#3182ce;
+  --grey-s:#9ca3af;--yellow-s:#f59e0b;--green-s:#10b981;--red-s:#e53e3e;
+  --sw:240px;
 }
-body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-/* ── LOGIN ─────────────────────────────────────────── */
+/* LOGIN */
 #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,#1e3a2f,#2d5a47 50%,#1e3a2f)}
-.login-card{background:#fff;border-radius:16px;padding:48px;max-width:420px;width:90%;
+.lc{background:#fff;border-radius:16px;padding:48px;max-width:420px;width:90%;
   text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.login-icon{width:80px;height:80px;background:var(--accent);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:38px}
-.login-card h1{font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px}
-.login-card .subtitle{color:var(--muted);margin-bottom:8px;font-size:15px}
-.login-card .tagline{color:var(--muted);margin-bottom:32px;font-size:13px;
-  background:#f0f4f2;border-radius:8px;padding:8px 12px}
-.google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;
-  padding:14px 24px;border:2px solid var(--border);border-radius:10px;background:#fff;
-  cursor:pointer;font-family:'Sarabun',sans-serif;font-size:16px;font-weight:500;
-  color:var(--text);transition:all .2s}
-.google-btn:hover{border-color:var(--accent);background:#fffbf0;
-  box-shadow:0 2px 8px rgba(200,148,42,.2)}
+.lc-icon{width:80px;height:80px;background:var(--accent);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:38px}
+.lc h1{font-size:26px;font-weight:700;color:var(--primary);margin-bottom:6px}
+.lc .sub{color:var(--muted);font-size:14px;margin-bottom:6px}
+.lc .tag{color:var(--muted);font-size:12px;background:#f0f4f2;border-radius:8px;padding:8px 12px;margin-bottom:28px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;
+  border:2px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:var(--text);transition:all .2s}
+.gbtn:hover{border-color:var(--accent);background:#fffbf0}
 
-/* ── APP LAYOUT ─────────────────────────────────────── */
+/* APP */
 #app{display:flex;min-height:100vh}
 
-/* ── SIDEBAR ─────────────────────────────────────────── */
-.sidebar{width:var(--sidebar);background:var(--primary);display:flex;flex-direction:column;
+/* SIDEBAR */
+.sidebar{width:var(--sw);background:var(--primary);display:flex;flex-direction:column;
   position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
-.sidebar-header{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:2px}
-.sidebar-logo-icon{width:34px;height:34px;background:var(--accent);border-radius:8px;
-  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.sidebar-header h2{color:#fff;font-size:17px;font-weight:700}
-.sidebar-header p{color:rgba(255,255,255,.45);font-size:11px;margin-top:2px}
-.sidebar-nav{flex:1;padding:12px 10px}
-.nav-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
-  color:rgba(255,255,255,.3);padding:8px 10px 4px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
-  color:rgba(255,255,255,.72);cursor:pointer;transition:all .15s;font-size:14px;
+.sh{padding:18px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sl{display:flex;align-items:center;gap:10px}
+.sl-icon{width:32px;height:32px;background:var(--accent);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.sh h2{color:#fff;font-size:16px;font-weight:700}
+.sh p{color:rgba(255,255,255,.4);font-size:11px;margin-top:1px}
+.snav{flex:1;padding:10px 9px}
+.snl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:rgba(255,255,255,.28);padding:8px 9px 3px}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;
+  color:rgba(255,255,255,.7);cursor:pointer;transition:all .15s;font-size:14px;
   margin-bottom:2px;border:none;background:none;width:100%;text-align:left;
-  font-family:'Sarabun',sans-serif}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:var(--accent);color:#fff;font-weight:600}
-.nav-item .ni{font-size:17px;width:22px;text-align:center;flex-shrink:0}
-.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:11px;
-  font-weight:700;padding:2px 7px;border-radius:10px;min-width:20px;text-align:center}
-.sidebar-footer{padding:14px 10px;border-top:1px solid rgba(255,255,255,.1)}
-.user-info{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:8px}
-.user-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;
-  background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;
-  font-weight:700;font-size:15px}
-.user-name{color:#fff;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.user-email{color:rgba(255,255,255,.4);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.signout-btn{width:100%;padding:8px;background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.14);border-radius:8px;color:rgba(255,255,255,.65);
-  cursor:pointer;font-family:'Sarabun',sans-serif;font-size:13px;transition:all .15s}
-.signout-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+  font-family:'Inter',sans-serif}
+.ni:hover{background:rgba(255,255,255,.07);color:#fff}
+.ni.active{background:var(--accent);color:#fff;font-weight:600}
+.ni .ic{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.sf{padding:12px 9px;border-top:1px solid rgba(255,255,255,.1)}
+.ua{display:flex;align-items:center;gap:9px;padding:9px;border-radius:8px;margin-bottom:7px}
+.uav{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;overflow:hidden}
+.uav img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+.un{color:#fff;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ue{color:rgba(255,255,255,.38);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sob{width:100%;padding:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+  border-radius:7px;color:rgba(255,255,255,.62);cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:12px;transition:all .15s}
+.sob:hover{background:rgba(255,255,255,.13);color:#fff}
 
-/* ── MAIN ─────────────────────────────────────────── */
-.main-content{margin-left:var(--sidebar);flex:1;min-height:100vh}
-.page{display:none;padding:28px;max-width:1400px}
+/* MAIN */
+.main-content{margin-left:var(--sw);flex:1;min-height:100vh}
+.page{display:none;padding:24px;max-width:1440px}
 .page.active{display:block}
-.page-header{display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:24px;flex-wrap:wrap;gap:12px}
-.page-title h1{font-size:24px;font-weight:700;color:var(--primary)}
-.page-title p{color:var(--muted);font-size:13px;margin-top:2px}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.pt h1{font-size:22px;font-weight:700;color:var(--primary)}
+.pt p{color:var(--muted);font-size:12px;margin-top:2px}
 
-/* ── BUTTONS ─────────────────────────────────────────── */
-.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;
-  font-family:'Sarabun',sans-serif;font-size:14px;font-weight:500;cursor:pointer;
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;
   transition:all .15s;border:none;text-decoration:none}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-primary:hover{background:var(--primary-h)}
-.btn-accent{background:var(--accent);color:#fff}
-.btn-accent:hover{background:#b07d22}
-.btn-outline{background:#fff;color:var(--text);border:1.5px solid var(--border)}
-.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-danger:hover{background:#c53030}
-.btn-sm{padding:6px 14px;font-size:13px}
-.btn-icon{padding:8px;width:36px;height:36px;justify-content:center}
+.bp{background:var(--primary);color:#fff}.bp:hover{background:var(--ph)}
+.ba{background:var(--accent);color:#fff}.ba:hover{background:#b07d22}
+.bo{background:#fff;color:var(--text);border:1.5px solid var(--border)}.bo:hover{border-color:var(--primary);color:var(--primary)}
+.bd{background:var(--danger);color:#fff}.bd:hover{background:#c53030}
+.bsm{padding:6px 13px;font-size:12px}
+.bxs{padding:5px 10px;font-size:11px}
 
-/* ── CARDS ─────────────────────────────────────────── */
-.card{background:var(--card);border-radius:12px;padding:24px;
-  box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--border)}
-.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.card-title{font-size:15px;font-weight:600;color:var(--primary)}
+/* CARDS */
+.card{background:var(--card);border-radius:12px;padding:20px;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);border:1px solid var(--border)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.ct{font-size:14px;font-weight:600;color:var(--primary)}
 
-/* ── STAT CARDS ─────────────────────────────────────── */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:24px}
-.stat-card{background:var(--card);border-radius:12px;padding:20px;
-  border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.stat-inner{display:flex;align-items:flex-start;gap:14px}
-.stat-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;
-  justify-content:center;font-size:22px;flex-shrink:0}
-.si-green{background:#dcfce7}.si-amber{background:#fef3c7}.si-blue{background:#dbeafe}
-.si-red{background:#fee2e2}.si-purple{background:#ede9fe}.si-teal{background:#ccfbf1}
-.stat-label{font-size:12px;color:var(--muted);margin-bottom:4px}
-.stat-value{font-size:26px;font-weight:700;color:var(--primary);line-height:1}
-.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+/* STATS */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.sc{background:var(--card);border-radius:11px;padding:16px;border:1px solid var(--border)}
+.sci{display:flex;align-items:flex-start;gap:12px}
+.sic{width:42px;height:42px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.ig{background:#dcfce7}.ia{background:#fef3c7}.ib{background:#dbeafe}
+.ir{background:#fee2e2}.ip{background:#ede9fe}.it{background:#ccfbf1}
+.sl2{font-size:11px;color:var(--muted);margin-bottom:3px}
+.sv{font-size:24px;font-weight:700;color:var(--primary);line-height:1}
+.ss{font-size:11px;color:var(--muted);margin-top:3px}
 
-/* ── CHARTS ─────────────────────────────────────────── */
-.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px}
-.chart-box{background:var(--card);border-radius:12px;padding:20px;
-  border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.chart-box h3{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:16px}
-.chart-container{position:relative;height:240px}
+/* STATUS COLORS */
+.status-grey{background:#f3f4f6;border-left:4px solid var(--grey-s)!important}
+.status-yellow{background:#fffbeb;border-left:4px solid var(--yellow-s)!important}
+.status-green{background:#f0fdf4;border-left:4px solid var(--green-s)!important}
+.status-red{background:#fff5f5;border-left:4px solid var(--red-s)!important}
+.s-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;display:inline-block}
+.sd-grey{background:var(--grey-s)}.sd-yellow{background:var(--yellow-s)}.sd-green{background:var(--green-s)}.sd-red{background:var(--red-s)}
+.s-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.sp-grey{background:#f3f4f6;color:#374151}
+.sp-yellow{background:#fef3c7;color:#92400e}
+.sp-green{background:#dcfce7;color:#166534}
+.sp-red{background:#fee2e2;color:#991b1b}
 
-/* ── FILTERS ─────────────────────────────────────────── */
-.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.search-input{flex:1;min-width:200px;padding:10px 16px 10px 40px;
-  border:1.5px solid var(--border);border-radius:8px;font-family:'Sarabun',sans-serif;
-  font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%236b8a7a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center;
-  transition:border-color .15s;color:var(--text)}
-.search-input:focus{outline:none;border-color:var(--accent)}
-.filter-select{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;
-  font-family:'Sarabun',sans-serif;font-size:14px;background:#fff;color:var(--text);
-  cursor:pointer;transition:border-color .15s}
-.filter-select:focus{outline:none;border-color:var(--accent)}
-.filter-count{font-size:13px;color:var(--muted);padding:10px 4px;white-space:nowrap}
+/* CLIENT CARDS GRID */
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.cc{background:var(--card);border-radius:11px;padding:16px;border:1px solid var(--border);
+  cursor:pointer;transition:all .2s;border-left:4px solid var(--grey-s)}
+.cc:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-1px)}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.cc-name{font-size:15px;font-weight:700;color:var(--primary)}
+.cc-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.cc-body{font-size:12px;color:var(--text)}
+.cc-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.cc-note{font-size:12px;color:var(--muted);background:var(--bg);border-radius:6px;
+  padding:7px 10px;margin-top:8px;line-height:1.5;min-height:32px}
 
-/* ── TABLE ─────────────────────────────────────────── */
-.table-wrapper{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+/* TABS */
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);margin-bottom:16px}
+.tab{padding:9px 16px;border:none;background:none;font-family:'Inter',sans-serif;
+  font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-2px;transition:all .15s;font-weight:500}
+.tab:hover{color:var(--primary)}
+.tab.active{color:var(--primary);border-bottom-color:var(--accent);font-weight:700}
+
+/* FILTERS */
+.fb{display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.si{flex:1;min-width:180px;padding:9px 14px 9px 38px;border:1.5px solid var(--border);
+  border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b8a7a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 11px center;
+  color:var(--text);transition:border-color .15s}
+.si:focus{outline:none;border-color:var(--accent)}
+.fsel{padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;
+  font-family:'Inter',sans-serif;font-size:13px;background:#fff;color:var(--text);cursor:pointer}
+.fsel:focus{outline:none;border-color:var(--accent)}
+.fc{font-size:12px;color:var(--muted);padding:9px 4px;white-space:nowrap}
+
+/* STATUS FILTER BUTTONS */
+.status-filters{display:flex;gap:6px;flex-wrap:wrap}
+.sfb{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;
+  cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:5px}
+.sfb:hover,.sfb.active{border-color:transparent;color:#fff}
+.sfb-all.active{background:var(--primary)}
+.sfb-grey.active{background:var(--grey-s);color:#fff}
+.sfb-yellow.active{background:var(--yellow-s);color:#fff}
+.sfb-green.active{background:var(--green-s);color:#fff}
+.sfb-red.active{background:var(--red-s);color:#fff}
+
+/* TABLE */
+.tw{overflow-x:auto;border-radius:11px;border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;background:#fff}
-thead th{background:#f0f4f2;padding:11px 14px;text-align:left;font-size:12px;font-weight:600;
+thead th{background:#f0f4f2;padding:10px 13px;text-align:left;font-size:11px;font-weight:600;
   color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);
   text-transform:uppercase;letter-spacing:.3px}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:#f8fbf9}
-tbody td{padding:12px 14px;font-size:13px;color:var(--text)}
-td.td-store{font-weight:600;color:var(--primary)}
+tbody td{padding:11px 13px;font-size:13px;color:var(--text)}
+td.tds{font-weight:600;color:var(--primary)}
 
-/* ── BADGES ─────────────────────────────────────────── */
-.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
-.bg{background:#dcfce7;color:#166534}.bb{background:#fef3c7;color:#92400e}
-.bi{background:#dbeafe;color:#1e40af}.br{background:#fee2e2;color:#991b1b}
-.bk{background:#f3f4f6;color:#374151}.bp{background:#ede9fe;color:#6b21a8}
-.bt{background:#ccfbf1;color:#134e4a}.bo{background:#fff7ed;color:#9a3412}
+/* BADGES */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.bg2{background:#dcfce7;color:#166534}.bb2{background:#fef3c7;color:#92400e}
+.bi2{background:#dbeafe;color:#1e40af}.br2{background:#fee2e2;color:#991b1b}
+.bk2{background:#f3f4f6;color:#374151}.bp2{background:#ede9fe;color:#6b21a8}
 
-/* ── MODAL ─────────────────────────────────────────── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
-  z-index:1000;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.open{display:flex}
-.modal{background:#fff;border-radius:16px;width:100%;max-width:580px;
+/* CREDIT STATUS */
+.credit-ok{color:#166534;font-weight:600}
+.credit-late{color:#991b1b;font-weight:600}
+.credit-hold{color:#6b21a8;font-weight:600}
+
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center;padding:16px}
+.mo.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:560px;
   max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0}
-.modal-title{font-size:17px;font-weight:700;color:var(--primary)}
-.modal-close{width:30px;height:30px;border:none;background:var(--bg);border-radius:6px;
-  cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;
-  color:var(--muted);transition:all .15s}
-.modal-close:hover{background:var(--border);color:var(--text)}
-.modal-body{padding:22px}
-.modal-footer{padding:14px 22px;border-top:1px solid var(--border);
-  display:flex;justify-content:flex-end;gap:10px}
+.mh{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;
+  border-radius:14px 14px 0 0}
+.mt{font-size:16px;font-weight:700;color:var(--primary)}
+.mc{width:28px;height:28px;border:none;background:var(--bg);border-radius:6px;cursor:pointer;
+  font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.mc:hover{background:var(--border)}
+.mb{padding:20px}
+.mf{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:9px}
 
-/* ── FORMS ─────────────────────────────────────────── */
-.form-group{margin-bottom:16px}
-.form-label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
-.form-label.req::after{content:' *';color:var(--danger)}
-.form-input,.form-select,.form-textarea{width:100%;padding:10px 13px;
-  border:1.5px solid var(--border);border-radius:8px;font-family:'Sarabun',sans-serif;
-  font-size:14px;color:var(--text);transition:border-color .15s;background:#fff}
-.form-input:focus,.form-select:focus,.form-textarea:focus{
-  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,148,42,.1)}
-.form-textarea{min-height:90px;resize:vertical}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.form-hint{font-size:11px;color:var(--muted);margin-top:4px}
+/* STATUS PICKER */
+.status-picker{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px}
+.sp-opt{padding:14px 10px;border-radius:10px;border:2px solid var(--border);cursor:pointer;
+  text-align:center;transition:all .2s;background:#fff}
+.sp-opt:hover{border-color:currentColor}
+.sp-opt.sel-grey{border-color:var(--grey-s);background:#f3f4f6}
+.sp-opt.sel-yellow{border-color:var(--yellow-s);background:#fffbeb}
+.sp-opt.sel-green{border-color:var(--green-s);background:#f0fdf4}
+.sp-opt.sel-red{border-color:var(--red-s);background:#fff5f5}
+.sp-opt .sp-emoji{font-size:24px;display:block;margin-bottom:4px}
+.sp-opt .sp-label{font-size:12px;font-weight:600}
 
-/* ── LOADING ─────────────────────────────────────────── */
-#globalLoader{display:none;position:fixed;inset:0;background:rgba(255,255,255,.7);
-  z-index:9000;align-items:center;justify-content:center;flex-direction:column;gap:14px}
-#globalLoader.show{display:flex}
-.spinner{width:36px;height:36px;border:3px solid var(--border);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+/* FORMS */
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
+.fl.req::after{content:' *';color:var(--danger)}
+.fi,.fsel2,.fta{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+  font-family:'Inter',sans-serif;font-size:13px;color:var(--text);transition:border-color .15s;background:#fff}
+.fi:focus,.fsel2:focus,.fta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,148,42,.1)}
+.fta{min-height:80px;resize:vertical}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fh{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* PRODUCT CHECKBOXES */
+.prod-checks{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.pcheck{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;
+  border:1.5px solid var(--border);cursor:pointer;transition:all .15s;background:#fff;
+  font-size:13px;font-family:'Inter',sans-serif}
+.pcheck:hover{border-color:var(--accent)}
+.pcheck input{accent-color:var(--accent);width:15px;height:15px}
+.pcheck.checked{border-color:var(--accent);background:#fffbf0}
+
+/* CHARTS */
+.cg{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.cb{background:var(--card);border-radius:11px;padding:18px;border:1px solid var(--border)}
+.cb h3{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:14px}
+.cc2{position:relative;height:220px}
+
+/* ARCHIVE BANNER */
+.arc-banner{background:#fef3c7;border:1.5px solid var(--warning);border-radius:10px;
+  padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.arc-banner .ab-icon{font-size:20px;flex-shrink:0}
+.arc-banner .ab-text{font-size:13px;color:#92400e;flex:1;line-height:1.5}
+.arc-banner .ab-btn{flex-shrink:0}
+
+/* MONTH BANNER */
+.month-banner{background:linear-gradient(135deg,var(--primary),var(--ph));
+  border-radius:11px;padding:14px 18px;margin-bottom:16px;color:#fff;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.mb-month{font-size:20px;font-weight:700}
+.mb-sub{font-size:12px;opacity:.7;margin-top:2px}
+.mb-stats{display:flex;gap:16px}
+.mb-stat{text-align:center}
+.mb-stat .n{font-size:20px;font-weight:700}
+.mb-stat .l{font-size:10px;opacity:.7;text-transform:uppercase}
+
+/* PROGRESS BAR */
+.prog-bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;border-radius:4px;transition:width .3s}
+
+/* HISTORY */
+.hist-month{background:var(--card);border-radius:10px;border:1px solid var(--border);
+  margin-bottom:12px;overflow:hidden}
+.hist-header{padding:12px 16px;background:#f0f4f2;display:flex;align-items:center;
+  justify-content:space-between;cursor:pointer}
+.hist-title{font-size:14px;font-weight:700;color:var(--primary)}
+.hist-body{padding:0}
+
+/* LOADER */
+#gl{display:none;position:fixed;inset:0;background:rgba(255,255,255,.75);
+  z-index:9000;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#gl.show{display:flex}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{font-size:14px;color:var(--muted)}
 
-/* ── EMPTY STATE ─────────────────────────────────────── */
-.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
-.empty-icon{font-size:48px;margin-bottom:14px}
-.empty-state h3{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px}
-.empty-state p{font-size:13px}
+/* TOAST */
+#tc{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{background:var(--primary);color:#fff;padding:11px 16px;border-radius:9px;font-size:13px;
+  box-shadow:0 4px 14px rgba(0,0,0,.2);animation:sli .3s ease;pointer-events:auto;
+  display:flex;align-items:center;gap:9px;min-width:240px;max-width:340px}
+.toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.warning{background:var(--warning);color:#1a2e25}
+@keyframes sli{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 
-/* ── CLIENT DETAIL ─────────────────────────────────── */
-.detail-grid{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
-.info-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
-  border-bottom:1px solid var(--border)}
-.info-row:last-child{border-bottom:none}
-.info-label{font-size:11px;color:var(--muted);width:110px;flex-shrink:0;
-  font-weight:600;padding-top:2px;text-transform:uppercase;letter-spacing:.3px}
-.info-value{font-size:14px;color:var(--text);font-weight:500;flex:1}
-.client-banner{background:linear-gradient(135deg,var(--primary),var(--primary-h));
-  border-radius:12px;padding:18px 20px;color:#fff;margin-bottom:16px}
-.client-banner h2{font-size:18px;font-weight:700;margin-bottom:4px}
-.client-banner p{font-size:12px;opacity:.7}
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .ei{font-size:44px;margin-bottom:12px}
+.empty h3{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty p{font-size:12px}
 
-/* ── TIMELINE ─────────────────────────────────────── */
-.timeline{position:relative;padding-left:0}
-.timeline-item{display:flex;gap:12px;margin-bottom:14px}
-.t-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;
-  align-items:center;justify-content:center;font-size:15px;z-index:1;
-  background:#fff;border:2px solid var(--border)}
-.t-body{flex:1;background:var(--bg);border-radius:10px;padding:11px 14px;
-  border:1px solid var(--border)}
-.t-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
-.t-type{font-size:13px;font-weight:600;color:var(--primary)}
-.t-date{font-size:11px;color:var(--muted)}
-.t-text{font-size:13px;color:var(--text);line-height:1.55}
-.t-person{font-size:11px;color:var(--muted);margin-top:5px}
+/* SALES TARGET CARD */
+.stc{background:var(--card);border-radius:11px;padding:16px;border:1px solid var(--border);margin-bottom:12px}
+.stc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.stc-name{font-size:15px;font-weight:700;color:var(--primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.stc-name:hover{color:var(--accent)}
+.srm-item{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);margin-bottom:8px;transition:border-color .15s}
+.srm-item:hover{border-color:var(--accent)}
+.srm-done{text-decoration:line-through;opacity:.45;pointer-events:none}
+.stc-target{font-size:12px;color:var(--muted)}
+.stc-nums{display:flex;gap:14px;margin-bottom:8px}
+.stc-num .n{font-size:18px;font-weight:700}.stc-num .l{font-size:10px;color:var(--muted);text-transform:uppercase}
 
-/* ── REMINDERS ─────────────────────────────────────── */
-.reminder-item{background:#fff;border-radius:10px;padding:15px 16px;
-  border:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;
-  margin-bottom:10px;transition:all .15s}
-.reminder-item:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.reminder-item.overdue{border-left:4px solid var(--danger)}
-.reminder-item.today{border-left:4px solid var(--warning)}
-.reminder-item.upcoming{border-left:4px solid var(--success)}
-.reminder-item.done{opacity:.5}
-.r-date-block{text-align:center;background:var(--bg);border-radius:8px;
-  padding:8px 12px;min-width:56px;flex-shrink:0}
-.r-day{font-size:20px;font-weight:700;color:var(--primary);line-height:1}
-.r-month{font-size:10px;color:var(--muted);text-transform:uppercase}
-.r-content{flex:1}
-.r-title{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:3px}
-.r-detail{font-size:13px;color:var(--text);margin-bottom:4px}
-.r-meta{font-size:11px;color:var(--muted)}
-.r-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
-
-/* ── TOAST ─────────────────────────────────────────── */
-#toastContainer{position:fixed;bottom:24px;right:24px;z-index:9999;
-  display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{background:var(--primary);color:#fff;padding:12px 18px;border-radius:10px;
-  font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.2);animation:slideIn .3s ease;
-  pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:250px;max-width:360px}
-.toast.success{background:var(--success)}.toast.error{background:var(--danger)}
-.toast.warning{background:var(--warning)}
-@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
-
-/* ── BACK BTN ─────────────────────────────────────── */
-.back-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;
-  border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;
-  font-family:'Sarabun',sans-serif;font-size:13px;color:var(--muted);
-  margin-bottom:16px;transition:all .15s}
-.back-btn:hover{border-color:var(--primary);color:var(--primary)}
-
-/* ── TABS ─────────────────────────────────────────── */
-.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);margin-bottom:18px}
-.tab{padding:10px 18px;border:none;background:none;font-family:'Sarabun',sans-serif;
-  font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
-  margin-bottom:-2px;transition:all .15s;font-weight:500}
-.tab:hover{color:var(--primary)}
-.tab.active{color:var(--primary);border-bottom-color:var(--accent);font-weight:700}
-
-/* ── SETUP BANNER ─────────────────────────────────── */
-.setup-banner{background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;
-  padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px}
-.setup-banner .sb-icon{font-size:20px;flex-shrink:0}
-.setup-banner .sb-text{font-size:13px;color:#92400e;line-height:1.6}
-.setup-banner code{background:rgba(245,158,11,.15);padding:2px 6px;
-  border-radius:4px;font-family:monospace;font-size:12px}
-
-/* ── UTILS ─────────────────────────────────────────── */
-.flex{display:flex}.gap-2{gap:8px}.gap-3{gap:12px}.items-center{align-items:center}
-.justify-between{justify-content:space-between}.flex-wrap{flex-wrap:wrap}
-.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
-.text-right{text-align:right}.text-center{text-align:center}
-.font-bold{font-weight:700}.text-sm{font-size:12px}.text-muted{color:var(--muted)}
-.divider{height:1px;background:var(--border);margin:14px 0}
-.w-full{width:100%}
-.section-title{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:12px;
-  display:flex;align-items:center;gap:8px}
-
-/* ── MOBILE ─────────────────────────────────────────── */
-.mobile-bar{display:none;align-items:center;gap:10px;padding:12px 16px;
+/* MOBILE */
+.mob-bar{display:none;align-items:center;gap:10px;padding:11px 14px;
   background:var(--primary);color:#fff;position:sticky;top:0;z-index:50}
-.menu-btn{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px;
-  line-height:1}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+.mob-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px;line-height:1}
+.s-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%);transition:transform .3s}
   .sidebar.open{transform:translateX(0)}
-  .sidebar-overlay.open{display:block}
+  .s-overlay.open{display:block}
   .main-content{margin-left:0}
-  .mobile-bar{display:flex}
-  .form-row{grid-template-columns:1fr}
-  .detail-grid{grid-template-columns:1fr}
-  .page{padding:16px}
-  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .mob-bar{display:flex}
+  .fr{grid-template-columns:1fr}
+  .page{padding:14px}
+  .sg{grid-template-columns:repeat(2,1fr)}
+  .clients-grid{grid-template-columns:1fr}
 }
+
+/* ACCOUNT TIER */
+.tier-a{background:var(--primary);color:#fff;font-weight:700}
+.tier-b{background:var(--ph);color:#fff;font-weight:600}
+.tier-c{background:#dbeafe;color:#1e40af}
+.tier-d{background:#f3f4f6;color:#6b8a7a}
+/* PRIORITY BADGES */
+.pri-high{background:#fee2e2;color:#991b1b;font-weight:700}
+.pri-med{background:#fef3c7;color:#92400e;font-weight:600}
+.pri-low{background:#f3f4f6;color:#6b8a7a}
+/* PRIORITY LIST */
+.plist{display:flex;flex-direction:column;gap:8px}
+.pli{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:10px;padding:12px 14px;border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.pli:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);border-color:var(--accent)}
+.pli-body{flex:1;min-width:0}
+.pli-name{font-size:14px;font-weight:700;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pli-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.plist-title{font-size:12px;font-weight:700;color:var(--primary);margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px}
+.plist-title:first-child{margin-top:0}
+/* 360 QUICK VIEW */
+.v360-row{display:flex;align-items:baseline;gap:8px;margin-bottom:9px;font-size:13px}
+.v360-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;min-width:130px;flex-shrink:0}
+.v360-val{color:var(--text)}
+.v360-sec{background:var(--bg);border-radius:9px;padding:12px 14px;margin-bottom:12px}
+.v360-sec-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+/* UTILS */
+.flex{display:flex}.gap2{gap:8px}.gap3{gap:12px}.ic{align-items:center}
+.jb{justify-content:space-between}.fw{flex-wrap:wrap}
+.mt3{margin-top:12px}.mt4{margin-top:16px}.mb3{margin-bottom:12px}.mb4{margin-bottom:16px}
+.tr{text-align:right}.tc{text-align:center}
+.bold{font-weight:700}.tsm{font-size:12px}.tmu{color:var(--muted)}
+.dv{height:1px;background:var(--border);margin:12px 0}
+.w100{width:100%}
 </style>
 </head>
 <body>
 
-<!-- ── GLOBAL LOADER ─────────────────────────── -->
-<div id="globalLoader">
-  <div class="spinner"></div>
-  <div class="loading-text">กำลังโหลดข้อมูล...</div>
-</div>
+<div id="gl"><div class="spin"></div><div style="font-size:13px;color:var(--muted)">Loading...</div></div>
+<div id="tc"></div>
 
-<!-- ── TOAST ─────────────────────────────────── -->
-<div id="toastContainer"></div>
-
-<!-- ══════════════════════════════════════════════
-     LOGIN SCREEN
-══════════════════════════════════════════════ -->
+<!-- LOGIN -->
 <div id="loginScreen">
-  <div class="login-card">
-    <div class="login-icon">🍺</div>
+  <div class="lc">
+    <div class="lc-icon">🍺</div>
     <h1>Group B Beer</h1>
-    <p class="subtitle">ระบบจัดการลูกค้า (CRM)</p>
-    <p class="tagline">Local Craft Beer Distributor · Thailand</p>
-    <button class="google-btn" onclick="signIn()">
-      <svg width="20" height="20" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-      เข้าสู่ระบบด้วย Google
+    <p class="sub">Client Profiling & Sales CRM</p>
+    <p class="tag">Local Craft Beer Distributor · Thailand</p>
+    <button class="gbtn" onclick="signIn()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
     </button>
-    <p style="margin-top:18px;font-size:12px;color:var(--muted)">เฉพาะสมาชิกทีม Group B Beer เท่านั้น</p>
+    <p style="margin-top:14px;font-size:11px;color:var(--muted)">Group B Beer team members only</p>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MAIN APP
-══════════════════════════════════════════════ -->
+<!-- APP -->
 <div id="app" style="display:none">
-
-  <!-- Mobile top bar -->
-  <div class="mobile-bar">
-    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-    <span style="font-weight:700;font-size:16px">Group B Beer CRM</span>
+  <div class="mob-bar">
+    <button class="mob-btn" onclick="toggleSB()">☰</button>
+    <span style="font-weight:700;font-size:15px">Group B Beer CRM</span>
   </div>
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <div class="s-overlay" id="sOverlay" onclick="toggleSB()"></div>
 
-  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-logo">
-        <div class="sidebar-logo-icon">🍺</div>
-        <div>
-          <h2>Group B Beer</h2>
-          <p>CRM System</p>
-        </div>
-      </div>
-    </div>
-
-    <nav class="sidebar-nav">
-      <div class="nav-section-label">หลัก</div>
-      <button class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard')">
-        <span class="ni">📊</span> Dashboard
-      </button>
-      <button class="nav-item" id="nav-clients" onclick="navigate('clients')">
-        <span class="ni">👥</span> รายชื่อลูกค้า
-      </button>
-      <div class="nav-section-label" style="margin-top:8px">การขาย</div>
-      <button class="nav-item" id="nav-orders" onclick="navigate('orders')">
-        <span class="ni">🛒</span> คำสั่งซื้อ
-      </button>
-      <button class="nav-item" id="nav-reminders" onclick="navigate('reminders')">
-        <span class="ni">🔔</span> การแจ้งเตือน
-        <span class="nav-badge" id="reminderBadge" style="display:none">0</span>
-      </button>
+    <div class="sh"><div class="sl"><div class="sl-icon">🍺</div><div><h2>Group B Beer</h2><p>CRM System</p></div></div></div>
+    <nav class="snav">
+      <div class="snl">Main</div>
+      <button class="ni active" id="nav-dashboard" onclick="navigate('dashboard')"><span class="ic">📊</span> Dashboard</button>
+      <button class="ni" id="nav-activity" onclick="navigate('activity')"><span class="ic">📅</span> Monthly Activity</button>
+      <div class="snl" style="margin-top:6px">Manage</div>
+      <button class="ni" id="nav-clients" onclick="navigate('clients')"><span class="ic">🏪</span> Client Management</button>
+      <button class="ni" id="nav-sales" onclick="navigate('sales')"><span class="ic">👤</span> Sales Team</button>
+      <div class="snl" style="margin-top:6px">Reports</div>
+      <button class="ni" id="nav-history" onclick="navigate('history')"><span class="ic">📜</span> Monthly History</button>
     </nav>
-
-    <div class="sidebar-footer">
-      <div class="user-info">
-        <div class="user-avatar" id="userAvatar">?</div>
-        <div style="overflow:hidden">
-          <div class="user-name" id="userName">กำลังโหลด...</div>
-          <div class="user-email" id="userEmail"></div>
-        </div>
-      </div>
-      <button class="signout-btn" onclick="signOut()">🚪 ออกจากระบบ</button>
+    <div class="sf">
+      <div class="ua"><div class="uav" id="uav">?</div><div style="overflow:hidden"><div class="un" id="uname">Loading</div><div class="ue" id="uemail"></div></div></div>
+      <button class="sob" onclick="signOut()">🚪 Sign Out</button>
     </div>
   </aside>
 
-  <!-- Main Content -->
   <main class="main-content">
 
-    <!-- ══ DASHBOARD PAGE ══════════════════════════ -->
+    <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <div class="page-title">
-          <h1>📊 Dashboard</h1>
-          <p>ภาพรวมยอดขายและลูกค้า</p>
+      <div class="ph">
+        <div class="pt"><h1>📊 Dashboard</h1><p id="dashMonth">Overview</p></div>
+        <div class="flex gap2 ic">
+          <select class="fsel" id="dashMonthSel" onchange="renderDashboard()" style="font-size:12px;padding:7px 12px">
+            <option value="">📅 Current Month (Live)</option>
+          </select>
+          <button class="btn bo bsm" onclick="loadAllData()">🔄 Refresh</button>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="loadAllData()">🔄 รีเฟรช</button>
-      </div>
-      <div id="setupBanner" class="setup-banner" style="display:none">
-        <span class="sb-icon">⚙️</span>
-        <div class="sb-text">
-          <strong>ต้องตั้งค่าก่อนใช้งาน:</strong> แก้ไขไฟล์ <code>index.html</code> บรรทัดที่มี <code>CLIENT_ID</code> และ <code>SHEET_ID</code>
-          ด้วยข้อมูลจาก Google Cloud Console และ Google Sheets ของคุณ
-          — <a href="#" onclick="showSetupHelp()" style="color:#92400e;font-weight:600">ดูคู่มือการตั้งค่า</a>
-        </div>
-      </div>
-      <div class="stats-grid" id="dashStats">
-        <div class="stat-card"><div class="stat-inner">
-          <div class="stat-icon si-green">👥</div>
-          <div><div class="stat-label">ลูกค้าทั้งหมด</div>
-          <div class="stat-value" id="s-total">—</div></div>
-        </div></div>
-        <div class="stat-card"><div class="stat-inner">
-          <div class="stat-icon si-amber">⚡</div>
-          <div><div class="stat-label">ซื้อทุกเดือน</div>
-          <div class="stat-value" id="s-monthly">—</div>
-          <div class="stat-sub">ลูกค้า</div></div>
-        </div></div>
-        <div class="stat-card"><div class="stat-inner">
-          <div class="stat-icon si-blue">📅</div>
-          <div><div class="stat-label">ซื้อรายไตรมาส</div>
-          <div class="stat-value" id="s-quarterly">—</div>
-          <div class="stat-sub">ลูกค้า</div></div>
-        </div></div>
-        <div class="stat-card"><div class="stat-inner">
-          <div class="stat-icon si-red">💤</div>
-          <div><div class="stat-label">ยังไม่มีการสั่ง</div>
-          <div class="stat-value" id="s-inactive">—</div>
-          <div class="stat-sub">ลูกค้า</div></div>
-        </div></div>
-        <div class="stat-card"><div class="stat-inner">
-          <div class="stat-icon si-purple">💰</div>
-          <div><div class="stat-label">ยอดขายรวม (ปีนี้)</div>
-          <div class="stat-value" id="s-revenue">—</div>
-          <div class="stat-sub">บาท</div></div>
-        </div></div>
-        <div class="stat-card"><div class="stat-inner">
-          <div class="stat-icon si-teal">🔔</div>
-          <div><div class="stat-label">แจ้งเตือนที่รอ</div>
-          <div class="stat-value" id="s-reminders">—</div>
-          <div class="stat-sub">รายการ</div></div>
-        </div></div>
-      </div>
-      <div class="charts-grid">
-        <div class="chart-box">
-          <h3>👤 ลูกค้าแยกตาม Salesperson</h3>
-          <div class="chart-container"><canvas id="chartSales"></canvas></div>
-        </div>
-        <div class="chart-box">
-          <h3>🏪 ประเภทร้านค้า</h3>
-          <div class="chart-container"><canvas id="chartTypes"></canvas></div>
-        </div>
-        <div class="chart-box">
-          <h3>📈 ความถี่การซื้อ</h3>
-          <div class="chart-container"><canvas id="chartFreq"></canvas></div>
-        </div>
-        <div class="chart-box">
-          <h3>🗺️ ลูกค้าแยกตามจังหวัด (Top 8)</h3>
-          <div class="chart-container"><canvas id="chartProvince"></canvas></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">🔔 แจ้งเตือนที่ใกล้ถึง</span>
-          <button class="btn btn-outline btn-sm" onclick="navigate('reminders')">ดูทั้งหมด</button>
-        </div>
-        <div id="dashReminders"></div>
-      </div>
-    </div>
-
-    <!-- ══ CLIENTS PAGE ═══════════════════════════ -->
-    <div class="page" id="page-clients">
-      <div class="page-header">
-        <div class="page-title">
-          <h1>👥 รายชื่อลูกค้า</h1>
-          <p id="clientCountLabel">กำลังโหลด...</p>
-        </div>
-        <button class="btn btn-primary" onclick="openClientModal()">+ เพิ่มลูกค้าใหม่</button>
-      </div>
-      <div class="filters-bar">
-        <input class="search-input" type="text" placeholder="ค้นหาชื่อร้าน, ชื่อลูกค้า, รหัส..." id="clientSearch" oninput="renderClientsTable()">
-        <select class="filter-select" id="filterSalesperson" onchange="renderClientsTable()">
-          <option value="">— Salesperson ทั้งหมด —</option>
-        </select>
-        <select class="filter-select" id="filterType" onchange="renderClientsTable()">
-          <option value="">— ประเภทร้านทั้งหมด —</option>
-          <option>Bottle shop</option><option>Taproom/craft beer bar</option>
-          <option>Hotel</option><option>Restaurant</option><option>Fine Dining</option>
-          <option>Cafe</option><option>Brewery</option><option>Dealer</option>
-          <option>Moderntrade</option><option>Cocktail Bar</option><option>Event</option>
-          <option>ลูกค้าออนไลน์</option>
-        </select>
-        <select class="filter-select" id="filterFreq" onchange="renderClientsTable()">
-          <option value="">— ความถี่ทั้งหมด —</option>
-          <option>ซื้อทุกเดือน</option>
-          <option>ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง</option>
-          <option>ยังไม่มีการสั่งซื้อ</option>
-        </select>
-        <span class="filter-count" id="filteredCount"></span>
-      </div>
-      <div class="table-wrapper">
-        <table id="clientsTable">
-          <thead><tr>
-            <th>ชื่อร้านค้า</th><th>ชื่อลูกค้า</th><th>ประเภท</th>
-            <th>จังหวัด</th><th>Salesperson</th><th>ความถี่</th>
-            <th>คำสั่งซื้อล่าสุด</th><th>ยอดขายรวม</th><th>สถานะ</th>
-          </tr></thead>
-          <tbody id="clientsBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ══ CLIENT DETAIL PAGE ═════════════════════ -->
-    <div class="page" id="page-client-detail">
-      <button class="back-btn" onclick="navigate('clients')">← กลับ</button>
-      <div id="clientDetailContent"></div>
-    </div>
-
-    <!-- ══ ORDERS PAGE ═════════════════════════════ -->
-    <div class="page" id="page-orders">
-      <div class="page-header">
-        <div class="page-title">
-          <h1>🛒 คำสั่งซื้อ</h1>
-          <p>บันทึกและติดตามคำสั่งซื้อ</p>
-        </div>
-        <button class="btn btn-primary" onclick="openOrderModal()">+ บันทึกคำสั่งซื้อใหม่</button>
-      </div>
-      <div class="filters-bar">
-        <input class="search-input" type="text" placeholder="ค้นหาร้านค้า, สินค้า..." id="orderSearch" oninput="renderOrdersTable()">
-        <select class="filter-select" id="filterOrderSales" onchange="renderOrdersTable()">
-          <option value="">— Salesperson ทั้งหมด —</option>
-        </select>
-        <span class="filter-count" id="ordersCount"></span>
-      </div>
-      <div class="table-wrapper">
-        <table>
-          <thead><tr>
-            <th>วันที่</th><th>ชื่อร้านค้า</th><th>ประเภทสินค้า</th>
-            <th>จำนวน</th><th class="text-right">ยอดรวม (บาท)</th>
-            <th>Salesperson</th><th>หมายเหตุ</th>
-          </tr></thead>
-          <tbody id="ordersBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ══ REMINDERS PAGE ═════════════════════════ -->
-    <div class="page" id="page-reminders">
-      <div class="page-header">
-        <div class="page-title">
-          <h1>🔔 การแจ้งเตือน</h1>
-          <p>ติดตามและนัดหมายกับลูกค้า</p>
-        </div>
-        <button class="btn btn-primary" onclick="openReminderModal()">+ เพิ่มการแจ้งเตือน</button>
       </div>
       <div class="tabs">
-        <button class="tab active" onclick="switchReminderTab('pending',this)">รอดำเนินการ</button>
-        <button class="tab" onclick="switchReminderTab('all',this)">ทั้งหมด</button>
-        <button class="tab" onclick="switchReminderTab('done',this)">เสร็จสิ้นแล้ว</button>
+        <button class="tab active" onclick="dashTab('clients',this)">📋 Client Overview</button>
+        <button class="tab" onclick="dashTab('bysales',this)">👤 By Sales</button>
+        <button class="tab" onclick="dashTab('byproduct',this)">📦 By Product</button>
+        <button class="tab" onclick="dashTab('priority',this)">🎯 Priority</button>
       </div>
-      <div id="remindersContent"></div>
+      <div id="dash-clients">
+        <div class="sg" id="dStats"></div>
+        <div class="cg" id="dCharts"></div>
+      </div>
+      <div id="dash-bysales" style="display:none"><div id="bySalesContent"></div></div>
+      <div id="dash-byproduct" style="display:none"><div id="byProductContent"></div></div>
+      <div id="dash-priority" style="display:none">
+        <div class="fb"><select class="fsel" id="priSalesF" onchange="renderPriorityAccounts()"><option value="">— All Sales —</option></select></div>
+        <div id="priorityContent"></div>
+      </div>
+    </div>
+
+    <!-- MONTHLY ACTIVITY -->
+    <div class="page" id="page-activity">
+      <div class="ph">
+        <div class="pt"><h1>📅 Monthly Activity</h1><p id="actMonthLabel">Update monthly client status</p></div>
+        <div class="flex gap2">
+          <button class="btn bo bsm" onclick="archiveAndReset(true)">📦 Archive & Reset</button>
+          <button class="btn bp bsm" onclick="openStatusModal()">⚡ Update Status</button>
+        </div>
+      </div>
+      <div id="arcBanner" style="display:none" class="arc-banner">
+        <span class="ab-icon">🗓️</span>
+        <div class="ab-text"><strong>New month detected!</strong> Please archive last month's data to reset all statuses to Grey for the new month.</div>
+        <button class="btn ba bsm ab-btn" onclick="archiveAndReset(true)">Archive Now</button>
+      </div>
+      <div id="monthBanner" class="month-banner"></div>
+      <div class="fb">
+        <input class="si" type="text" placeholder="Search shop, contact..." id="actSearch" oninput="renderActivity()">
+        <select class="fsel" id="actSalesFilter" onchange="renderActivity()"><option value="">— All Sales —</option></select>
+        <div class="status-filters">
+          <button class="sfb sfb-all active" onclick="setStatusFilter('all',this)">All</button>
+          <button class="sfb sfb-grey" onclick="setStatusFilter('Grey',this)"><span class="s-dot sd-grey"></span>Grey</button>
+          <button class="sfb sfb-yellow" onclick="setStatusFilter('Yellow',this)"><span class="s-dot sd-yellow"></span>Yellow</button>
+          <button class="sfb sfb-green" onclick="setStatusFilter('Green',this)"><span class="s-dot sd-green"></span>Green</button>
+          <button class="sfb sfb-red" onclick="setStatusFilter('Red',this)"><span class="s-dot sd-red"></span>Red</button>
+        </div>
+        <span class="fc" id="actCount"></span>
+      </div>
+      <div id="actGrid" class="clients-grid"></div>
+    </div>
+
+    <!-- CLIENTS MANAGEMENT -->
+    <div class="page" id="page-clients">
+      <div class="ph">
+        <div class="pt"><h1>🏪 Client Management</h1><p id="clientsCountLabel">All clients</p></div>
+        <button class="btn bp" onclick="openClientModal()">+ Add New Client</button>
+      </div>
+      <div class="fb">
+        <input class="si" type="text" placeholder="Search shop, contact, code, province..." id="clSearch" oninput="renderClientsTable()">
+        <select class="fsel" id="clSalesF" onchange="renderClientsTable()"><option value="">— All Sales —</option></select>
+        <select class="fsel" id="clTypeF" onchange="renderClientsTable()">
+          <option value="">— All Store Types —</option>
+          <option>Bottle shop</option><option>Taproom/craft beer bar</option><option>Hotel</option>
+          <option>Restaurant</option><option>Fine Dining</option><option>Cafe</option>
+          <option>Brewery</option><option>Dealer</option><option>Moderntrade</option>
+          <option>Cocktail Bar</option><option>Event</option><option>Online</option>
+        </select>
+        <select class="fsel" id="clCreditF" onchange="renderClientsTable()">
+          <option value="">— All Credit Status —</option>
+          <option>Normal</option><option>Overdue</option><option>Suspended</option>
+        </select>
+        <span class="fc" id="clCount"></span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Code</th><th>Tier</th><th>Shop Name</th><th>Contact</th><th>Type</th>
+            <th>Province</th><th>Products</th><th>Credit</th><th>Credit Status</th>
+            <th>Sales</th><th>This Month</th><th>Priority</th><th>Action</th>
+          </tr></thead>
+          <tbody id="clBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SALES TEAM -->
+    <div class="page" id="page-sales">
+      <div class="ph">
+        <div class="pt"><h1>👤 Sales Team</h1><p>Manage salespeople and targets</p></div>
+        <button class="btn bp" onclick="openSalesModal()">+ Add Salesperson</button>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Name</th><th>Email</th><th>Line / Phone</th>
+            <th>Monthly Target</th><th>Clients</th><th>🟢 Green</th><th>% Active</th><th>Notes</th><th>Action</th>
+          </tr></thead>
+          <tbody id="salesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="page" id="page-history">
+      <div class="ph">
+        <div class="pt"><h1>📜 Monthly History</h1><p>Past activity records</p></div>
+        <select class="fsel" id="histSalesFilter" onchange="renderHistory()"><option value="">— All Sales —</option></select>
+      </div>
+      <div id="histContent"></div>
     </div>
 
   </main>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MODALS
-══════════════════════════════════════════════ -->
-
-<!-- Client Modal -->
-<div class="modal-overlay" id="clientModal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="clientModalTitle">เพิ่มลูกค้าใหม่</span>
-      <button class="modal-close" onclick="closeModal('clientModal')">✕</button>
+<!-- CLIENT MODAL -->
+<div class="mo" id="clientModal">
+  <div class="modal" style="max-width:620px">
+    <div class="mh"><span class="mt" id="cmTitle">Add New Client</span><button class="mc" onclick="closeModal('clientModal')">✕</button></div>
+    <div class="mb">
+      <div class="fr">
+        <div class="fg"><label class="fl req">Shop Name</label><input class="fi" id="cf-shop" placeholder="e.g. Babylon Buds & Brew"></div>
+        <div class="fg"><label class="fl">Client Code</label><input class="fi" id="cf-code" placeholder="Leave blank, fill when order is created"><p class="fh">Fill when creating order in external system</p></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Contact Name</label><input class="fi" id="cf-contact" placeholder="Owner / Manager name"></div>
+        <div class="fg"><label class="fl">Phone</label><input class="fi" id="cf-phone" placeholder="0XX-XXX-XXXX"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Line ID</label><input class="fi" id="cf-line" placeholder="@lineid"></div>
+        <div class="fg"><label class="fl req">Province</label><input class="fi" id="cf-province" placeholder="e.g. Bangkok, Chiang Mai"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl req">Store Type</label>
+          <select class="fsel2" id="cf-type">
+            <option value="">— Select —</option>
+            <option>Bottle shop</option><option>Taproom/craft beer bar</option><option>Hotel</option>
+            <option>Restaurant</option><option>Fine Dining</option><option>Cafe</option>
+            <option>Brewery</option><option>Dealer</option><option>Moderntrade</option>
+            <option>Cocktail Bar</option><option>Event</option><option>Online</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl req">Salesperson</label>
+          <select class="fsel2" id="cf-sales"><option value="">— Select Salesperson —</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Product Types Sold</label>
+        <div class="prod-checks">
+          <label class="pcheck"><input type="checkbox" id="cp-bottle" value="Bottle"> 🍾 Bottle</label>
+          <label class="pcheck"><input type="checkbox" id="cp-can" value="Can"> 🥫 Can</label>
+          <label class="pcheck"><input type="checkbox" id="cp-kegs" value="Kegs"> 🛢️ Kegs</label>
+          <label class="pcheck"><input type="checkbox" id="cp-spirits" value="Spirits"> 🥃 Spirits</label>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Credit (Days)</label>
+          <select class="fsel2" id="cf-credit"><option value="0">Cash (0 days)</option>
+            <option value="15">15 days</option><option value="30">30 days</option>
+            <option value="45">45 days</option><option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Credit Status</label>
+          <select class="fsel2" id="cf-creditst">
+            <option value="Normal">✅ Normal</option>
+            <option value="Overdue">⚠️ Overdue</option>
+            <option value="Suspended">🚫 Suspended</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="cf-notes" placeholder="Additional client information..."></textarea></div>
+      <div class="dv"></div>
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:12px">📊 Account Classification</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Account Tier</label>
+          <select class="fsel2" id="cf-tier">
+            <option value="">— Not set —</option>
+            <option value="A">A — Top account</option>
+            <option value="B">B — Key account</option>
+            <option value="C">C — Regular</option>
+            <option value="D">D — Low potential</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Client Potential</label>
+          <select class="fsel2" id="cf-potential">
+            <option value="">— Not set —</option>
+            <option value="High">🔥 High</option>
+            <option value="Medium">⚡ Medium</option>
+            <option value="Low">— Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Last Order Date</label><input class="fi" type="date" id="cf-lastorder"></div>
+        <div class="fg"><label class="fl">Last Contact Date</label><input class="fi" type="date" id="cf-lastcontact"></div>
+      </div>
+      <div class="fg"><label class="fl">Next Action</label>
+        <select class="fsel2" id="cf-nextaction">
+          <option value="">— Not set —</option>
+          <option>Visit this week</option>
+          <option>Follow up payment</option>
+          <option>Propose new SKU</option>
+          <option>Reorder reminder</option>
+          <option>Recover lost client</option>
+          <option>Keep warm</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Preferred Products</label><input class="fi" id="cf-prefprod" placeholder="e.g. IPA, Stout, Bottle..."></div>
+      <div class="fg"><label class="fl">Risk Note</label><input class="fi" id="cf-risknote" placeholder="Payment risk, relationship issues, etc..."></div>
+      <input type="hidden" id="cf-row">
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">ชื่อร้านค้า</label>
-          <input class="form-input" id="f-store" placeholder="เช่น Babylon Buds & Brew">
-        </div>
-        <div class="form-group">
-          <label class="form-label req">ชื่อลูกค้า (เจ้าของ/ผู้ติดต่อ)</label>
-          <input class="form-input" id="f-name" placeholder="ชื่อ-นามสกุล">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">รหัสลูกค้า (ContactCode)</label>
-          <input class="form-input" id="f-code" placeholder="เช่น BKK-C-0001">
-          <p class="form-hint">จาก Flowaccount (ถ้ามี)</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label req">ประเภทร้าน</label>
-          <select class="form-select" id="f-type">
-            <option value="">— เลือก —</option>
-            <option>Bottle shop</option><option>Taproom/craft beer bar</option>
-            <option>Hotel</option><option>Restaurant</option><option>Fine Dining</option>
-            <option>Cafe</option><option>Brewery</option><option>Dealer</option>
-            <option>Moderntrade</option><option>Cocktail Bar</option>
-            <option>Event</option><option>ลูกค้าออนไลน์</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">Salesperson</label>
-          <input class="form-input" id="f-salesperson" placeholder="ชื่อ Salesperson">
-        </div>
-        <div class="form-group">
-          <label class="form-label req">จังหวัด</label>
-          <input class="form-input" id="f-province" placeholder="เช่น กรุงเทพฯ">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Monthly Progress</label>
-          <select class="form-select" id="f-progress">
-            <option value="">— เลือก —</option>
-            <option>First Order</option>
-            <option>ซื้อแล้ว</option>
-            <option>ส่งใบราคาแล้ว</option>
-            <option>ลูกค้าใหม่ เสนอแล้ว รอการตัดสินใจ</option>
-            <option>เสนอแล้ว ลูกค้าไม่ซื้อ</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">ประเภทสินค้าที่ซื้อ</label>
-          <select class="form-select" id="f-products">
-            <option value="">— เลือก —</option>
-            <option>เบียร์สด</option><option>ขวด/กระป๋อง</option>
-            <option>สุราชุมชน</option><option>ขวด/กระป๋อง, เบียร์สด</option>
-            <option>ขวด/กระป๋อง, สุราชุมชน</option>
-            <option>ขวด/กระป๋อง, สุราชุมชน, เบียร์สด</option>
-          </select>
-        </div>
-      </div>
-      <input type="hidden" id="f-editRow">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('clientModal')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveClient()">💾 บันทึก</button>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('clientModal')">Cancel</button>
+      <button class="btn bp" onclick="saveClient()">💾 Save</button>
     </div>
   </div>
 </div>
 
-<!-- Activity Modal -->
-<div class="modal-overlay" id="activityModal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">📝 บันทึกกิจกรรม</span>
-      <button class="modal-close" onclick="closeModal('activityModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">วันที่</label>
-          <input class="form-input" type="date" id="fa-date">
+<!-- STATUS UPDATE MODAL -->
+<div class="mo" id="statusModal">
+  <div class="modal" style="max-width:480px">
+    <div class="mh"><span class="mt" id="smTitle">Update Monthly Status</span><button class="mc" onclick="closeModal('statusModal')">✕</button></div>
+    <div class="mb">
+      <div id="sm-client-info" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px"></div>
+      <div class="fg"><label class="fl req">Monthly Status</label>
+        <div class="status-picker">
+          <div class="sp-opt" id="sp-Grey" onclick="selectStatus('Grey')"><span class="sp-emoji">⬜</span><span class="sp-label" style="color:var(--grey-s)">Grey</span><div style="font-size:10px;color:var(--muted);margin-top:2px">Not contacted</div></div>
+          <div class="sp-opt" id="sp-Yellow" onclick="selectStatus('Yellow')"><span class="sp-emoji">🟡</span><span class="sp-label" style="color:#92400e">Yellow</span><div style="font-size:10px;color:var(--muted);margin-top:2px">Contacted, no order</div></div>
+          <div class="sp-opt" id="sp-Green" onclick="selectStatus('Green')"><span class="sp-emoji">🟢</span><span class="sp-label" style="color:#166534">Green</span><div style="font-size:10px;color:var(--muted);margin-top:2px">Order placed</div></div>
+          <div class="sp-opt" id="sp-Red" onclick="selectStatus('Red')"><span class="sp-emoji">🔴</span><span class="sp-label" style="color:var(--red-s)">Red</span><div style="font-size:10px;color:var(--muted);margin-top:2px">Problem / Lost client</div></div>
         </div>
-        <div class="form-group">
-          <label class="form-label req">ประเภทกิจกรรม</label>
-          <select class="form-select" id="fa-type">
-            <option>โทรศัพท์</option><option>เยี่ยมลูกค้า</option>
-            <option>ส่งข้อความ/Line</option><option>อีเมล</option>
-            <option>ประชุม</option><option>เสนอสินค้า</option><option>อื่นๆ</option>
+      </div>
+      <div class="fg"><label class="fl">Activity Note / Remarks</label>
+        <textarea class="fta" id="sm-note" placeholder="Summarize discussion, products offered, issues found..."></textarea>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Last Contact Date</label><input class="fi" type="date" id="sm-lastcontact"></div>
+        <div class="fg"><label class="fl">Last Order Date</label><input class="fi" type="date" id="sm-lastorder"></div>
+      </div>
+      <div class="fg"><label class="fl">Next Action</label>
+        <select class="fsel2" id="sm-nextaction">
+          <option value="">— Not set —</option>
+          <option>Visit this week</option>
+          <option>Follow up payment</option>
+          <option>Propose new SKU</option>
+          <option>Reorder reminder</option>
+          <option>Recover lost client</option>
+          <option>Keep warm</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Risk Note</label><input class="fi" id="sm-risknote" placeholder="Any concern or risk to flag..."></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Products Sold This Month</label>
+          <div class="prod-checks" style="grid-template-columns:1fr 1fr">
+            <label class="pcheck"><input type="checkbox" id="sm-bottle" value="Bottle"> 🍾 Bottle</label>
+            <label class="pcheck"><input type="checkbox" id="sm-can" value="Can"> 🥫 Can</label>
+            <label class="pcheck"><input type="checkbox" id="sm-kegs" value="Kegs"> 🛢️ Kegs</label>
+            <label class="pcheck"><input type="checkbox" id="sm-spirits" value="Spirits"> 🥃 Spirits</label>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Latest Credit (Days)</label>
+          <select class="fsel2" id="sm-credit"><option value="0">Cash (0 days)</option>
+            <option value="15">15 days</option><option value="30">30 days</option>
+            <option value="45">45 days</option><option value="60">60 days</option>
+            <option value="90">90 days</option>
           </select>
+          <div class="fg mt3"><label class="fl">Credit Status</label>
+            <select class="fsel2" id="sm-creditst">
+              <option value="Normal">✅ Normal</option>
+              <option value="Overdue">⚠️ Overdue</option>
+              <option value="Suspended">🚫 Suspended</option>
+            </select>
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label req">บันทึก/รายละเอียด</label>
-        <textarea class="form-textarea" id="fa-note" placeholder="สรุปสิ่งที่พูดคุย..."></textarea>
-      </div>
-      <input type="hidden" id="fa-code">
-      <input type="hidden" id="fa-store">
+      <input type="hidden" id="sm-row">
+      <input type="hidden" id="sm-status" value="Grey">
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('activityModal')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveActivity()">💾 บันทึก</button>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('statusModal')">Cancel</button>
+      <button class="btn bp" onclick="saveStatus()">💾 Save Status</button>
     </div>
   </div>
 </div>
 
-<!-- Order Modal -->
-<div class="modal-overlay" id="orderModal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">🛒 บันทึกคำสั่งซื้อ</span>
-      <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
+<!-- SALES MEMBER MODAL -->
+<div class="mo" id="salesModal">
+  <div class="modal" style="max-width:460px">
+    <div class="mh"><span class="mt" id="samTitle">Add Salesperson</span><button class="mc" onclick="closeModal('salesModal')">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl req">Salesperson Name</label><input class="fi" id="sam-name" placeholder="Full name"></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Email</label><input class="fi" id="sam-email" placeholder="email@gmail.com"></div>
+        <div class="fg"><label class="fl">Line / Phone</label><input class="fi" id="sam-line" placeholder="@line or 0XX-XXXX"></div>
+      </div>
+      <div class="fg"><label class="fl">Monthly Target (% Active Clients)</label>
+        <input class="fi" id="sam-target" type="number" min="0" max="100" placeholder="e.g. 70 = must have 70% Green clients">
+        <p class="fh">% of total clients that should be Green that month</p>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="sam-notes" style="min-height:60px" placeholder="Additional notes..."></textarea></div>
+      <input type="hidden" id="sam-row">
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">วันที่สั่งซื้อ</label>
-          <input class="form-input" type="date" id="fo-date">
-        </div>
-        <div class="form-group">
-          <label class="form-label req">ลูกค้า / ร้านค้า</label>
-          <select class="form-select" id="fo-client" onchange="autoFillOrderSales()">
-            <option value="">— เลือกลูกค้า —</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">ประเภทสินค้า</label>
-          <select class="form-select" id="fo-products">
-            <option>เบียร์สด</option><option>ขวด/กระป๋อง</option>
-            <option>สุราชุมชน</option><option>ขวด/กระป๋อง, เบียร์สด</option>
-            <option>ขวด/กระป๋อง, สุราชุมชน</option>
-            <option>ขวด/กระป๋อง, สุราชุมชน, เบียร์สด</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">จำนวน (ลัง/ขวด)</label>
-          <input class="form-input" type="text" id="fo-qty" placeholder="เช่น 2 ลัง">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">ยอดรวม (บาท)</label>
-          <input class="form-input" type="number" id="fo-total" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Salesperson</label>
-          <input class="form-input" id="fo-salesperson" placeholder="ชื่อ Salesperson">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">หมายเหตุ</label>
-        <textarea class="form-textarea" id="fo-note" placeholder="รายละเอียดเพิ่มเติม..." style="min-height:70px"></textarea>
-      </div>
-      <input type="hidden" id="fo-code">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('orderModal')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveOrder()">💾 บันทึก</button>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('salesModal')">Cancel</button>
+      <button class="btn bp" onclick="saveSalesMember()">💾 Save</button>
     </div>
   </div>
 </div>
 
-<!-- Reminder Modal -->
-<div class="modal-overlay" id="reminderModal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">🔔 เพิ่มการแจ้งเตือน</span>
-      <button class="modal-close" onclick="closeModal('reminderModal')">✕</button>
+<!-- SETUP MODAL -->
+<div class="mo" id="setupModal">
+  <div class="modal" style="max-width:640px">
+    <div class="mh"><span class="mt">⚙️ Setup Guide</span><button class="mc" onclick="closeModal('setupModal')">✕</button></div>
+    <div class="mb" style="line-height:1.8;font-size:13px">
+      <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px"><strong style="color:var(--primary)">1. Google Cloud Console</strong><br>
+        Go to console.cloud.google.com → New Project → Enable <strong>Google Sheets API</strong></div>
+      <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px"><strong style="color:var(--primary)">2. OAuth Consent Screen</strong><br>
+        APIs & Services → OAuth consent screen → External → Add team Gmail accounts under <strong>Test users</strong></div>
+      <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px"><strong style="color:var(--primary)">3. OAuth Client ID</strong><br>
+        Credentials → Create → Web application → Authorized JS origins: <code style="background:#ddd;padding:1px 5px;border-radius:3px">https://username.github.io</code></div>
+      <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px"><strong style="color:var(--primary)">4. Google Sheet</strong><br>
+        Create a new Sheet → Add 3 tabs: <strong>Clients, History, Sales Team</strong> → Copy the Sheet ID from the URL</div>
+      <div style="background:#dcfce7;border-radius:8px;padding:14px"><strong style="color:#166534">5. Edit index.html</strong><br>
+        Find <code style="background:rgba(0,0,0,.1);padding:1px 5px;border-radius:3px">YOUR_CLIENT_ID_HERE</code> and <code style="background:rgba(0,0,0,.1);padding:1px 5px;border-radius:3px">YOUR_SHEET_ID_HERE</code> and replace with real values → Click "Initialize Sheets" to create headers</div>
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label req">วันที่แจ้งเตือน</label>
-          <input class="form-input" type="date" id="fr-date">
-        </div>
-        <div class="form-group">
-          <label class="form-label req">ลูกค้า / ร้านค้า</label>
-          <select class="form-select" id="fr-client" onchange="autoFillReminderSales()">
-            <option value="">— เลือกลูกค้า —</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Salesperson</label>
-        <input class="form-input" id="fr-salesperson" placeholder="ชื่อ Salesperson">
-      </div>
-      <div class="form-group">
-        <label class="form-label req">รายละเอียด</label>
-        <textarea class="form-textarea" id="fr-detail" placeholder="เช่น ติดตามผลการสั่งซื้อ, ส่งใบราคาใหม่..."></textarea>
-      </div>
-      <input type="hidden" id="fr-code">
-      <input type="hidden" id="fr-store">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('reminderModal')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveReminder()">💾 บันทึก</button>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('setupModal')">Close</button>
+      <button class="btn bp" onclick="initSheets();closeModal('setupModal')">🚀 Initialize Sheets</button>
     </div>
   </div>
 </div>
 
-<!-- Setup Help Modal -->
-<div class="modal-overlay" id="setupModal">
+<!-- ARCHIVE MODAL -->
+<div class="mo" id="archiveModal">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt">📦 Archive & Reset</span><button class="mc" onclick="closeModal('archiveModal')">✕</button></div>
+    <div class="mb">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Select the month to archive. All current client statuses will be saved to History, then reset to Grey for the new month.</p>
+      <div class="fg">
+        <label class="fl req">Month to Archive</label>
+        <input class="fi" type="month" id="arc-month" oninput="updateArchivePreview()">
+        <p class="fh">This will be the label used in the History tab.</p>
+      </div>
+      <div id="arc-preview" style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('archiveModal')">Cancel</button>
+      <button class="btn ba" onclick="doArchive()">📦 Archive & Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY EDIT MODAL -->
+<div class="mo" id="histEditModal">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt" id="hemTitle">Edit History Record</span><button class="mc" onclick="closeModal('histEditModal')">✕</button></div>
+    <div class="mb">
+      <div class="fg">
+        <label class="fl req">Status</label>
+        <select class="fsel2" id="hem-status">
+          <option value="Grey">⬜ Grey — Not contacted</option>
+          <option value="Yellow">🟡 Yellow — Contacted, no order</option>
+          <option value="Green">🟢 Green — Order placed</option>
+          <option value="Red">🔴 Red — Problem / Lost client</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-top:12px">
+        <label class="fl">Activity Note</label>
+        <input class="fi" type="text" id="hem-note" placeholder="Optional note">
+      </div>
+      <input type="hidden" id="hem-row">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('histEditModal')">Cancel</button>
+      <button class="btn ba" onclick="saveHistEdit()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- SALES REP ACCOUNTS MODAL -->
+<div class="mo" id="salesRepModal">
   <div class="modal" style="max-width:680px">
-    <div class="modal-header">
-      <span class="modal-title">⚙️ คู่มือการตั้งค่าระบบ</span>
-      <button class="modal-close" onclick="closeModal('setupModal')">✕</button>
+    <div class="mh">
+      <div>
+        <span class="mt" id="srm-title">Accounts</span>
+        <div id="srm-stats" style="font-size:12px;color:var(--muted);margin-top:3px"></div>
+      </div>
+      <button class="mc" onclick="closeModal('salesRepModal')">✕</button>
     </div>
-    <div class="modal-body" style="line-height:1.8;font-size:14px">
-      <p style="color:var(--muted);margin-bottom:16px">ทำตามขั้นตอนด้านล่างเพื่อเชื่อมต่อ Google OAuth และ Google Sheets</p>
-      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
-        <strong style="color:var(--primary)">ขั้นที่ 1 — สร้าง Google Cloud Project</strong><br>
-        ไปที่ <code style="background:#ddd;padding:2px 6px;border-radius:4px">console.cloud.google.com</code> → สร้าง Project ใหม่ → Enable APIs: <strong>Google Sheets API</strong> และ <strong>OAuth 2.0</strong>
-      </div>
-      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
-        <strong style="color:var(--primary)">ขั้นที่ 2 — ตั้งค่า OAuth Consent Screen</strong><br>
-        APIs &amp; Services → OAuth consent screen → เลือก External → กรอกชื่อ App → ในส่วน <strong>Test users</strong> ให้ใส่ Gmail ของทีมทุกคน
-      </div>
-      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
-        <strong style="color:var(--primary)">ขั้นที่ 3 — สร้าง OAuth Client ID</strong><br>
-        APIs &amp; Services → Credentials → Create Credentials → OAuth client ID → ประเภท <strong>Web application</strong> → Authorized JavaScript origins: <code style="background:#ddd;padding:2px 6px;border-radius:4px">https://ชื่อของคุณ.github.io</code>
-      </div>
-      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
-        <strong style="color:var(--primary)">ขั้นที่ 4 — สร้าง Google Sheet</strong><br>
-        สร้าง Google Sheet ใหม่ → เพิ่ม 4 ชีต: <strong>ลูกค้า, กิจกรรม, คำสั่งซื้อ, การแจ้งเตือน</strong> → Share กับทุกคนในทีม (Editor) → คัดลอก Sheet ID จาก URL (ส่วนที่อยู่ระหว่าง /d/ และ /edit)
-      </div>
-      <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px">
-        <strong style="color:var(--primary)">ขั้นที่ 5 — แก้ไขไฟล์ index.html</strong><br>
-        ค้นหา <code style="background:#ddd;padding:2px 6px;border-radius:4px">YOUR_CLIENT_ID_HERE</code> และ <code style="background:#ddd;padding:2px 6px;border-radius:4px">YOUR_SHEET_ID_HERE</code> แล้วแทนที่ด้วยค่าของคุณ
-      </div>
-      <div style="background:#dcfce7;border-radius:8px;padding:16px;">
-        <strong style="color:#166534">ขั้นที่ 6 — Deploy บน GitHub Pages</strong><br>
-        สร้าง GitHub repository (public) → อัปโหลด index.html → Settings → Pages → Source: main branch → บันทึก → รอ ~1 นาที แล้วเข้า URL ที่ได้
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="closeModal('setupModal')">เข้าใจแล้ว</button>
+    <div class="mb" id="srm-body" style="padding:14px 16px;max-height:72vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- CLIENT 360 QUICK VIEW MODAL -->
+<div class="mo" id="view360Modal">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mt" id="v360-title">Client Details</span><button class="mc" onclick="closeModal('view360Modal')">✕</button></div>
+    <div class="mb" id="v360-body" style="padding:16px 20px;max-height:70vh;overflow-y:auto"></div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('view360Modal')">Close</button>
+      <button class="btn bo" id="v360-editBtn">✏️ Edit Profile</button>
+      <button class="btn bp" id="v360-statusBtn">⚡ Update Status</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════ -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 
-// ════════════════════════════════════════════════
-// ██  CONFIG  — แก้ไขค่าเหล่านี้ก่อนใช้งาน ██
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// CONFIG — edit before use
+// ══════════════════════════════════════════
 const CONFIG = {
   CLIENT_ID: '1066590378446-q0dna2gq5e3fg87fmvp9gqmv78uomcdq.apps.googleusercontent.com',
   SHEET_ID:  '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U',
 };
 
-// ════════════════════════════════════════════════
-// CONSTANTS
-// ════════════════════════════════════════════════
-const SHEETS = {
-  CLIENTS:    'ลูกค้า',
-  ACTIVITIES: 'กิจกรรม',
-  ORDERS:     'คำสั่งซื้อ',
-  REMINDERS:  'การแจ้งเตือน',
-};
-
+const SHEETS = { CLIENTS:'Clients', HISTORY:'History', SALES:'Sales Team' };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const PRODUCTS = ['Bottle','Can','Kegs','Spirits'];
+const STORE_TYPES = ['Bottle shop','Taproom/craft beer bar','Hotel','Restaurant','Fine Dining','Cafe','Brewery','Dealer','Moderntrade','Cocktail Bar','Event','Online'];
+const CREDIT_DAYS = [0,15,30,45,60,90];
 
-const FREQ_BADGE = {
-  'ซื้อทุกเดือน':                       'badge bg',
-  'ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง':     'badge bi',
-  'ยังไม่มีการสั่งซื้อ':               'badge br',
-};
-
-const PROGRESS_BADGE = {
-  'ซื้อแล้ว':                                    'badge bg',
-  'First Order':                                  'badge bt',
-  'ส่งใบราคาแล้ว':                              'badge bb',
-  'ลูกค้าใหม่ เสนอแล้ว รอการตัดสินใจ':        'badge bi',
-  'เสนอแล้ว ลูกค้าไม่ซื้อ':                    'badge br',
-};
-
-const ACT_ICONS = {
-  'โทรศัพท์':'📞','เยี่ยมลูกค้า':'🏃','ส่งข้อความ/Line':'💬',
-  'อีเมล':'📧','ประชุม':'🤝','เสนอสินค้า':'📋','อื่นๆ':'📌',
-};
-
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // STATE
-// ════════════════════════════════════════════════
-const state = {
-  user: null, accessToken: null, tokenExpiry: null, tokenClient: null,
-  clients: [], activities: [], orders: [], reminders: [],
-  currentPage: 'dashboard', selectedClientCode: null,
-  charts: {}, reminderTab: 'pending',
+// ══════════════════════════════════════════
+const S = {
+  user:null, token:null, tokenExp:null, tokenClient:null,
+  clients:[], history:[], salesTeam:[],
+  page:'dashboard', dashTab:'clients', statusFilter:'all',
+  charts:{},
 };
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // AUTH
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 window.onload = () => {
-  if (CONFIG.CLIENT_ID.includes('YOUR_CLIENT_ID')) {
-    document.getElementById('setupBanner').style.display = 'flex';
+  const u = localStorage.getItem('crm_u');
+  const t = localStorage.getItem('crm_t');
+  const e = localStorage.getItem('crm_e');
+  if(u && t && e && Date.now() < parseInt(e)){
+    S.user=JSON.parse(u); S.token=t; S.tokenExp=parseInt(e);
+    showApp(); loadAllData();
   }
-  const saved = localStorage.getItem('crm_user');
-  const expiry = localStorage.getItem('crm_expiry');
-  if (saved && expiry && Date.now() < parseInt(expiry)) {
-    state.user = JSON.parse(saved);
-    state.accessToken = localStorage.getItem('crm_token');
-    state.tokenExpiry = parseInt(expiry);
-    showApp();
-    loadAllData();
-  }
+  setTimeout(()=>{
+    if(!window.google) return;
+    S.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.CLIENT_ID, scope: SCOPES, callback: onToken,
+    });
+  }, 600);
 };
 
-function gisReady() {
-  if (!window.google) { setTimeout(gisReady, 200); return; }
-  state.tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CONFIG.CLIENT_ID,
-    scope: SCOPES,
-    callback: handleToken,
-  });
-}
-document.addEventListener('DOMContentLoaded', () => setTimeout(gisReady, 500));
-
-function handleToken(resp) {
-  if (resp.error) { showToast('เข้าสู่ระบบไม่สำเร็จ: ' + resp.error, 'error'); return; }
-  state.accessToken = resp.access_token;
-  state.tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
-  localStorage.setItem('crm_token', state.accessToken);
-  localStorage.setItem('crm_expiry', state.tokenExpiry);
-  fetchUserInfo();
-}
-
-async function fetchUserInfo() {
-  try {
-    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${state.accessToken}` }
+function onToken(r){
+  if(r.error){ showToast('Login failed: '+r.error,'error'); return; }
+  S.token=r.access_token; S.tokenExp=Date.now()+(r.expires_in-60)*1000;
+  localStorage.setItem('crm_t',S.token); localStorage.setItem('crm_e',S.tokenExp);
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${S.token}`}})
+    .then(r=>r.json()).then(u=>{
+      S.user=u; localStorage.setItem('crm_u',JSON.stringify(u));
+      showApp(); loadAllData();
     });
-    state.user = await r.json();
-    localStorage.setItem('crm_user', JSON.stringify(state.user));
-    showApp();
-    loadAllData();
-  } catch(e) { showToast('ไม่สามารถดึงข้อมูลผู้ใช้', 'error'); }
 }
 
-function signIn() {
-  if (CONFIG.CLIENT_ID.includes('YOUR_CLIENT_ID')) { showSetupHelp(); return; }
-  if (!state.tokenClient) { showToast('กรุณารอสักครู่ แล้วลองใหม่', 'warning'); return; }
-  state.tokenClient.requestAccessToken({ prompt: '' });
+function signIn(){
+  if(CONFIG.CLIENT_ID.includes('YOUR_CLIENT_ID')){ openModal('setupModal'); return; }
+  if(!S.tokenClient){ showToast('Please wait a moment...','warning'); return; }
+  S.tokenClient.requestAccessToken({prompt:''});
 }
 
-function signOut() {
-  if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, ()=>{});
-  state.user = null; state.accessToken = null;
-  localStorage.removeItem('crm_user'); localStorage.removeItem('crm_token'); localStorage.removeItem('crm_expiry');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
+function signOut(){
+  if(S.token) google.accounts.oauth2.revoke(S.token,()=>{});
+  S.user=null; S.token=null;
+  ['crm_u','crm_t','crm_e'].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
 }
 
-function showApp() {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  if (state.user) {
-    const u = state.user;
-    if (u.picture) {
-      document.getElementById('userAvatar').innerHTML = `<img src="${u.picture}" style="width:34px;height:34px;border-radius:50%;object-fit:cover">`;
-    } else {
-      document.getElementById('userAvatar').textContent = (u.name||'?')[0].toUpperCase();
-    }
-    document.getElementById('userName').textContent = u.name || u.email;
-    document.getElementById('userEmail').textContent = u.email || '';
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  if(S.user){
+    const u=S.user;
+    const av=document.getElementById('uav');
+    av.innerHTML = u.picture ? `<img src="${u.picture}">` : (u.name||'?')[0].toUpperCase();
+    setText('uname', u.name||u.email||'');
+    setText('uemail', u.email||'');
   }
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // SHEETS API
-// ════════════════════════════════════════════════
-async function apiCall(url, opts={}) {
-  if (Date.now() > (state.tokenExpiry||0)) {
-    showToast('Session หมดอายุ กรุณา Login ใหม่', 'warning');
-    signOut(); throw new Error('Token expired');
-  }
-  const r = await fetch(url, {
-    ...opts,
-    headers: { Authorization: `Bearer ${state.accessToken}`, 'Content-Type':'application/json', ...(opts.headers||{}) }
-  });
-  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || 'API Error'); }
+// ══════════════════════════════════════════
+const BASE=()=>`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}`;
+
+async function api(url,opts={}){
+  if(Date.now()>(S.tokenExp||0)){ showToast('Session expired, please log in again','warning'); signOut(); throw new Error('expired'); }
+  const r=await fetch(url,{...opts,headers:{Authorization:`Bearer ${S.token}`,'Content-Type':'application/json',...(opts.headers||{})}});
+  if(!r.ok){ const e=await r.json(); throw new Error(e.error?.message||'API Error '+r.status); }
   return r.json();
 }
+async function shGet(range){ const d=await api(`${BASE()}/values/${encodeURIComponent(range)}`); return d.values||[]; }
+async function shAppend(sh,vals){ return api(`${BASE()}/values/${encodeURIComponent(sh)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{method:'POST',body:JSON.stringify({values:vals})}); }
+async function shUpdate(range,vals){ return api(`${BASE()}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:'PUT',body:JSON.stringify({values:vals})}); }
 
-const BASE = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}`;
-
-async function sheetsGet(range) {
-  const d = await apiCall(`${BASE}/values/${encodeURIComponent(range)}`);
-  return d.values || [];
-}
-
-async function sheetsAppend(sheet, values) {
-  return apiCall(`${BASE}/values/${encodeURIComponent(sheet)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-    method:'POST', body: JSON.stringify({ values })
-  });
-}
-
-async function sheetsUpdate(range, values) {
-  return apiCall(`${BASE}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, {
-    method:'PUT', body: JSON.stringify({ values })
-  });
-}
-
-async function initSheets() {
-  const headers = {
-    [SHEETS.CLIENTS]:    [['Salesperson','ContactCode','ชื่อลูกค้า','ชื่อร้านค้า','ประเภทร้าน','Monthly Progress','จังหวัด','วันที่สั่งซื้อล่าสุด','ประเภทสินค้าที่ซื้อ','ความถี่ในการซื้อ','จำนวนครั้งสั่งซื้อ','ยอดขายเฉลี่ยต่อครั้ง','ยอดขายรวมทั้งปี']],
-    [SHEETS.ACTIVITIES]: [['ID','วันที่','ContactCode','ชื่อร้านค้า','Salesperson','ประเภทกิจกรรม','บันทึก']],
-    [SHEETS.ORDERS]:     [['ID','วันที่','ContactCode','ชื่อร้านค้า','Salesperson','ประเภทสินค้า','จำนวน','ยอดรวม (บาท)','หมายเหตุ']],
-    [SHEETS.REMINDERS]:  [['ID','วันที่แจ้งเตือน','ContactCode','ชื่อร้านค้า','Salesperson','รายละเอียด','สถานะ']],
-  };
+// ══════════════════════════════════════════
+// INIT SHEETS
+// ══════════════════════════════════════════
+async function initSheets(){
   showLoader(true);
-  try {
-    for (const [sh, rows] of Object.entries(headers)) {
-      await sheetsUpdate(`${sh}!A1`, rows);
-    }
-    showToast('สร้างโครงสร้างชีทสำเร็จ!', 'success');
+  try{
+    await shUpdate(`${SHEETS.CLIENTS}!A1`,[[
+      'ClientCode','ShopName','ContactName','ContactPhone','LineID','Province',
+      'StoreType','SalesPerson','ProductTypes','CreditDays','CreditStatus',
+      'MonthlyStatus','ActivityNote','ActivityDate','CurrentMonth','Notes',
+      'AccountTier','LastOrderDate','LastContactDate','NextAction',
+      'PriorityScore','PriorityLevel','ClientPotential','PreferredProducts','RiskNote'
+    ]]);
+    await shUpdate(`${SHEETS.HISTORY}!A1`,[['Month','ClientCode','ShopName','SalesPerson','Status','ActivityNote','ActivityDate','ProductTypes','CreditDays','CreditStatus','ArchivedAt','AccountTier','LastOrderDate','LastContactDate','NextAction','PriorityScore','PriorityLevel','ClientPotential','PreferredProducts','RiskNote']]);
+    await shUpdate(`${SHEETS.SALES}!A1`,[['SalesName','Email','PhoneLine','MonthlyTarget','Notes']]);
+    showToast('Sheet structure created successfully!','success');
     await loadAllData();
-  } catch(e) { showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
-  finally { showLoader(false); }
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // DATA LOADING
-// ════════════════════════════════════════════════
-async function loadAllData() {
-  if (!state.accessToken) return;
-  if (CONFIG.SHEET_ID === 'YOUR_SHEET_ID_HERE') return;
+// ══════════════════════════════════════════
+async function loadAllData(){
+  if(!S.token||CONFIG.SHEET_ID==='YOUR_SHEET_ID_HERE') return;
   showLoader(true);
-  try {
-    await Promise.all([loadClients(), loadActivities(), loadOrders(), loadReminders()]);
+  try{
+    await Promise.all([loadClients(), loadHistory(), loadSalesTeam()]);
+    upgradeHeaders();
+    await checkMonthReset();
     renderCurrentPage();
-    updateReminderBadge();
-  } catch(e) {
-    showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
-  } finally { showLoader(false); }
+  }catch(e){ showToast('Failed to load data: '+e.message,'error'); }
+  finally{ showLoader(false); }
 }
 
-async function loadClients() {
-  try {
-    const rows = await sheetsGet(`${SHEETS.CLIENTS}!A:M`);
-    state.clients = rows.slice(1).map((r,i) => ({
-      row:i+2, salesperson:r[0]||'', code:r[1]||'', name:r[2]||'',
-      store:r[3]||'', type:r[4]||'', progress:r[5]||'', province:r[6]||'',
-      lastOrder:r[7]||'', products:r[8]||'', frequency:r[9]||'',
-      orderCount:parseInt(r[10])||0, avgSales:parseFloat(r[11])||0,
-      totalSales:parseFloat(r[12])||0,
-    })).filter(c=>c.store||c.name||c.code);
-  } catch(e) { if (!e.message.includes('Unable to parse')) throw e; state.clients=[]; }
+async function loadClients(){
+  try{
+    const rows=await shGet(`${SHEETS.CLIENTS}!A:Y`);
+    S.clients=rows.slice(1).map((r,i)=>({
+      row:i+2, code:r[0]||'', shop:r[1]||'', contact:r[2]||'',
+      phone:r[3]||'', line:r[4]||'', province:r[5]||'', storeType:r[6]||'',
+      salesperson:r[7]||'', products:r[8]||'', creditDays:parseInt(r[9])||0,
+      creditStatus:r[10]||'Normal', monthlyStatus:r[11]||'Grey',
+      actNote:r[12]||'', actDate:r[13]||'', currentMonth:r[14]||'',
+      notes:r[15]||'',
+      accountTier:r[16]||'', lastOrderDate:r[17]||'', lastContactDate:r[18]||'',
+      nextAction:r[19]||'', priorityScore:parseInt(r[20])||0, priorityLevel:r[21]||'',
+      clientPotential:r[22]||'', preferredProducts:r[23]||'', riskNote:r[24]||'',
+    })).filter(c=>c.shop);
+  }catch(e){ if(!e.message.includes('Unable to parse')) throw e; S.clients=[]; }
 }
 
-async function loadActivities() {
-  try {
-    const rows = await sheetsGet(`${SHEETS.ACTIVITIES}!A:G`);
-    state.activities = rows.slice(1).map((r,i) => ({
-      row:i+2, id:r[0]||'', date:r[1]||'', code:r[2]||'',
-      store:r[3]||'', salesperson:r[4]||'', actType:r[5]||'', note:r[6]||'',
-    })).filter(a=>a.id||a.note);
-  } catch(e) { state.activities=[]; }
+async function loadHistory(){
+  try{
+    const rows=await shGet(`${SHEETS.HISTORY}!A:T`); // FIX#5: cols A-T cover all 20 Phase 1 history fields
+    S.history=rows.slice(1).map((r,i)=>({
+      row:i+2, month:r[0]||'', code:r[1]||'', shop:r[2]||'',
+      salesperson:r[3]||'', status:r[4]||'', actNote:r[5]||'',
+      actDate:r[6]||'', products:r[7]||'', creditDays:r[8]||'',
+      creditStatus:r[9]||'', archivedAt:r[10]||'',
+      accountTier:r[11]||'', lastOrderDate:r[12]||'', lastContactDate:r[13]||'',
+      nextAction:r[14]||'', priorityScore:r[15]||'', priorityLevel:r[16]||'',
+      // FIX#5: new Phase 1 fields; old rows without these columns default to ''
+      clientPotential:r[17]||'', preferredProducts:r[18]||'', riskNote:r[19]||'',
+    })).filter(h=>h.month);
+  }catch(e){ S.history=[]; }
 }
 
-async function loadOrders() {
-  try {
-    const rows = await sheetsGet(`${SHEETS.ORDERS}!A:I`);
-    state.orders = rows.slice(1).map((r,i) => ({
-      row:i+2, id:r[0]||'', date:r[1]||'', code:r[2]||'', store:r[3]||'',
-      salesperson:r[4]||'', products:r[5]||'', qty:r[6]||'',
-      total:parseFloat(r[7])||0, note:r[8]||'',
-    })).filter(o=>o.id||o.store);
-  } catch(e) { state.orders=[]; }
+async function loadSalesTeam(){
+  try{
+    const rows=await shGet(`${SHEETS.SALES}!A:E`);
+    S.salesTeam=rows.slice(1).map((r,i)=>({
+      row:i+2, name:r[0]||'', email:r[1]||'', line:r[2]||'',
+      target:parseInt(r[3])||0, notes:r[4]||'',
+    })).filter(s=>s.name);
+  }catch(e){ S.salesTeam=[]; }
 }
 
-async function loadReminders() {
-  try {
-    const rows = await sheetsGet(`${SHEETS.REMINDERS}!A:G`);
-    state.reminders = rows.slice(1).map((r,i) => ({
-      row:i+2, id:r[0]||'', dueDate:r[1]||'', code:r[2]||'', store:r[3]||'',
-      salesperson:r[4]||'', detail:r[5]||'', status:r[6]||'รอดำเนินการ',
-    })).filter(r=>r.id||r.detail);
-  } catch(e) { state.reminders=[]; }
+// ══════════════════════════════════════════
+// MONTH RESET LOGIC
+// ══════════════════════════════════════════
+function currMonth(){ return new Date().toISOString().slice(0,7); }
+
+async function checkMonthReset(){
+  if(!S.clients.length) return;
+  const cm=currMonth();
+  const hasOld=S.clients.some(c=>c.currentMonth && c.currentMonth!==cm);
+  const el=document.getElementById('arcBanner');
+  if(hasOld && el) el.style.display='flex';
+  else if(el) el.style.display='none';
 }
 
-// ════════════════════════════════════════════════
+function archiveAndReset(manual=false){
+  // Open the archive modal so user can pick the month
+  const cm=currMonth();
+  const prevMonth = S.clients.find(c=>c.currentMonth)?.currentMonth || getPrevMonth(cm);
+  const el=document.getElementById('arc-month');
+  if(el) el.value=prevMonth;
+  updateArchivePreview();
+  openModal('archiveModal');
+}
+
+function updateArchivePreview(){
+  const m=document.getElementById('arc-month')?.value;
+  const el=document.getElementById('arc-preview');
+  if(!el) return;
+  if(!m){ el.textContent=''; return; }
+  const toArchive=S.clients.filter(c=>c.monthlyStatus!=='Grey'||c.actNote);
+  const green=S.clients.filter(c=>c.monthlyStatus==='Green').length;
+  const yellow=S.clients.filter(c=>c.monthlyStatus==='Yellow').length;
+  const red=S.clients.filter(c=>c.monthlyStatus==='Red').length;
+  el.innerHTML=`Archiving <strong>${fmtMonth(m)}</strong>: ${toArchive.length} records with activity &nbsp;·&nbsp; 🟢 ${green} &nbsp;🟡 ${yellow} &nbsp;🔴 ${red}<br>After reset, all ${S.clients.length} clients will return to Grey.`;
+}
+
+async function doArchive(){
+  const selectedMonth=document.getElementById('arc-month')?.value;
+  if(!selectedMonth){ showToast('Please select a month to archive','warning'); return; }
+  closeModal('archiveModal');
+  const cm=currMonth();
+  showLoader(true);
+  try{
+    // Archive all clients with any activity (non-Grey OR has a note)
+    const toArchive=S.clients.filter(c=>c.monthlyStatus!=='Grey'||c.actNote);
+    if(toArchive.length){
+      const archRows=toArchive.map(c=>{
+        const{score,level}=calcPriority(c);
+        return[
+          selectedMonth, c.code, c.shop, c.salesperson,
+          c.monthlyStatus||'Grey', c.actNote||'', c.actDate||'',
+          c.products||'', c.creditDays||0, c.creditStatus||'Normal',
+          new Date().toISOString(),
+          c.accountTier||'', c.lastOrderDate||'', c.lastContactDate||'',
+          c.nextAction||'', score, level,
+          // FIX#5: preserve all Phase 1 classification fields in archive
+          c.clientPotential||'', c.preferredProducts||'', c.riskNote||''
+        ];
+      });
+      await shAppend(SHEETS.HISTORY, archRows);
+    }
+    // Reset all clients to Grey for current month
+    if(S.clients.length){
+      const resetRows=S.clients.map(c=>{
+        const{score,level}=calcPriority({...c,monthlyStatus:'Grey',actNote:''});
+        return[
+          c.code,c.shop,c.contact,c.phone,c.line,c.province,
+          c.storeType,c.salesperson,c.products,c.creditDays,c.creditStatus,
+          'Grey','','',cm,c.notes,
+          c.accountTier||'', c.lastOrderDate||'', c.lastContactDate||'',
+          c.nextAction||'', score, level,
+          c.clientPotential||'', c.preferredProducts||'', c.riskNote||''
+        ];
+      });
+      await shUpdate(`${SHEETS.CLIENTS}!A2:Y${S.clients.length+1}`, resetRows);
+    }
+    showToast(`Archive complete! Reset ${S.clients.length} clients to Grey for ${fmtMonth(cm)}`,'success');
+    await loadAllData();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+function getPrevMonth(ym){
+  const [y,m]=ym.split('-').map(Number);
+  return m===1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,'0')}`;
+}
+
+// ══════════════════════════════════════════
 // NAVIGATION
-// ════════════════════════════════════════════════
-function navigate(page, params={}) {
-  state.currentPage = page;
-  state.selectedClientCode = params.code || null;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const el = document.getElementById(`page-${page}`);
-  if (el) el.classList.add('active');
-  const nav = document.getElementById(`nav-${page}`);
-  if (nav) nav.classList.add('active');
-  else if (page === 'client-detail') {
-    document.getElementById('nav-clients').classList.add('active');
-  }
+// ══════════════════════════════════════════
+function navigate(page){
+  S.page=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById(`page-${page}`);
+  if(pg) pg.classList.add('active');
+  const nv=document.getElementById(`nav-${page}`);
+  if(nv) nv.classList.add('active');
   renderCurrentPage();
-  if (window.innerWidth <= 768) closeSidebar();
+  if(window.innerWidth<=768) closeSB();
   window.scrollTo(0,0);
 }
 
-function renderCurrentPage() {
-  const p = state.currentPage;
-  if (p === 'dashboard') renderDashboard();
-  else if (p === 'clients') renderClientsTable();
-  else if (p === 'client-detail') renderClientDetail();
-  else if (p === 'orders') renderOrdersTable();
-  else if (p === 'reminders') renderRemindersPage();
+function renderCurrentPage(){
+  const p=S.page;
+  if(p==='dashboard') renderDashboard();
+  else if(p==='activity') renderActivity();
+  else if(p==='clients') renderClientsTable();
+  else if(p==='sales') renderSalesPage();
+  else if(p==='history') renderHistory();
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // DASHBOARD
-// ════════════════════════════════════════════════
-function renderDashboard() {
-  const c = state.clients;
-  const monthly = c.filter(x=>x.frequency==='ซื้อทุกเดือน').length;
-  const quarterly = c.filter(x=>x.frequency==='ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง').length;
-  const inactive = c.filter(x=>x.frequency==='ยังไม่มีการสั่งซื้อ'||!x.frequency).length;
-  const revenue = c.reduce((s,x)=>s+x.totalSales,0);
-  const pending = state.reminders.filter(r=>r.status==='รอดำเนินการ').length;
+// ══════════════════════════════════════════
+function renderDashboard(){
+  // Populate month selector with history months
+  const sel=document.getElementById('dashMonthSel');
+  if(sel && sel.options.length<=1){
+    const months=[...new Set(S.history.map(h=>h.month))].sort().reverse();
+    months.forEach(m=>{
+      const o=document.createElement('option');
+      o.value=m; o.text=`📁 ${fmtMonth(m)} (Archive)`;
+      sel.appendChild(o);
+    });
+  }
+  const selMonth=sel?.value||'';
+  if(selMonth){
+    renderDashFromHistory(selMonth);
+    return;
+  }
+  // ── Current month (live data) ──
+  const cm=currMonth();
+  setText('dashMonth', `Month: ${fmtMonth(cm)}`);
+  const t=S.clients.length;
+  const green=S.clients.filter(c=>c.monthlyStatus==='Green').length;
+  const yellow=S.clients.filter(c=>c.monthlyStatus==='Yellow').length;
+  const grey=S.clients.filter(c=>c.monthlyStatus==='Grey').length;
+  const red=S.clients.filter(c=>c.monthlyStatus==='Red').length;
+  const pct=t?Math.round((green/t)*100):0;
+  const late=S.clients.filter(c=>c.creditStatus==='Overdue'||c.creditStatus==='Suspended').length;
+  const suspended=S.clients.filter(c=>c.creditStatus==='Suspended').length;
+  const overdue=S.clients.filter(c=>c.creditStatus==='Overdue').length;
+  // FIX#3: dormant = date exists AND >30 days. Blank LastOrderDate = missing data, not dormant.
+  const dormant=S.clients.filter(c=>{const d=daysSince(c.lastOrderDate);return d!==null&&d>30;}).length;
+  const highPri=S.clients.filter(c=>calcPriority(c).level==='High').length;
+  // FIX#4: Tier A needing follow-up = Tier A AND (Red/Yellow status OR last contact >14d OR has nextAction)
+  const tierAFollowup=S.clients.filter(c=>{
+    if(c.accountTier!=='A') return false;
+    const lc=daysSince(c.lastContactDate);
+    return c.monthlyStatus==='Red'||c.monthlyStatus==='Yellow'||(lc!==null&&lc>14)||!!c.nextAction;
+  }).length;
 
-  setText('s-total', c.length.toLocaleString());
-  setText('s-monthly', monthly.toLocaleString());
-  setText('s-quarterly', quarterly.toLocaleString());
-  setText('s-inactive', inactive.toLocaleString());
-  setText('s-revenue', revenue >= 1000000 ? (revenue/1000000).toFixed(1)+'M' : revenue >= 1000 ? (revenue/1000).toFixed(0)+'K' : revenue.toLocaleString());
-  setText('s-reminders', pending.toLocaleString());
-
-  renderCharts();
-  renderDashReminders();
+  document.getElementById('dStats').innerHTML=`
+    <div class="sc"><div class="sci"><div class="sic ig">🏪</div><div><div class="sl2">Total Clients</div><div class="sv">${t}</div><div class="ss">shops</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ig">🟢</div><div><div class="sl2">Green (Order placed)</div><div class="sv">${green}</div><div class="ss">${pct}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ia">🟡</div><div><div class="sl2">Yellow (Contacted)</div><div class="sv">${yellow}</div><div class="ss">${t?Math.round(yellow/t*100):0}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ib">⬜</div><div><div class="sl2">Grey (Not contacted)</div><div class="sv">${grey}</div><div class="ss">${t?Math.round(grey/t*100):0}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ir">🔴</div><div><div class="sl2">Red (Problem / Lost)</div><div class="sv">${red}</div><div class="ss">${t?Math.round(red/t*100):0}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ip">👤</div><div><div class="sl2">Sales Team</div><div class="sv">${S.salesTeam.length}</div><div class="ss">people</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ir">🔥</div><div><div class="sl2">High Priority</div><div class="sv">${highPri}</div><div class="ss">need attention</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ir">⚠️</div><div><div class="sl2">Overdue Credit</div><div class="sv">${overdue}</div><div class="ss">shops</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ip">🚫</div><div><div class="sl2">Suspended</div><div class="sv">${suspended}</div><div class="ss">shops</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ib">💤</div><div><div class="sl2">Dormant 30+ days</div><div class="sv">${dormant}</div><div class="ss">no recent order</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ig">⭐</div><div><div class="sl2">Tier A — Needs Follow-up</div><div class="sv">${tierAFollowup}</div><div class="ss">need attention</div></div></div></div>
+  `;
+  if(S.dashTab==='clients') renderDashCharts();
+  else if(S.dashTab==='bysales') renderBySales();
+  else if(S.dashTab==='byproduct') renderByProduct();
+  else if(S.dashTab==='priority') renderPriorityAccounts();
 }
 
-function renderCharts() {
-  const c = state.clients;
+function renderDashFromHistory(month){
+  setText('dashMonth', `Archive: ${fmtMonth(month)}`);
+  const rows=S.history.filter(h=>h.month===month);
+  const t=rows.length;
+  const green=rows.filter(r=>r.status==='Green').length;
+  const yellow=rows.filter(r=>r.status==='Yellow').length;
+  const grey=rows.filter(r=>r.status==='Grey').length;
+  const red=rows.filter(r=>r.status==='Red').length;
+  const pct=t?Math.round(green/t*100):0;
 
-  // Salesperson chart
-  const spMap = {};
-  c.forEach(x=>{ if(x.salesperson) spMap[x.salesperson] = (spMap[x.salesperson]||0)+1; });
-  const spNames = Object.keys(spMap).sort((a,b)=>spMap[b]-spMap[a]).slice(0,8);
-  drawChart('chartSales','bar',spNames,spNames.map(k=>spMap[k]),
-    '#2d5a47',{indexAxis:'y',responsive:true,maintainAspectRatio:false});
-
-  // Store type donut
-  const typeMap = {};
-  c.forEach(x=>{ if(x.type) typeMap[x.type]=(typeMap[x.type]||0)+1; });
-  const typeKeys = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
-  const palette = ['#2d5a47','#c8942a','#3182ce','#e53e3e','#38a169','#dd6b20','#6b21a8','#134e4a','#92400e','#1e40af','#166534','#9a3412'];
-  drawChart('chartTypes','doughnut',typeKeys,typeKeys.map(k=>typeMap[k]),palette.slice(0,typeKeys.length));
-
-  // Frequency bar
-  const freqData = [
-    c.filter(x=>x.frequency==='ซื้อทุกเดือน').length,
-    c.filter(x=>x.frequency==='ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง').length,
-    c.filter(x=>x.frequency==='ยังไม่มีการสั่งซื้อ'||!x.frequency).length,
-  ];
-  drawChart('chartFreq','bar',
-    ['ซื้อทุกเดือน','ซื้อรายไตรมาส','ยังไม่สั่ง'], freqData,
-    ['#38a169','#3182ce','#e53e3e']);
-
-  // Province chart
-  const provMap = {};
-  c.forEach(x=>{ if(x.province) provMap[x.province]=(provMap[x.province]||0)+1; });
-  const provKeys = Object.keys(provMap).sort((a,b)=>provMap[b]-provMap[a]).slice(0,8);
-  drawChart('chartProvince','bar',provKeys,provKeys.map(k=>provMap[k]),'#c8942a');
+  document.getElementById('dStats').innerHTML=`
+    <div class="sc"><div class="sci"><div class="sic ig">🏪</div><div><div class="sl2">Archived Clients</div><div class="sv">${t}</div><div class="ss">records</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ig">🟢</div><div><div class="sl2">Green (Order placed)</div><div class="sv">${green}</div><div class="ss">${pct}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ia">🟡</div><div><div class="sl2">Yellow (Contacted)</div><div class="sv">${yellow}</div><div class="ss">${t?Math.round(yellow/t*100):0}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ib">⬜</div><div><div class="sl2">Grey (Not contacted)</div><div class="sv">${grey}</div><div class="ss">${t?Math.round(grey/t*100):0}% of total</div></div></div></div>
+    <div class="sc"><div class="sci"><div class="sic ir">🔴</div><div><div class="sl2">Red (Problem / Lost)</div><div class="sv">${red}</div><div class="ss">${t?Math.round(red/t*100):0}% of total</div></div></div></div>
+  `;
+  // Charts from history data
+  const el=document.getElementById('dCharts');
+  el.innerHTML=`
+    <div class="cb"><h3>📊 Status Distribution</h3><div class="cc2"><canvas id="chartStatus"></canvas></div></div>
+    <div class="cb"><h3>👤 By Salesperson</h3><div class="cc2"><canvas id="chartHistSP"></canvas></div></div>
+  `;
+  setTimeout(()=>{
+    drawChart('chartStatus','doughnut',['Green','Yellow','Grey','Red'],[green,yellow,grey,red],['#10b981','#f59e0b','#9ca3af','#e53e3e']);
+    const spMap={};
+    rows.forEach(r=>{ if(r.salesperson){ spMap[r.salesperson]=(spMap[r.salesperson]||0)+(r.status==='Green'?1:0); } });
+    const spKeys=Object.keys(spMap).sort((a,b)=>spMap[b]-spMap[a]);
+    drawChart('chartHistSP','bar',spKeys,spKeys.map(k=>spMap[k]),'#2d5a47',{indexAxis:'y'});
+  },50);
+  // Hide live-data tabs for history view
+  document.getElementById('dash-bysales').style.display='none';
+  document.getElementById('dash-byproduct').style.display='none';
+  document.getElementById('dash-priority').style.display='none';
 }
 
-function drawChart(id, type, labels, data, color, extraOpts={}) {
-  const ctx = document.getElementById(id);
-  if (!ctx) return;
-  if (state.charts[id]) state.charts[id].destroy();
-  state.charts[id] = new Chart(ctx, {
+function dashTab(tab,btn){
+  S.dashTab=tab;
+  document.querySelectorAll('#page-dashboard .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  ['clients','bysales','byproduct','priority'].forEach(t=>{
+    document.getElementById(`dash-${t}`).style.display=t===tab?'block':'none';
+  });
+  if(tab==='clients') renderDashCharts();
+  else if(tab==='bysales') renderBySales();
+  else if(tab==='byproduct') renderByProduct();
+  else if(tab==='priority') renderPriorityAccounts();
+}
+
+function renderDashCharts(){
+  const c=S.clients;
+  // Status pie
+  drawChart('chartStatus','doughnut',
+    ['Green','Yellow','Grey','Red'],[c.filter(x=>x.monthlyStatus==='Green').length,c.filter(x=>x.monthlyStatus==='Yellow').length,c.filter(x=>x.monthlyStatus==='Grey').length,c.filter(x=>x.monthlyStatus==='Red').length],
+    ['#10b981','#f59e0b','#9ca3af','#e53e3e']);
+  // Store type
+  const tm={};c.forEach(x=>{if(x.storeType)tm[x.storeType]=(tm[x.storeType]||0)+1;});
+  const tk=Object.keys(tm).sort((a,b)=>tm[b]-tm[a]);
+  drawChart('chartStore','bar',tk,tk.map(k=>tm[k]),'#2d5a47');
+  // Province top 8
+  const pm={};c.forEach(x=>{if(x.province)pm[x.province]=(pm[x.province]||0)+1;});
+  const pk=Object.keys(pm).sort((a,b)=>pm[b]-pm[a]).slice(0,8);
+  drawChart('chartProv','bar',pk,pk.map(k=>pm[k]),'#c8942a');
+  // Credit days distribution
+  const cd={};c.forEach(x=>{const l=(x.creditDays||0)+' days';cd[l]=(cd[l]||0)+1;});
+  const ck=Object.keys(cd).sort((a,b)=>parseInt(a)-parseInt(b));
+  drawChart('chartCredit','bar',ck,ck.map(k=>cd[k]),'#3182ce');
+
+  document.getElementById('dCharts').innerHTML=`
+    <div class="cb"><h3>📊 This Month's Status</h3><div class="cc2"><canvas id="chartStatus"></canvas></div></div>
+    <div class="cb"><h3>🏪 Store Types</h3><div class="cc2"><canvas id="chartStore"></canvas></div></div>
+    <div class="cb"><h3>🗺️ Province (Top 8)</h3><div class="cc2"><canvas id="chartProv"></canvas></div></div>
+    <div class="cb"><h3>💳 Credit (Days)</h3><div class="cc2"><canvas id="chartCredit"></canvas></div></div>
+  `;
+  setTimeout(()=>{
+    drawChart('chartStatus','doughnut',['Green','Yellow','Grey','Red'],
+      [S.clients.filter(x=>x.monthlyStatus==='Green').length,S.clients.filter(x=>x.monthlyStatus==='Yellow').length,S.clients.filter(x=>x.monthlyStatus==='Grey').length,S.clients.filter(x=>x.monthlyStatus==='Red').length],
+      ['#10b981','#f59e0b','#9ca3af','#e53e3e']);
+    drawChart('chartStore','bar',tk,tk.map(k=>tm[k]),'#2d5a47',{indexAxis:'y'});
+    drawChart('chartProv','bar',pk,pk.map(k=>pm[k]),'#c8942a');
+    drawChart('chartCredit','bar',ck,ck.map(k=>cd[k]),'#3182ce');
+  },50);
+}
+
+function renderBySales(){
+  const sps=[...new Set(S.clients.map(c=>c.salesperson).filter(Boolean))].sort();
+  const el=document.getElementById('bySalesContent');
+  if(!sps.length){ el.innerHTML='<div class="empty"><div class="ei">👤</div><h3>No data yet</h3></div>'; return; }
+  el.innerHTML=sps.map(sp=>{
+    const cc=S.clients.filter(c=>c.salesperson===sp);
+    const green=cc.filter(c=>c.monthlyStatus==='Green').length;
+    const yellow=cc.filter(c=>c.monthlyStatus==='Yellow').length;
+    const grey=cc.filter(c=>c.monthlyStatus==='Grey').length;
+    const red=cc.filter(c=>c.monthlyStatus==='Red').length;
+    const pct=cc.length?Math.round(green/cc.length*100):0;
+    const tm=S.salesTeam.find(s=>s.name===sp);
+    const target=tm?.target||0;
+    const vs=pct>=target;
+    return `<div class="stc">
+      <div class="stc-top">
+        <div class="stc-name" onclick='openSalesRepModal(${JSON.stringify(sp)})' title="View accounts & actions">👤 ${esc(sp)} <span style="font-size:12px;color:var(--accent)">↗</span></div>
+        <div class="stc-target">Target: ${target}% Active${target?' · <span style="color:'+(vs?'var(--success)':'var(--danger)')+'">'+(vs?'✅ On Target':'❌ Below Target')+'</span>':''}</div>
+      </div>
+      <div class="stc-nums">
+        <div class="stc-num"><div class="n" style="color:var(--green-s)">${green}</div><div class="l">Green</div></div>
+        <div class="stc-num"><div class="n" style="color:var(--yellow-s)">${yellow}</div><div class="l">Yellow</div></div>
+        <div class="stc-num"><div class="n" style="color:var(--grey-s)">${grey}</div><div class="l">Grey</div></div>
+        <div class="stc-num"><div class="n" style="color:var(--red-s)">${red}</div><div class="l">Red</div></div>
+        <div class="stc-num"><div class="n">${cc.length}</div><div class="l">Total</div></div>
+        <div class="stc-num"><div class="n" style="color:${vs?'var(--success)':'var(--danger)'}">${pct}%</div><div class="l">% Green</div></div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${pct>=target?'var(--green-s)':'var(--yellow-s)'}"></div></div>
+      ${target?`<div style="font-size:11px;color:var(--muted);margin-top:4px">Target ${target}% · Current ${pct}%</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderByProduct(){
+  const el=document.getElementById('byProductContent');
+  const counts={};
+  PRODUCTS.forEach(p=>{
+    counts[p]=S.clients.filter(c=>c.products&&c.products.includes(p)).length;
+  });
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px">
+      ${PRODUCTS.map((p,i)=>{
+        const icons=['🍾','🥫','🛢️','🥃'];
+        const colors=['#dbeafe','#dcfce7','#fef3c7','#ede9fe'];
+        return `<div class="sc"><div class="sci"><div class="sic" style="background:${colors[i]};font-size:24px">${icons[i]}</div>
+          <div><div class="sl2">${p}</div><div class="sv">${counts[p]}</div><div class="ss">shops</div></div></div></div>`;
+      }).join('')}
+    </div>
+    <div class="cg">
+      <div class="cb"><h3>📦 Shops by Product Type</h3><div class="cc2"><canvas id="chartProd"></canvas></div></div>
+      <div class="cb"><h3>📊 Product Type × Status This Month</h3><div id="prodStatusTable"></div></div>
+    </div>`;
+  setTimeout(()=>{
+    drawChart('chartProd','bar',PRODUCTS,PRODUCTS.map(p=>counts[p]),['#3182ce','#10b981','#f59e0b','#6b21a8']);
+    const tbl=document.getElementById('prodStatusTable');
+    if(tbl) tbl.innerHTML=`<div class="tw"><table><thead><tr><th>Product</th><th style="color:var(--green-s)">🟢 Green</th><th style="color:var(--yellow-s)">🟡 Yellow</th><th style="color:var(--grey-s)">⬜ Grey</th><th style="color:var(--red-s)">🔴 Red</th><th>Total</th></tr></thead><tbody>${
+      PRODUCTS.map(p=>{
+        const cc=S.clients.filter(c=>c.products&&c.products.includes(p));
+        return `<tr><td class="tds">${p}</td>
+          <td style="color:var(--green-s);font-weight:600">${cc.filter(c=>c.monthlyStatus==='Green').length}</td>
+          <td style="color:var(--yellow-s);font-weight:600">${cc.filter(c=>c.monthlyStatus==='Yellow').length}</td>
+          <td style="color:var(--grey-s);font-weight:600">${cc.filter(c=>c.monthlyStatus==='Grey').length}</td>
+          <td style="color:var(--red-s);font-weight:600">${cc.filter(c=>c.monthlyStatus==='Red').length}</td>
+          <td class="bold">${cc.length}</td></tr>`;
+      }).join('')
+    }</tbody></table></div>`;
+  },50);
+}
+
+function drawChart(id,type,labels,data,color,extra={}){
+  const ctx=document.getElementById(id);
+  if(!ctx) return;
+  if(S.charts[id]) S.charts[id].destroy();
+  S.charts[id]=new Chart(ctx,{
     type,
-    data: {
-      labels,
-      datasets:[{
-        data,
-        backgroundColor: Array.isArray(color) ? color : (type==='bar' ? color+'cc' : color),
-        borderColor: Array.isArray(color) ? color : color,
-        borderWidth: type==='doughnut'?2:0,
-        borderRadius: type==='bar'?6:0,
-      }]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ display:type==='doughnut', position:'right',
-        labels:{font:{family:'Sarabun'},boxWidth:12,padding:8} }},
-      scales: type!=='doughnut' ? {
-        x:{ticks:{font:{family:'Sarabun',size:11}},grid:{display:false}},
-        y:{ticks:{font:{family:'Sarabun',size:11}},grid:{color:'#f0f0f0'}},
-      } : undefined,
-      ...extraOpts,
-    }
+    data:{labels,datasets:[{data,backgroundColor:Array.isArray(color)?color:type==='bar'?color+'cc':color,
+      borderColor:Array.isArray(color)?color:color,borderWidth:type==='doughnut'?2:0,borderRadius:type==='bar'?5:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:type==='doughnut',position:'right',labels:{font:{family:'Inter'},boxWidth:10,padding:6}}},
+      scales:type!=='doughnut'?{x:{ticks:{font:{family:'Inter',size:10}},grid:{display:false}},
+        y:{ticks:{font:{family:'Inter',size:10}},grid:{color:'#f0f0f0'}}}:undefined,
+      ...extra}
   });
 }
 
-function renderDashReminders() {
-  const today = todayStr();
-  const upcoming = state.reminders
-    .filter(r=>r.status==='รอดำเนินการ' && r.dueDate >= today)
-    .sort((a,b)=>a.dueDate.localeCompare(b.dueDate))
-    .slice(0,5);
-  const el = document.getElementById('dashReminders');
-  if (!upcoming.length) {
-    el.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">✅</div><p>ไม่มีการแจ้งเตือนที่รอดำเนินการ</p></div>';
-    return;
+// ══════════════════════════════════════════
+// MONTHLY ACTIVITY
+// ══════════════════════════════════════════
+function renderActivity(){
+  const cm=currMonth();
+  const c=S.clients;
+  const green=c.filter(x=>x.monthlyStatus==='Green').length;
+  const yellow=c.filter(x=>x.monthlyStatus==='Yellow').length;
+  const grey=c.filter(x=>x.monthlyStatus==='Grey').length;
+  const red=c.filter(x=>x.monthlyStatus==='Red').length;
+
+  setText('actMonthLabel', `Update client status for ${fmtMonth(cm)}`);
+
+  document.getElementById('monthBanner').innerHTML=`
+    <div><div class="mb-month">${fmtMonth(cm)}</div><div class="mb-sub">Please update all client statuses before month end</div></div>
+    <div class="mb-stats">
+      <div class="mb-stat"><div class="n">${green}</div><div class="l">🟢 Green</div></div>
+      <div class="mb-stat"><div class="n">${yellow}</div><div class="l">🟡 Yellow</div></div>
+      <div class="mb-stat"><div class="n">${grey}</div><div class="l">⬜ Grey</div></div>
+      <div class="mb-stat"><div class="n" style="color:var(--red-s)">${red}</div><div class="l">🔴 Red</div></div>
+      <div class="mb-stat"><div class="n">${c.length?Math.round(green/c.length*100):0}%</div><div class="l">% Active</div></div>
+    </div>`;
+
+  // Populate sales filter
+  const sf=document.getElementById('actSalesFilter');
+  if(sf&&sf.options.length<=1){
+    const sps=[...new Set(c.map(x=>x.salesperson).filter(Boolean))].sort();
+    sps.forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;sf.appendChild(o);});
   }
-  el.innerHTML = upcoming.map(r => reminderItemHTML(r)).join('');
+  renderActivity2();
 }
 
-// ════════════════════════════════════════════════
+function renderActivity2(){
+  const search=(document.getElementById('actSearch')?.value||'').toLowerCase();
+  const spF=document.getElementById('actSalesFilter')?.value||'';
+  let list=[...S.clients].filter(c=>{
+    const txt=`${c.shop} ${c.contact} ${c.province} ${c.salesperson}`.toLowerCase();
+    return (!search||txt.includes(search)) && (!spF||c.salesperson===spF) &&
+      (S.statusFilter==='all'||c.monthlyStatus===S.statusFilter);
+  }).sort((a,b)=>{
+    const o={'Red':-1,'Grey':0,'Yellow':1,'Green':2};
+    return (o[b.monthlyStatus]??0)-(o[a.monthlyStatus]??0) || a.shop.localeCompare(b.shop,'en');
+  });
+  setText('actCount',`${list.length} shops`);
+  const el=document.getElementById('actGrid');
+  if(!list.length){ el.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="ei">🔍</div><h3>No clients found</h3><p>Try changing the filters</p></div>'; return; }
+  el.innerHTML=list.map(c=>clientCard(c)).join('');
+}
+
+function clientCard(c){
+  const scls=`status-${(c.monthlyStatus||'Grey').toLowerCase()}`;
+  const pills={Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'};
+  const pv=c.products?c.products.split(',').map(p=>`<span class="badge bk2" style="font-size:10px">${p.trim()}</span>`).join(' '):'';
+  const{score,level}=calcPriority(c);
+  return `<div class="cc ${scls}" onclick="open360Modal(${c.row})">
+    <div class="cc-top">
+      <div><div class="cc-name">${esc(c.shop)}</div><div class="cc-sub">${esc(c.storeType)||'—'} · ${esc(c.province)||'—'}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="s-pill ${pills[c.monthlyStatus]||'sp-grey'}"><span class="s-dot sd-${(c.monthlyStatus||'Grey').toLowerCase()}"></span>${c.monthlyStatus||'Grey'}</span>
+        ${c.accountTier?`${tierBadge(c.accountTier)} `:''}${level!=='Low'?priorityBadge(level,score):''}
+      </div>
+    </div>
+    <div class="cc-body">
+      <div class="cc-row">👤 <span>${esc(c.salesperson)||'—'}</span></div>
+      <div class="cc-row">💳 <span>${c.creditDays} days · <span class="${creditCls(c.creditStatus)}">${c.creditStatus||'Normal'}</span></span></div>
+      ${pv?`<div class="cc-row" style="gap:4px;flex-wrap:wrap">${pv}</div>`:''}
+      ${c.code?`<div class="cc-row">🔖 <span style="font-family:monospace;font-size:11px">${esc(c.code)}</span></div>`:''}
+    </div>
+    ${c.actNote?`<div class="cc-note">📝 ${esc(c.actNote)}</div>`:'<div class="cc-note" style="color:var(--muted);font-style:italic">No activity recorded — click to update</div>'}
+  </div>`;
+}
+
+function setStatusFilter(f,btn){
+  S.statusFilter=f;
+  document.querySelectorAll('.sfb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderActivity2();
+}
+
+// ══════════════════════════════════════════
 // CLIENTS TABLE
-// ════════════════════════════════════════════════
-function renderClientsTable() {
-  const search = (document.getElementById('clientSearch')?.value||'').toLowerCase();
-  const spFilter = document.getElementById('filterSalesperson')?.value||'';
-  const typeFilter = document.getElementById('filterType')?.value||'';
-  const freqFilter = document.getElementById('filterFreq')?.value||'';
+// ══════════════════════════════════════════
+function renderClientsTable(){
+  const search=(document.getElementById('clSearch')?.value||'').toLowerCase();
+  const spF=document.getElementById('clSalesF')?.value||'';
+  const tyF=document.getElementById('clTypeF')?.value||'';
+  const crF=document.getElementById('clCreditF')?.value||'';
 
-  // Populate salesperson filter
-  const spSel = document.getElementById('filterSalesperson');
-  if (spSel && spSel.options.length <= 1) {
-    const sps = [...new Set(state.clients.map(c=>c.salesperson).filter(Boolean))].sort();
-    sps.forEach(sp=>{ const o=document.createElement('option'); o.value=sp; o.text=sp; spSel.appendChild(o); });
+  const sf=document.getElementById('clSalesF');
+  if(sf&&sf.options.length<=1){
+    const sps=[...new Set(S.clients.map(c=>c.salesperson).filter(Boolean))].sort();
+    sps.forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;sf.appendChild(o);});
   }
 
-  let list = state.clients.filter(c => {
-    const txt = `${c.store} ${c.name} ${c.code} ${c.province}`.toLowerCase();
-    return (!search || txt.includes(search))
-      && (!spFilter || c.salesperson===spFilter)
-      && (!typeFilter || c.type===typeFilter)
-      && (!freqFilter || c.frequency===freqFilter);
+  const list=S.clients.filter(c=>{
+    const txt=`${c.shop} ${c.contact} ${c.code} ${c.province}`.toLowerCase();
+    return (!search||txt.includes(search))&&(!spF||c.salesperson===spF)&&
+           (!tyF||c.storeType===tyF)&&(!crF||c.creditStatus===crF);
   });
 
-  setText('clientCountLabel', `ลูกค้าทั้งหมด ${state.clients.length} ราย`);
-  setText('filteredCount', search||spFilter||typeFilter||freqFilter ? `แสดง ${list.length} ราย` : '');
+  setText('clientsCountLabel',`Total ${S.clients.length} clients`);
+  setText('clCount',`${list.length} clients`);
 
-  const tbody = document.getElementById('clientsBody');
-  if (!tbody) return;
-  if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔍</div><h3>ไม่พบลูกค้า</h3><p>ลองเปลี่ยนคำค้นหา</p></div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = list.map(c => `
-    <tr onclick="navigate('client-detail',{code:'${esc(c.code||c.store)}'})">
-      <td class="td-store">${esc(c.store)||'—'}</td>
-      <td>${esc(c.name)||'—'}</td>
-      <td>${c.type ? `<span class="badge bk">${esc(c.type)}</span>`:'—'}</td>
-      <td>${esc(c.province)||'—'}</td>
-      <td>${esc(c.salesperson)||'—'}</td>
-      <td>${c.frequency ? `<span class="${FREQ_BADGE[c.frequency]||'badge bk'}">${esc(c.frequency)}</span>`:'—'}</td>
-      <td>${fmtDate(c.lastOrder)}</td>
-      <td class="text-right">${c.totalSales ? fmtThb(c.totalSales) : '—'}</td>
-      <td>${c.progress ? `<span class="${PROGRESS_BADGE[c.progress]||'badge bk'}">${esc(c.progress)}</span>`:'—'}</td>
-    </tr>`).join('');
+  const pills={Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'};
+  const tbody=document.getElementById('clBody');
+  if(!tbody) return;
+  if(!list.length){ tbody.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="ei">🔍</div><h3>No clients found</h3></div></td></tr>`; return; }
+  tbody.innerHTML=list.map(c=>{const{score,level}=calcPriority(c);return`<tr onclick="open360Modal(${c.row})" style="cursor:pointer">
+    <td style="font-family:monospace;font-size:11px">${esc(c.code)||'—'}</td>
+    <td>${tierBadge(c.accountTier)}</td>
+    <td class="tds">${esc(c.shop)}</td>
+    <td>${esc(c.contact)||'—'}${c.phone?`<br><span class="tsm tmu">${esc(c.phone)}</span>`:''}</td>
+    <td>${c.storeType?`<span class="badge bk2">${esc(c.storeType)}</span>`:'—'}</td>
+    <td>${esc(c.province)||'—'}</td>
+    <td>${c.products?c.products.split(',').map(p=>`<span class="badge bi2" style="font-size:10px">${p.trim()}</span>`).join(' '):'—'}</td>
+    <td>${c.creditDays} days</td>
+    <td><span class="${creditCls(c.creditStatus)}">${c.creditStatus||'Normal'}</span></td>
+    <td>${esc(c.salesperson)||'—'}</td>
+    <td><span class="s-pill ${pills[c.monthlyStatus]||'sp-grey'}"><span class="s-dot sd-${(c.monthlyStatus||'Grey').toLowerCase()}"></span>${c.monthlyStatus||'Grey'}</span></td>
+    <td>${priorityBadge(level,score)}</td>
+    <td onclick="event.stopPropagation()" style="white-space:nowrap">
+      <button class="btn bo bxs" title="Edit profile" onclick="openClientModal(${c.row})">✏️</button>
+      <button class="btn bxs" style="background:#f59e0b;color:#fff;margin-left:4px" title="Update status" onclick="openStatusModal(${c.row})">⚡</button>
+      <button class="btn bxs" style="background:#fee2e2;color:#991b1b;margin-left:4px" title="Delete client" onclick="deleteClient(${c.row})">🗑️</button>
+    </td>
+  </tr>`}).join('');
 }
 
-// ════════════════════════════════════════════════
-// CLIENT DETAIL
-// ════════════════════════════════════════════════
-function renderClientDetail() {
-  const key = state.selectedClientCode;
-  const client = state.clients.find(c => (c.code||c.store)===key) || state.clients.find(c=>c.store===key);
-  const el = document.getElementById('clientDetailContent');
-  if (!client) { el.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><h3>ไม่พบข้อมูลลูกค้า</h3></div>'; return; }
+// ══════════════════════════════════════════
+// SALES PAGE
+// ══════════════════════════════════════════
+function renderSalesPage(){
+  const tbody=document.getElementById('salesBody');
+  if(!tbody) return;
+  if(!S.salesTeam.length){
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="ei">👤</div><h3>No salespeople yet</h3><p>Click "+ Add Salesperson" to get started</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=S.salesTeam.map(s=>{
+    const cc=S.clients.filter(c=>c.salesperson===s.name);
+    const green=cc.filter(c=>c.monthlyStatus==='Green').length;
+    const pct=cc.length?Math.round(green/cc.length*100):0;
+    const hit=s.target&&pct>=s.target;
+    return `<tr>
+      <td class="tds">👤 ${esc(s.name)}</td>
+      <td><span class="tsm tmu">${esc(s.email)||'—'}</span></td>
+      <td><span class="tsm tmu">${esc(s.line)||'—'}</span></td>
+      <td>${s.target?`<span style="font-weight:600">${s.target}%</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-weight:700;text-align:center">${cc.length}</td>
+      <td style="color:var(--green-s);font-weight:700;text-align:center">${green}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:${hit?'var(--green-s)':'var(--danger)'}; min-width:36px">${pct}%</span>
+          ${s.target?`<div class="prog-bar" style="flex:1;min-width:60px"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${hit?'var(--green-s)':'var(--yellow-s)'}"></div></div>
+          <span style="font-size:11px;color:${hit?'var(--green-s)':'var(--danger)'}">${hit?'✅ On Target':'❌ Below'}</span>`:''}
+        </div>
+      </td>
+      <td><span class="tsm tmu">${esc(s.notes)||'—'}</span></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn bo bxs" title="Edit" onclick="openSalesModal(${s.row})">✏️</button>
+        <button class="btn bxs" style="background:#fee2e2;color:#991b1b;margin-left:4px" title="Delete" onclick="deleteSalesMember(${s.row})">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
 
-  const clientActivities = state.activities.filter(a=>a.code===client.code||a.store===client.store).sort((a,b)=>b.date.localeCompare(a.date));
-  const clientOrders = state.orders.filter(o=>o.code===client.code||o.store===client.store).sort((a,b)=>b.date.localeCompare(a.date));
-  const clientReminders = state.reminders.filter(r=>r.code===client.code||r.store===client.store);
-
-  el.innerHTML = `
-  <div class="client-banner">
-    <div class="flex justify-between items-center flex-wrap gap-2">
-      <div>
-        <h2>${esc(client.store)||esc(client.name)}</h2>
-        <p>${esc(client.name)} · ${esc(client.type)} · ${esc(client.province)}</p>
-      </div>
-      <div class="flex gap-2">
-        <button class="btn btn-outline btn-sm" style="background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.3)" onclick="openClientModal('${esc(client.code||client.store)}')">✏️ แก้ไข</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="openOrderModal('${esc(client.code||client.store)}')">🛒 บันทึกคำสั่งซื้อ</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="openActivityModal('${esc(client.code)}','${esc(client.store)}')">📝 บันทึกกิจกรรม</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="detail-grid">
-    <!-- Left: Info -->
-    <div>
-      <div class="card mb-4">
-        <div class="card-title mb-3">📋 ข้อมูลลูกค้า</div>
-        ${infoRow('รหัสลูกค้า', client.code||'—')}
-        ${infoRow('ประเภทร้าน', client.type||'—')}
-        ${infoRow('จังหวัด', client.province||'—')}
-        ${infoRow('Salesperson', client.salesperson||'—')}
-        ${infoRow('สินค้าที่ซื้อ', client.products||'—')}
-        ${infoRow('ความถี่', client.frequency ? `<span class="${FREQ_BADGE[client.frequency]||'badge bk'}">${esc(client.frequency)}</span>` : '—')}
-        ${infoRow('สั่งซื้อล่าสุด', fmtDate(client.lastOrder)||'—')}
-        ${infoRow('Monthly Progress', client.progress ? `<span class="${PROGRESS_BADGE[client.progress]||'badge bk'}">${esc(client.progress)}</span>` : '—')}
-      </div>
-      <div class="card mb-4">
-        <div class="card-title mb-3">💰 สถิติยอดขาย</div>
-        ${infoRow('จำนวนครั้งสั่งซื้อ', (client.orderCount||'—')+' ครั้ง')}
-        ${infoRow('ยอดเฉลี่ย/ครั้ง', client.avgSales ? fmtThb(client.avgSales)+' บาท' : '—')}
-        ${infoRow('ยอดรวมทั้งปี', client.totalSales ? fmtThb(client.totalSales)+' บาท' : '—')}
-      </div>
-      <div class="card">
-        <div class="card-header"><span class="card-title">🔔 การแจ้งเตือน (${clientReminders.filter(r=>r.status==='รอดำเนินการ').length})</span>
-          <button class="btn btn-outline btn-sm" onclick="openReminderModal('${esc(client.code)}','${esc(client.store)}','${esc(client.salesperson)}')">+ เพิ่ม</button></div>
-        ${clientReminders.length ? clientReminders.slice(0,3).map(r=>reminderItemHTML(r,true)).join('') : '<p class="text-muted text-sm" style="padding:8px 0">ยังไม่มีการแจ้งเตือน</p>'}
-      </div>
-    </div>
-
-    <!-- Right: Tabs -->
-    <div>
-      <div class="tabs">
-        <button class="tab active" onclick="detailTab('activities',this)">📝 กิจกรรม (${clientActivities.length})</button>
-        <button class="tab" onclick="detailTab('orders',this)">🛒 คำสั่งซื้อ (${clientOrders.length})</button>
-      </div>
-      <div id="detailActivities">
-        ${clientActivities.length ? `<div class="timeline">${clientActivities.map(a=>`
-          <div class="timeline-item">
-            <div class="t-dot">${ACT_ICONS[a.actType]||'📌'}</div>
-            <div class="t-body">
-              <div class="t-head"><span class="t-type">${esc(a.actType)}</span><span class="t-date">${fmtDate(a.date)}</span></div>
-              <div class="t-text">${esc(a.note)}</div>
-              <div class="t-person">โดย ${esc(a.salesperson)}</div>
-            </div>
-          </div>`).join('')}</div>` :
-          '<div class="empty-state" style="padding:40px"><div class="empty-icon">📝</div><h3>ยังไม่มีกิจกรรม</h3><p>กดปุ่ม "บันทึกกิจกรรม" เพื่อเริ่มต้น</p></div>'}
-        <div class="mt-4">
-          <button class="btn btn-outline w-full" onclick="openActivityModal('${esc(client.code)}','${esc(client.store)}')">+ บันทึกกิจกรรมใหม่</button>
+// ══════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════
+function renderHistory(){
+  const spF=document.getElementById('histSalesFilter')?.value||'';
+  const sf=document.getElementById('histSalesFilter');
+  if(sf&&sf.options.length<=1){
+    const sps=[...new Set(S.history.map(h=>h.salesperson).filter(Boolean))].sort();
+    sps.forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;sf.appendChild(o);});
+  }
+  let data=S.history.filter(h=>!spF||h.salesperson===spF);
+  const months=[...new Set(data.map(h=>h.month))].sort().reverse();
+  const el=document.getElementById('histContent');
+  if(!months.length){ el.innerHTML='<div class="empty"><div class="ei">📜</div><h3>No history yet</h3><p>Data will appear after the first archive</p></div>'; return; }
+  el.innerHTML=months.map(m=>{
+    const rows=data.filter(h=>h.month===m);
+    const green=rows.filter(r=>r.status==='Green').length;
+    const yellow=rows.filter(r=>r.status==='Yellow').length;
+    const red=rows.filter(r=>r.status==='Red').length;
+    return `<div class="hist-month">
+      <div class="hist-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <span class="hist-title">📅 ${fmtMonth(m)}</span>
+        <div class="flex gap2 ic">
+          <span class="s-pill sp-green">🟢 ${green}</span>
+          <span class="s-pill sp-yellow">🟡 ${yellow}</span>
+          ${red?`<span class="s-pill sp-red">🔴 ${red}</span>`:''}
+          <span class="tsm tmu">${rows.length} records ▾</span>
         </div>
       </div>
-      <div id="detailOrders" style="display:none">
-        ${clientOrders.length ? `<div class="table-wrapper"><table>
-          <thead><tr><th>วันที่</th><th>สินค้า</th><th>จำนวน</th><th class="text-right">ยอดรวม</th><th>หมายเหตุ</th></tr></thead>
-          <tbody>${clientOrders.map(o=>`<tr>
-            <td>${fmtDate(o.date)}</td><td>${esc(o.products)}</td><td>${esc(o.qty)||'—'}</td>
-            <td class="text-right font-bold">${o.total?fmtThb(o.total)+' ฿':'—'}</td><td>${esc(o.note)||'—'}</td>
+      <div class="hist-body" style="display:none">
+        <div class="tw"><table>
+          <thead><tr><th>Shop</th><th>Sales</th><th>Status</th><th>Products</th><th>Credit</th><th>Note</th><th style="width:80px">Actions</th></tr></thead>
+          <tbody>${rows.map(r=>`<tr>
+            <td class="tds">${esc(r.shop)}</td>
+            <td>${esc(r.salesperson)||'—'}</td>
+            <td><span class="s-pill ${r.status==='Green'?'sp-green':r.status==='Yellow'?'sp-yellow':r.status==='Red'?'sp-red':'sp-grey'}"><span class="s-dot sd-${(r.status||'Grey').toLowerCase()}"></span>${r.status||'Grey'}</span></td>
+            <td>${esc(r.products)||'—'}</td>
+            <td>${r.creditDays?r.creditDays+' days':'—'}</td>
+            <td>${esc(r.actNote)||'—'}</td>
+            <td onclick="event.stopPropagation()" style="white-space:nowrap">
+              <button class="btn bo bxs" title="Edit record" onclick="openHistEditModal(${r.row})">✏️</button>
+              <button class="btn bxs" style="background:#fee2e2;color:#991b1b;margin-left:4px" title="Delete record" onclick="deleteHistoryRecord(${r.row})">🗑️</button>
+            </td>
           </tr>`).join('')}</tbody>
-        </table></div>` :
-          '<div class="empty-state" style="padding:40px"><div class="empty-icon">🛒</div><h3>ยังไม่มีคำสั่งซื้อ</h3></div>'}
-        <div class="mt-4">
-          <button class="btn btn-outline w-full" onclick="openOrderModal('${esc(client.code||client.store)}')">+ บันทึกคำสั่งซื้อใหม่</button>
-        </div>
+        </table></div>
       </div>
-    </div>
-  </div>`;
+    </div>`;
+  }).join('');
 }
 
-function detailTab(tab, btn) {
-  document.querySelectorAll('#page-client-detail .tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('detailActivities').style.display = tab==='activities'?'block':'none';
-  document.getElementById('detailOrders').style.display = tab==='orders'?'block':'none';
+function openHistEditModal(row){
+  const h=S.history.find(x=>x.row===row);
+  if(!h){ showToast('Record not found','error'); return; }
+  setText('hemTitle',`Edit: ${h.shop}`);
+  setVal('hem-status',h.status||'Grey');
+  setVal('hem-note',h.actNote||'');
+  setVal('hem-row',String(row));
+  openModal('histEditModal');
 }
 
-function infoRow(label, val) {
-  return `<div class="info-row"><div class="info-label">${label}</div><div class="info-value">${val}</div></div>`;
+async function saveHistEdit(){
+  const row=parseInt(document.getElementById('hem-row')?.value);
+  const status=document.getElementById('hem-status')?.value||'Grey';
+  const note=document.getElementById('hem-note')?.value||'';
+  const h=S.history.find(x=>x.row===row);
+  if(!h){ showToast('Record not found','error'); return; }
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.HISTORY}!E${row}:F${row}`,[[status,note]]);
+    h.status=status; h.actNote=note;
+    showToast('Record updated','success');
+    closeModal('histEditModal');
+    renderHistory();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
 }
 
-// ════════════════════════════════════════════════
-// ORDERS TABLE
-// ════════════════════════════════════════════════
-function renderOrdersTable() {
-  const search = (document.getElementById('orderSearch')?.value||'').toLowerCase();
-  const spFilter = document.getElementById('filterOrderSales')?.value||'';
-
-  const spSel = document.getElementById('filterOrderSales');
-  if (spSel && spSel.options.length<=1) {
-    const sps = [...new Set(state.orders.map(o=>o.salesperson).filter(Boolean))].sort();
-    sps.forEach(sp=>{ const o=document.createElement('option'); o.value=sp; o.text=sp; spSel.appendChild(o); });
-  }
-
-  let list = [...state.orders].sort((a,b)=>b.date.localeCompare(a.date)).filter(o=>{
-    const txt = `${o.store} ${o.products} ${o.note}`.toLowerCase();
-    return (!search||txt.includes(search)) && (!spFilter||o.salesperson===spFilter);
-  });
-
-  setText('ordersCount', `${list.length} รายการ`);
-  const tbody = document.getElementById('ordersBody');
-  if (!tbody) return;
-  if (!list.length) {
-    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🛒</div><h3>ยังไม่มีคำสั่งซื้อ</h3></div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = list.map(o=>`<tr onclick="navigate('client-detail',{code:'${esc(o.code||o.store)}'})">
-    <td>${fmtDate(o.date)}</td>
-    <td class="td-store">${esc(o.store)}</td>
-    <td>${esc(o.products)}</td>
-    <td>${esc(o.qty)||'—'}</td>
-    <td class="text-right font-bold">${o.total?fmtThb(o.total):'-'}</td>
-    <td>${esc(o.salesperson)||'—'}</td>
-    <td>${esc(o.note)||'—'}</td>
-  </tr>`).join('');
+async function deleteHistoryRecord(row){
+  if(!confirm('Delete this history record? This cannot be undone.')) return;
+  showLoader(true);
+  try{
+    // FIX#5: clear all 20 history columns so row is fully blank
+    await shUpdate(`${SHEETS.HISTORY}!A${row}:T${row}`,[Array(20).fill('')]);
+    S.history=S.history.filter(h=>h.row!==row);
+    showToast('Record deleted','success');
+    renderHistory();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
 }
 
-// ════════════════════════════════════════════════
-// REMINDERS PAGE
-// ════════════════════════════════════════════════
-function renderRemindersPage() {
-  const tab = state.reminderTab;
-  const today = todayStr();
-  let list = [...state.reminders].sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-  if (tab==='pending') list = list.filter(r=>r.status==='รอดำเนินการ');
-  else if (tab==='done') list = list.filter(r=>r.status==='เสร็จสิ้น');
-
-  const el = document.getElementById('remindersContent');
-  if (!list.length) {
-    el.innerHTML='<div class="empty-state"><div class="empty-icon">🔔</div><h3>ไม่มีการแจ้งเตือน</h3><p>กดปุ่มด้านบนเพื่อเพิ่มการแจ้งเตือนใหม่</p></div>';
-    return;
-  }
-  el.innerHTML = list.map(r=>reminderItemHTML(r)).join('');
-  updateReminderBadge();
-}
-
-function reminderItemHTML(r, compact=false) {
-  const today = todayStr();
-  const cls = r.status==='เสร็จสิ้น' ? 'done' : r.dueDate < today ? 'overdue' : r.dueDate===today ? 'today' : 'upcoming';
-  const d = r.dueDate ? new Date(r.dueDate) : null;
-  const dayNum = d ? d.getDate() : '—';
-  const monthName = d ? d.toLocaleDateString('th-TH',{month:'short'}) : '';
-  return `<div class="reminder-item ${cls}">
-    <div class="r-date-block"><div class="r-day">${dayNum}</div><div class="r-month">${monthName}</div></div>
-    <div class="r-content">
-      <div class="r-title">${esc(r.store)}</div>
-      <div class="r-detail">${esc(r.detail)}</div>
-      <div class="r-meta">👤 ${esc(r.salesperson)||'—'} · ${statusLabel(cls)}</div>
-    </div>
-    ${!compact && r.status!=='เสร็จสิ้น' ? `<div class="r-actions">
-      <button class="btn btn-sm btn-outline" onclick="markReminderDone(${r.row},'${esc(r.id)}')">✅ เสร็จ</button>
-    </div>` : ''}
-  </div>`;
-}
-
-function statusLabel(cls) {
-  return cls==='overdue'?'<span class="badge br">เกินกำหนด</span>':
-         cls==='today'?'<span class="badge bb">วันนี้</span>':
-         cls==='done'?'<span class="badge bg">เสร็จสิ้น</span>':
-         '<span class="badge bk">รอดำเนินการ</span>';
-}
-
-function switchReminderTab(tab, btn) {
-  state.reminderTab = tab;
-  document.querySelectorAll('#page-reminders .tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  renderRemindersPage();
-}
-
-function updateReminderBadge() {
-  const today = todayStr();
-  const cnt = state.reminders.filter(r=>r.status==='รอดำเนินการ' && r.dueDate<=today).length;
-  const badge = document.getElementById('reminderBadge');
-  if (!badge) return;
-  badge.style.display = cnt>0 ? 'inline-block' : 'none';
-  badge.textContent = cnt;
-}
-
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // MODAL HELPERS
-// ════════════════════════════════════════════════
-function openClientModal(key='') {
-  const c = key ? state.clients.find(x=>(x.code||x.store)===key) : null;
-  document.getElementById('clientModalTitle').textContent = c ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่';
-  setVal('f-store', c?.store||'');
-  setVal('f-name', c?.name||'');
-  setVal('f-code', c?.code||'');
-  setVal('f-type', c?.type||'');
-  setVal('f-salesperson', c?.salesperson||state.user?.name||'');
-  setVal('f-province', c?.province||'');
-  setVal('f-progress', c?.progress||'');
-  setVal('f-products', c?.products||'');
-  setVal('f-editRow', c?.row||'');
+// ══════════════════════════════════════════
+function openClientModal(row=''){
+  const c=row?S.clients.find(x=>x.row===row):null;
+  setText('cmTitle', c?'Edit Client':'Add New Client');
+  setVal('cf-shop',c?.shop||'');setVal('cf-code',c?.code||'');
+  setVal('cf-contact',c?.contact||'');setVal('cf-phone',c?.phone||'');
+  setVal('cf-line',c?.line||'');setVal('cf-province',c?.province||'');
+  setVal('cf-type',c?.storeType||'');
+  // Rebuild salesperson dropdown from Sales Team data
+  const cfSales=document.getElementById('cf-sales');
+  if(cfSales){
+    cfSales.innerHTML='<option value="">— Select Salesperson —</option>';
+    S.salesTeam.forEach(s=>{
+      const o=document.createElement('option');
+      o.value=s.name; o.textContent=s.name;
+      cfSales.appendChild(o);
+    });
+    // Pre-select: existing client's salesperson, or add a placeholder if not in list
+    const currentSP=c?.salesperson||'';
+    if(currentSP && !S.salesTeam.find(s=>s.name===currentSP)){
+      const o=document.createElement('option');
+      o.value=currentSP; o.textContent=currentSP+' (not in team)';
+      cfSales.insertBefore(o, cfSales.options[1]);
+    }
+    setVal('cf-sales',currentSP);
+  }
+  setVal('cf-credit',String(c?.creditDays||0));setVal('cf-creditst',c?.creditStatus||'Normal');
+  setVal('cf-notes',c?.notes||'');setVal('cf-row',row||'');
+  const prods=(c?.products||'').split(',').map(p=>p.trim());
+  ['Bottle','Can','Kegs','Spirits'].forEach(p=>{
+    const el=document.getElementById(`cp-${p.toLowerCase()}`);
+    if(el){ el.checked=prods.includes(p); el.closest('.pcheck').classList.toggle('checked',prods.includes(p)); }
+  });
+  setVal('cf-tier',c?.accountTier||'');
+  setVal('cf-potential',c?.clientPotential||'');
+  setVal('cf-lastorder',c?.lastOrderDate||'');
+  setVal('cf-lastcontact',c?.lastContactDate||'');
+  setVal('cf-nextaction',c?.nextAction||'');
+  setVal('cf-prefprod',c?.preferredProducts||'');
+  setVal('cf-risknote',c?.riskNote||'');
   openModal('clientModal');
 }
 
-function openActivityModal(code='', store='') {
-  setVal('fa-date', todayStr());
-  setVal('fa-code', code);
-  setVal('fa-store', store);
-  setVal('fa-note', '');
-  openModal('activityModal');
+function openStatusModal(row=''){
+  const c=row?S.clients.find(x=>x.row===row):null;
+  if(!c&&row){ showToast('Client not found','error'); return; }
+  // If no specific client, open blank for quick selection
+  if(!c){ navigate('activity'); return; }
+  setText('smTitle',`Update: ${c.shop}`);
+  document.getElementById('sm-client-info').innerHTML=`
+    <strong>${esc(c.shop)}</strong> · ${esc(c.storeType)||'—'} · ${esc(c.province)||'—'}<br>
+    👤 ${esc(c.salesperson)||'—'} &nbsp;|&nbsp; 💳 ${c.creditDays} days`;
+  selectStatus(c.monthlyStatus||'Grey');
+  setVal('sm-note',c.actNote||'');
+  setVal('sm-credit',String(c.creditDays||0));
+  setVal('sm-creditst',c.creditStatus||'Normal');
+  setVal('sm-row',row);
+  const prods=(c.products||'').split(',').map(p=>p.trim());
+  ['bottle','can','kegs','spirits'].forEach(p=>{
+    const el=document.getElementById(`sm-${p}`);
+    if(el){ el.checked=prods.includes(p[0].toUpperCase()+p.slice(1)); el.closest('.pcheck').classList.toggle('checked',el.checked); }
+  });
+  setVal('sm-lastcontact',c.lastContactDate||'');
+  setVal('sm-lastorder',c.lastOrderDate||'');
+  setVal('sm-nextaction',c.nextAction||'');
+  setVal('sm-risknote',c.riskNote||'');
+  openModal('statusModal');
 }
 
-function openOrderModal(key='') {
-  populateClientSelect('fo-client');
-  setVal('fo-date', todayStr());
-  setVal('fo-note', '');
-  setVal('fo-total', '');
-  setVal('fo-qty', '');
-  setVal('fo-code', '');
-  if (key) {
-    const c = state.clients.find(x=>(x.code||x.store)===key)||state.clients.find(x=>x.store===key);
-    if (c) {
-      setVal('fo-client', c.store);
-      setVal('fo-salesperson', c.salesperson||state.user?.name||'');
-      setVal('fo-code', c.code||'');
-    }
-  } else {
-    setVal('fo-salesperson', state.user?.name||'');
-  }
-  openModal('orderModal');
-}
-
-function openReminderModal(code='', store='', salesperson='') {
-  populateClientSelect('fr-client');
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7);
-  setVal('fr-date', tomorrow.toISOString().split('T')[0]);
-  setVal('fr-detail', '');
-  setVal('fr-code', code);
-  setVal('fr-store', store);
-  setVal('fr-salesperson', salesperson||state.user?.name||'');
-  if (store) {
-    const sel = document.getElementById('fr-client');
-    if (sel) { for(let o of sel.options) { if(o.value===store){o.selected=true;break;} } }
-  }
-  openModal('reminderModal');
-}
-
-function populateClientSelect(id) {
-  const sel = document.getElementById(id);
-  if (!sel) return;
-  sel.innerHTML = '<option value="">— เลือกลูกค้า —</option>';
-  const sorted = [...state.clients].sort((a,b)=>a.store.localeCompare(b.store,'th'));
-  sorted.forEach(c=>{
-    const o = document.createElement('option');
-    o.value = c.store;
-    o.dataset.code = c.code||'';
-    o.dataset.sales = c.salesperson||'';
-    o.text = c.store + (c.province?` (${c.province})`:'');
-    sel.appendChild(o);
+function selectStatus(s){
+  setVal('sm-status',s);
+  ['Grey','Yellow','Green','Red'].forEach(st=>{
+    const el=document.getElementById(`sp-${st}`);
+    if(el) el.className=`sp-opt${s===st?' sel-'+st.toLowerCase():''}`;
   });
 }
 
-function autoFillOrderSales() {
-  const sel = document.getElementById('fo-client');
-  const opt = sel.options[sel.selectedIndex];
-  if (opt?.dataset.sales) setVal('fo-salesperson', opt.dataset.sales);
-  if (opt?.dataset.code) setVal('fo-code', opt.dataset.code);
+function openSalesModal(row=''){
+  const s=row?S.salesTeam.find(x=>x.row===row):null;
+  setText('samTitle',s?'Edit Salesperson':'Add Salesperson');
+  setVal('sam-name',s?.name||'');setVal('sam-email',s?.email||'');
+  setVal('sam-line',s?.line||'');setVal('sam-target',String(s?.target||''));
+  setVal('sam-notes',s?.notes||'');setVal('sam-row',row||'');
+  openModal('salesModal');
 }
 
-function autoFillReminderSales() {
-  const sel = document.getElementById('fr-client');
-  const opt = sel.options[sel.selectedIndex];
-  if (opt?.dataset.sales) setVal('fr-salesperson', opt.dataset.sales);
-  if (opt?.dataset.code) setVal('fr-code', opt.dataset.code);
-  setVal('fr-store', opt?.value||'');
-}
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function showSetupHelp() { openModal('setupModal'); }
-
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // SAVE FUNCTIONS
-// ════════════════════════════════════════════════
-async function saveClient() {
-  const store = val('f-store').trim();
-  const name  = val('f-name').trim();
-  const type  = val('f-type');
-  const sp    = val('f-salesperson').trim();
-  const prov  = val('f-province').trim();
-  if (!store||!sp) { showToast('กรุณากรอก ชื่อร้านค้า และ Salesperson', 'warning'); return; }
-
-  const row = val('f-editRow');
-  const data = [sp, val('f-code').trim(), name, store, type, val('f-progress'), prov,
-                '', val('f-products'), '', '', '', ''];
-  try {
-    showLoader(true);
-    if (row) {
-      await sheetsUpdate(`${SHEETS.CLIENTS}!A${row}:M${row}`, [data]);
-      showToast('อัปเดตข้อมูลสำเร็จ', 'success');
-    } else {
-      await sheetsAppend(SHEETS.CLIENTS, [data]);
-      showToast('เพิ่มลูกค้าใหม่สำเร็จ', 'success');
-    }
-    closeModal('clientModal');
-    await loadClients();
-    renderCurrentPage();
-  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
-  finally { showLoader(false); }
-}
-
-async function saveActivity() {
-  const date = val('fa-date');
-  const type = val('fa-type');
-  const note = val('fa-note').trim();
-  const code = val('fa-code');
-  const store = val('fa-store');
-  if (!note) { showToast('กรุณากรอกบันทึก', 'warning'); return; }
-
-  const id = `ACT-${Date.now()}`;
-  const data = [id, date, code, store, state.user?.name||'', type, note];
-  try {
-    showLoader(true);
-    await sheetsAppend(SHEETS.ACTIVITIES, [data]);
-    showToast('บันทึกกิจกรรมสำเร็จ', 'success');
-    closeModal('activityModal');
-    await loadActivities();
-    renderCurrentPage();
-  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
-  finally { showLoader(false); }
-}
-
-async function saveOrder() {
-  const date     = val('fo-date');
-  const clientSt = val('fo-client');
-  const products = val('fo-products');
-  const total    = parseFloat(val('fo-total'))||0;
-  const code     = val('fo-code');
-  const sp       = val('fo-salesperson').trim();
-  if (!clientSt||!total) { showToast('กรุณาเลือกลูกค้าและใส่ยอดรวม', 'warning'); return; }
-
-  const id = `ORD-${Date.now()}`;
-  const data = [id, date, code, clientSt, sp, products, val('fo-qty'), total, val('fo-note').trim()];
-  try {
-    showLoader(true);
-    await sheetsAppend(SHEETS.ORDERS, [data]);
-    // Update client last order date
-    const c = state.clients.find(x=>x.store===clientSt);
-    if (c) {
-      await sheetsUpdate(`${SHEETS.CLIENTS}!H${c.row}`, [[date]]);
-      // Update order count and total
-      const newCount = (c.orderCount||0)+1;
-      const newTotal = (c.totalSales||0)+total;
-      const newAvg   = newTotal/newCount;
-      const freq = newCount>=3 ? 'ซื้อทุกเดือน' : newCount>=1 ? 'ซื้ออย่างน้อยไตรมาสละ 1 ครั้ง' : c.frequency;
-      await sheetsUpdate(`${SHEETS.CLIENTS}!J${c.row}:M${c.row}`, [[freq, newCount, newAvg.toFixed(2), newTotal.toFixed(2)]]);
-    }
-    showToast('บันทึกคำสั่งซื้อสำเร็จ', 'success');
-    closeModal('orderModal');
-    await loadAllData();
-  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
-  finally { showLoader(false); }
-}
-
-async function saveReminder() {
-  const date  = val('fr-date');
-  const store = val('fr-client')||val('fr-store');
-  const code  = val('fr-code');
-  const sp    = val('fr-salesperson').trim();
-  const det   = val('fr-detail').trim();
-  if (!store||!det) { showToast('กรุณาเลือกลูกค้าและกรอกรายละเอียด', 'warning'); return; }
-
-  const id = `REM-${Date.now()}`;
-  const data = [id, date, code, store, sp, det, 'รอดำเนินการ'];
-  try {
-    showLoader(true);
-    await sheetsAppend(SHEETS.REMINDERS, [data]);
-    showToast('เพิ่มการแจ้งเตือนสำเร็จ', 'success');
-    closeModal('reminderModal');
-    await loadReminders();
-    renderCurrentPage();
-    updateReminderBadge();
-  } catch(e) { showToast('บันทึกไม่สำเร็จ: '+e.message, 'error'); }
-  finally { showLoader(false); }
-}
-
-async function markReminderDone(row, id) {
-  try {
-    showLoader(true);
-    await sheetsUpdate(`${SHEETS.REMINDERS}!G${row}`, [['เสร็จสิ้น']]);
-    showToast('ทำเครื่องหมายเสร็จสิ้นแล้ว', 'success');
-    await loadReminders();
-    renderCurrentPage();
-    updateReminderBadge();
-  } catch(e) { showToast('เกิดข้อผิดพลาด: '+e.message, 'error'); }
-  finally { showLoader(false); }
-}
-
-// ════════════════════════════════════════════════
-// UTILS
-// ════════════════════════════════════════════════
-function val(id) { return document.getElementById(id)?.value||''; }
-function setVal(id, v) { const el=document.getElementById(id); if(el) el.value=v; }
-function setText(id, v) { const el=document.getElementById(id); if(el) el.textContent=v; }
-function esc(s) { if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function todayStr() { return new Date().toISOString().split('T')[0]; }
-function fmtDate(d) { if(!d) return '—'; try { return new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); } catch{return d;} }
-function fmtThb(n) { return Number(n).toLocaleString('th-TH',{maximumFractionDigits:0}); }
-
-function showToast(msg, type='info') {
-  const div = document.createElement('div');
-  div.className = `toast ${type}`;
-  const icon = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'}[type]||'ℹ️';
-  div.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
-  document.getElementById('toastContainer').appendChild(div);
-  setTimeout(()=>div.remove(), 4000);
-}
-
-function showLoader(show) {
-  document.getElementById('globalLoader').classList.toggle('show', show);
-}
-
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebarOverlay').classList.toggle('open');
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('open');
-}
-
-// Close modals on overlay click
-document.querySelectorAll('.modal-overlay').forEach(overlay=>{
-  overlay.addEventListener('click', e=>{
-    if (e.target===overlay) overlay.classList.remove('open');
+// ══════════════════════════════════════════
+async function saveClient(){
+  const shop=val('cf-shop').trim();
+  const sp=val('cf-sales').trim();
+  if(!shop){ showToast('Please enter a shop name','warning'); return; }
+  if(!sp){ showToast('Please select a salesperson','warning'); return; }
+  const prods=PRODUCTS.filter(p=>document.getElementById(`cp-${p.toLowerCase()}`)?.checked).join(', ');
+  const row=val('cf-row');
+  const existClient=row?S.clients.find(c=>c.row===parseInt(row)):null;
+  const tier=val('cf-tier');
+  const potential=val('cf-potential');
+  const lastOrderDate=val('cf-lastorder');
+  const lastContactDate=val('cf-lastcontact');
+  const nextAction=val('cf-nextaction');
+  const prefProd=val('cf-prefprod').trim();
+  const riskNote=val('cf-risknote').trim();
+  const{score:priScore,level:priLevel}=calcPriority({
+    monthlyStatus:existClient?.monthlyStatus||'Grey',
+    creditStatus:val('cf-creditst'),
+    lastOrderDate,lastContactDate,accountTier:tier,clientPotential:potential
   });
+  const data=[
+    val('cf-code').trim(),shop,val('cf-contact').trim(),val('cf-phone').trim(),
+    val('cf-line').trim(),val('cf-province').trim(),val('cf-type'),sp,
+    prods,parseInt(val('cf-credit'))||0,val('cf-creditst'),
+    existClient?.monthlyStatus||'Grey',
+    existClient?.actNote||'',existClient?.actDate||'',currMonth(),val('cf-notes').trim(),
+    tier,lastOrderDate,lastContactDate,nextAction,priScore,priLevel,
+    potential,prefProd,riskNote
+  ];
+  showLoader(true);
+  try{
+    if(row){ await shUpdate(`${SHEETS.CLIENTS}!A${row}:Y${row}`,[data]); showToast('Client updated successfully','success'); }
+    else{ await shAppend(SHEETS.CLIENTS,[data]); showToast('New client added successfully','success'); }
+    closeModal('clientModal');
+    await loadClients(); renderCurrentPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function saveStatus(){
+  const row=parseInt(val('sm-row'));
+  const status=val('sm-status')||'Grey';
+  const note=val('sm-note').trim();
+  const credit=parseInt(val('sm-credit'))||0;
+  const creditSt=val('sm-creditst');
+  const prods=['bottle','can','kegs','spirits'].filter(p=>document.getElementById(`sm-${p}`)?.checked).map(p=>p[0].toUpperCase()+p.slice(1)).join(', ');
+  const c=S.clients.find(x=>x.row===row);
+  if(!c){ showToast('Data not found','error'); return; }
+  const today=new Date().toISOString().split('T')[0];
+  const lastContact=val('sm-lastcontact')||c.lastContactDate||'';
+  const lastOrder=val('sm-lastorder')||c.lastOrderDate||'';
+  const nextAction=val('sm-nextaction')||c.nextAction||'';
+  const riskNote=val('sm-risknote')||c.riskNote||'';
+  const{score:priScore,level:priLevel}=calcPriority({...c,monthlyStatus:status,creditStatus:creditSt,lastOrderDate:lastOrder,lastContactDate:lastContact});
+  const updateRow=[
+    c.code,c.shop,c.contact,c.phone,c.line,c.province,c.storeType,c.salesperson,
+    prods||c.products, credit, creditSt, status, note, today, currMonth(), c.notes,
+    c.accountTier||'', lastOrder, lastContact, nextAction, priScore, priLevel,
+    c.clientPotential||'', c.preferredProducts||'', riskNote
+  ];
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.CLIENTS}!A${row}:Y${row}`,[updateRow]);
+    showToast(`Updated ${c.shop} to ${status} successfully`,'success');
+    closeModal('statusModal');
+    await loadClients(); renderCurrentPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function saveSalesMember(){
+  const name=val('sam-name').trim();
+  if(!name){ showToast('Please enter salesperson name','warning'); return; }
+  const row=val('sam-row');
+  const data=[name,val('sam-email').trim(),val('sam-line').trim(),parseInt(val('sam-target'))||0,val('sam-notes').trim()];
+  showLoader(true);
+  try{
+    if(row){ await shUpdate(`${SHEETS.SALES}!A${row}:E${row}`,[data]); showToast('Updated successfully','success'); }
+    else{ await shAppend(SHEETS.SALES,[data]); showToast('Salesperson added successfully','success'); }
+    closeModal('salesModal');
+    await loadSalesTeam(); renderCurrentPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ══════════════════════════════════════════
+// SALES REP ACCOUNTS MODAL
+// ══════════════════════════════════════════
+function openSalesRepModal(sp){
+  const clients=S.clients.filter(c=>c.salesperson===sp)
+    .map(c=>{const{score,level}=calcPriority(c);return{...c,_score:score,_level:level};})
+    .sort((a,b)=>b._score-a._score);
+  const green=clients.filter(c=>c.monthlyStatus==='Green').length;
+  const pct=clients.length?Math.round(green/clients.length*100):0;
+  const tm=S.salesTeam.find(s=>s.name===sp);
+  const target=tm?.target||0;
+  const hit=target&&pct>=target;
+  const withAction=clients.filter(c=>c.nextAction).length;
+
+  setText('srm-title',`👤 ${sp}'s Accounts`);
+  document.getElementById('srm-stats').innerHTML=
+    `${clients.length} clients &nbsp;·&nbsp; 🟢 ${green} &nbsp;·&nbsp; ${pct}% active`+
+    (target?` &nbsp;·&nbsp; Target ${target}% <span style="color:${hit?'var(--green-s)':'var(--danger)'};">${hit?'✅ On Target':'❌ Below'}</span>`:'')+
+    (withAction?` &nbsp;·&nbsp; <span style="color:var(--accent)">👉 ${withAction} pending action${withAction>1?'s':''}</span>`:'');
+
+  const pills={Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'};
+
+  if(!clients.length){
+    document.getElementById('srm-body').innerHTML='<div class="empty"><div class="ei">🏪</div><h3>No clients assigned yet</h3></div>';
+    openModal('salesRepModal'); return;
+  }
+
+  document.getElementById('srm-body').innerHTML=clients.map(c=>`
+    <div class="srm-item" id="srm-item-${c.row}">
+      <span class="s-pill ${pills[c.monthlyStatus]||'sp-grey'}" style="flex-shrink:0;margin-top:2px">
+        <span class="s-dot sd-${(c.monthlyStatus||'Grey').toLowerCase()}"></span>${c.monthlyStatus||'Grey'}
+      </span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:14px;font-weight:700;color:var(--primary);cursor:pointer" onclick="closeModal('salesRepModal');open360Modal(${c.row})">${esc(c.shop)}</span>
+          ${tierBadge(c.accountTier)}
+          ${c._level!=='Low'?priorityBadge(c._level,c._score):''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">${esc(c.storeType)||'—'} &nbsp;·&nbsp; ${esc(c.province)||'—'}</div>
+        <div id="srm-act-${c.row}" style="margin-top:5px">
+          ${c.nextAction
+            ?`<div style="display:flex;align-items:center;gap:6px;font-size:12px">
+                <span style="color:var(--accent);flex-shrink:0">👉</span>
+                <span id="srm-act-text-${c.row}" style="color:var(--text)">${esc(c.nextAction)}</span>
+                <button onclick="doneNextAction(${c.row})" style="border:1px solid var(--border);background:#f0fdf4;color:#166534;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0" title="Mark as done">✅ Done</button>
+              </div>`
+            :`<span style="font-size:11px;color:var(--muted);font-style:italic">No action set</span>`}
+        </div>
+      </div>
+      <button class="btn bxs" style="background:#f59e0b;color:#fff;flex-shrink:0;align-self:center" title="Update status" onclick="closeModal('salesRepModal');openStatusModal(${c.row})">⚡</button>
+    </div>`).join('');
+
+  openModal('salesRepModal');
+}
+
+async function doneNextAction(row){
+  const c=S.clients.find(x=>x.row===row);
+  if(!c||!c.nextAction) return;
+  // Strike through immediately
+  const textEl=document.getElementById(`srm-act-text-${row}`);
+  const actEl=document.getElementById(`srm-act-${row}`);
+  if(textEl){ textEl.style.textDecoration='line-through'; textEl.style.opacity='.45'; }
+  const btn=actEl?.querySelector('button');
+  if(btn){ btn.disabled=true; btn.textContent='✓ Done'; }
+  try{
+    const{score,level}=calcPriority({...c,nextAction:''});
+    await shUpdate(`${SHEETS.CLIENTS}!T${row}:V${row}`,[['',score,level]]);
+    c.nextAction=''; c.priorityScore=score; c.priorityLevel=level;
+    showToast('Action marked as done','success');
+  }catch(e){
+    // revert
+    if(textEl){ textEl.style.textDecoration=''; textEl.style.opacity=''; }
+    if(btn){ btn.disabled=false; btn.textContent='✅ Done'; }
+    showToast('Error: '+e.message,'error');
+  }
+}
+
+// ══════════════════════════════════════════
+// DELETE HELPERS
+// ══════════════════════════════════════════
+async function deleteClient(row){
+  const c=S.clients.find(x=>x.row===row);
+  if(!c){ showToast('Client not found','error'); return; }
+  if(!confirm(`Delete "${c.shop}"?\n\nThis cannot be undone.`)) return;
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.CLIENTS}!A${row}:Y${row}`,[Array(25).fill('')]);
+    S.clients=S.clients.filter(x=>x.row!==row);
+    showToast(`"${c.shop}" deleted`,'success');
+    renderClientsTable();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function deleteSalesMember(row){
+  const s=S.salesTeam.find(x=>x.row===row);
+  if(!s){ showToast('Salesperson not found','error'); return; }
+  if(!confirm(`Remove "${s.name}" from Sales Team?\n\nThis cannot be undone.`)) return;
+  showLoader(true);
+  try{
+    await shUpdate(`${SHEETS.SALES}!A${row}:E${row}`,[['','','','','']]);
+    S.salesTeam=S.salesTeam.filter(x=>x.row!==row);
+    showToast(`"${s.name}" removed`,'success');
+    renderSalesPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ══════════════════════════════════════════
+// PRIORITY SCORING
+// ══════════════════════════════════════════
+// FIX#7: safe date parser — returns Date or null, never throws
+function parseDate(dateStr){
+  if(!dateStr) return null;
+  try{ const d=new Date(dateStr); return isNaN(d.getTime())?null:d; }
+  catch{ return null; }
+}
+
+function daysSince(dateStr){
+  if(!dateStr) return null;
+  try{const d=new Date(dateStr);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/86400000);}
+  catch{return null;}
+}
+
+function calcPriority(c){
+  let s=0;
+  if(c.monthlyStatus==='Red') s+=35;
+  if(c.creditStatus==='Overdue') s+=25;
+  if(c.creditStatus==='Suspended') s+=40;
+  const lo=daysSince(c.lastOrderDate);
+  // FIX#6: blank date = 0 (not dormant); >60 and >30 use else-if so they never stack
+  if(lo!==null){
+    if(lo>60) s+=35;
+    else if(lo>30) s+=20;
+  }
+  const lc=daysSince(c.lastContactDate);
+  if(lc!==null&&lc>14) s+=10;
+  if(c.accountTier==='A') s+=20;
+  else if(c.accountTier==='B') s+=10;
+  if(c.clientPotential==='High') s+=15;
+  else if(c.clientPotential==='Medium') s+=8;
+  if(c.monthlyStatus==='Green'&&lo!==null&&lo<=14) s-=15;
+  const score=Math.max(0,s);
+  return{score,level:score>=50?'High':score>=25?'Medium':'Low'};
+}
+
+function priorityBadge(level,score){
+  if(level==='High') return `<span class="badge pri-high">🔥 High</span>`;
+  if(level==='Medium') return `<span class="badge pri-med">⚡ Med</span>`;
+  return `<span class="badge pri-low" style="font-size:10px">— Low</span>`;
+}
+
+function tierBadge(tier){
+  if(!tier) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  const cls={A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d'}[tier]||'tier-d';
+  return `<span class="badge ${cls}">${tier}</span>`;
+}
+
+// ══════════════════════════════════════════
+// SAFE SHEET MIGRATION  (FIX #1 + #7)
+// Checks actual header names — never overwrites existing data.
+// Supports partially-upgraded sheets. Safe to run on every load.
+// ══════════════════════════════════════════
+
+// FIX#7: helper — convert 1-based column number to letter(s), e.g. 1→A, 27→AA
+function colToLetter(n){
+  let result='';
+  while(n>0){ n--; result=String.fromCharCode(65+(n%26))+result; n=Math.floor(n/26); }
+  return result;
+}
+
+async function upgradeHeaders(){
+  // FIX#1: source of truth is header names, not column count
+  const CLIENTS_REQUIRED=[
+    'ClientCode','ShopName','ContactName','ContactPhone','LineID','Province',
+    'StoreType','SalesPerson','ProductTypes','CreditDays','CreditStatus',
+    'MonthlyStatus','ActivityNote','ActivityDate','CurrentMonth','Notes',
+    'AccountTier','LastOrderDate','LastContactDate','NextAction',
+    'PriorityScore','PriorityLevel','ClientPotential','PreferredProducts','RiskNote'
+  ];
+  const HISTORY_REQUIRED=[
+    'Month','ClientCode','ShopName','SalesPerson','Status','ActivityNote',
+    'ActivityDate','ProductTypes','CreditDays','CreditStatus','ArchivedAt',
+    'AccountTier','LastOrderDate','LastContactDate','NextAction',
+    'PriorityScore','PriorityLevel','ClientPotential','PreferredProducts','RiskNote'
+  ];
+
+  try{
+    // ── Clients sheet ──
+    const ch=await shGet(`${SHEETS.CLIENTS}!A1:Z1`);
+    const existC=new Set(ch[0]||[]);
+    const missingC=CLIENTS_REQUIRED.filter(h=>!existC.has(h));
+    if(missingC.length){
+      // Write from the position of the first missing header
+      const startIdx=CLIENTS_REQUIRED.findIndex(h=>!existC.has(h));
+      const startCol=colToLetter(startIdx+1);
+      await shUpdate(`${SHEETS.CLIENTS}!${startCol}1`,[CLIENTS_REQUIRED.slice(startIdx)]);
+      console.log('Clients headers upgraded: added',missingC);
+    }
+
+    // ── History sheet ──
+    const hh=await shGet(`${SHEETS.HISTORY}!A1:V1`);
+    const existH=new Set(hh[0]||[]);
+    const missingH=HISTORY_REQUIRED.filter(h=>!existH.has(h));
+    if(missingH.length){
+      const startIdx=HISTORY_REQUIRED.findIndex(h=>!existH.has(h));
+      const startCol=colToLetter(startIdx+1);
+      await shUpdate(`${SHEETS.HISTORY}!${startCol}1`,[HISTORY_REQUIRED.slice(startIdx)]);
+      console.log('History headers upgraded: added',missingH);
+    }
+  }catch(e){ console.warn('Header upgrade skipped:',e.message); }
+}
+
+// ══════════════════════════════════════════
+// CLIENT 360 QUICK VIEW
+// ══════════════════════════════════════════
+function open360Modal(row){
+  const c=row?S.clients.find(x=>x.row===row):null;
+  if(!c){ showToast('Client not found','error'); return; }
+  const{score,level}=calcPriority(c);
+  const pill=s=>`<span class="s-pill ${{Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'}[s]||'sp-grey'}"><span class="s-dot sd-${(s||'Grey').toLowerCase()}"></span>${s||'Grey'}</span>`;
+  document.getElementById('v360-title').textContent=c.shop;
+  document.getElementById('v360-body').innerHTML=`
+    <div class="v360-sec">
+      <div class="v360-sec-title">Shop Info</div>
+      <div class="v360-row"><span class="v360-label">Store Type</span><span class="v360-val">${esc(c.storeType)||'—'}</span></div>
+      <div class="v360-row"><span class="v360-label">Province</span><span class="v360-val">${esc(c.province)||'—'}</span></div>
+      <div class="v360-row"><span class="v360-label">Contact</span><span class="v360-val">${esc(c.contact)||'—'}${c.phone?' · '+esc(c.phone):''}</span></div>
+      <div class="v360-row"><span class="v360-label">Salesperson</span><span class="v360-val">👤 ${esc(c.salesperson)||'—'}</span></div>
+      <div class="v360-row"><span class="v360-label">Products</span><span class="v360-val">${c.products||'—'}</span></div>
+      ${c.preferredProducts?`<div class="v360-row"><span class="v360-label">Preferred</span><span class="v360-val">⭐ ${esc(c.preferredProducts)}</span></div>`:''}
+    </div>
+    <div class="v360-sec">
+      <div class="v360-sec-title">Account Classification</div>
+      <div class="v360-row"><span class="v360-label">Monthly Status</span><span class="v360-val">${pill(c.monthlyStatus||'Grey')}</span></div>
+      <div class="v360-row"><span class="v360-label">Account Tier</span><span class="v360-val">${tierBadge(c.accountTier)}</span></div>
+      <div class="v360-row"><span class="v360-label">Client Potential</span><span class="v360-val">${c.clientPotential?`<span class="badge ${c.clientPotential==='High'?'pri-high':c.clientPotential==='Medium'?'pri-med':'pri-low'}">${c.clientPotential}</span>`:'—'}</span></div>
+      <div class="v360-row"><span class="v360-label">Priority</span><span class="v360-val">${priorityBadge(level,score)} <span style="font-size:11px;color:var(--muted)">score: ${score}</span></span></div>
+    </div>
+    <div class="v360-sec">
+      <div class="v360-sec-title">Activity & Actions</div>
+      <div class="v360-row"><span class="v360-label">Last Contact</span><span class="v360-val">${c.lastContactDate?fmtDate(c.lastContactDate)+`<span style="font-size:11px;color:var(--muted)"> (${daysSince(c.lastContactDate)} days ago)</span>`:'—'}</span></div>
+      <div class="v360-row"><span class="v360-label">Last Order</span><span class="v360-val">${c.lastOrderDate?fmtDate(c.lastOrderDate)+`<span style="font-size:11px;color:var(--muted)"> (${daysSince(c.lastOrderDate)} days ago)</span>`:'—'}</span></div>
+      <div class="v360-row"><span class="v360-label">Next Action</span><span class="v360-val">${c.nextAction?'👉 '+esc(c.nextAction):'—'}</span></div>
+      ${c.actNote?`<div class="v360-row"><span class="v360-label">Activity Note</span><span class="v360-val">${esc(c.actNote)}</span></div>`:''}
+    </div>
+    <div class="v360-sec">
+      <div class="v360-sec-title">Credit</div>
+      <div class="v360-row"><span class="v360-label">Credit Terms</span><span class="v360-val">${c.creditDays} days</span></div>
+      <div class="v360-row"><span class="v360-label">Credit Status</span><span class="v360-val"><span class="${creditCls(c.creditStatus)}">${c.creditStatus||'Normal'}</span></span></div>
+    </div>
+    ${c.notes||c.riskNote?`<div class="v360-sec">
+      <div class="v360-sec-title">Notes</div>
+      ${c.notes?`<div class="v360-row"><span class="v360-label">Notes</span><span class="v360-val">${esc(c.notes)}</span></div>`:''}
+      ${c.riskNote?`<div class="v360-row"><span class="v360-label">⚠️ Risk Note</span><span class="v360-val" style="color:var(--danger)">${esc(c.riskNote)}</span></div>`:''}
+    </div>`:''}
+  `;
+  document.getElementById('v360-editBtn').onclick=()=>{closeModal('view360Modal');openClientModal(row);};
+  document.getElementById('v360-statusBtn').onclick=()=>{closeModal('view360Modal');openStatusModal(row);};
+  openModal('view360Modal');
+}
+
+// ══════════════════════════════════════════
+// PRIORITY ACCOUNTS DASHBOARD
+// ══════════════════════════════════════════
+function renderPriorityAccounts(){
+  const spF=document.getElementById('priSalesF')?.value||'';
+  const sf=document.getElementById('priSalesF');
+  if(sf&&sf.options.length<=1){
+    const sps=[...new Set(S.clients.map(c=>c.salesperson).filter(Boolean))].sort();
+    sps.forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;sf.appendChild(o);});
+  }
+  const clients=S.clients.filter(c=>!spF||c.salesperson===spF).map(c=>{const{score,level}=calcPriority(c);return{...c,_score:score,_level:level};});
+  const high=clients.filter(c=>c._level==='High').sort((a,b)=>b._score-a._score);
+  const creditIssue=clients.filter(c=>c.creditStatus==='Overdue'||c.creditStatus==='Suspended').sort((a,b)=>b._score-a._score);
+  // FIX#3: dormant = date exists AND >30 days
+  const dormant=clients.filter(c=>{const d=daysSince(c.lastOrderDate);return d!==null&&d>30;}).sort((a,b)=>b._score-a._score).slice(0,15);
+  const redC=clients.filter(c=>c.monthlyStatus==='Red').sort((a,b)=>b._score-a._score);
+
+  const pliHtml=c=>`<div class="pli" onclick="open360Modal(${c.row})">
+    <div style="min-width:60px;text-align:center">${priorityBadge(c._level,c._score)}</div>
+    <div class="pli-body">
+      <div class="pli-name">${esc(c.shop)}</div>
+      <div class="pli-sub">👤 ${esc(c.salesperson)||'—'} · ${esc(c.storeType)||'—'} · ${esc(c.province)||'—'}</div>
+      ${c.nextAction?`<div style="font-size:11px;color:var(--accent);margin-top:2px">👉 ${esc(c.nextAction)}</div>`:''}
+    </div>
+    <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      ${tierBadge(c.accountTier)}
+      ${c.creditStatus!=='Normal'?`<span class="${creditCls(c.creditStatus)}" style="font-size:11px">${c.creditStatus}</span>`:''}
+      ${c.lastOrderDate?`<span style="font-size:10px;color:var(--muted)">${daysSince(c.lastOrderDate)}d ago</span>`:''}
+    </div>
+  </div>`;
+
+  const sec=(icon,title,list)=>`
+    <div class="plist-title">${icon} ${title} <span class="s-pill sp-grey" style="font-size:10px">${list.length}</span></div>
+    <div class="plist">${list.length?list.slice(0,15).map(pliHtml).join(''):`<div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">✅ None — all clear</div>`}</div>`;
+
+  document.getElementById('priorityContent').innerHTML=
+    sec('🔥','High Priority Accounts',high)+
+    sec('⚠️','Credit Issues (Overdue / Suspended)',creditIssue)+
+    sec('💤','Dormant — No order in 30+ days',dormant)+
+    sec('🔴','Red Status — Problem / Lost',redC);
+}
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function val(id){ return document.getElementById(id)?.value||''; }
+function setVal(id,v){ const el=document.getElementById(id); if(el)el.value=v; }
+function setText(id,v){ const el=document.getElementById(id); if(el)el.textContent=v; }
+function esc(s){ if(!s)return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(d){ if(!d)return '—'; try{return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});}catch{return d;} }
+function fmtMonth(ym){ if(!ym)return ''; const[y,m]=ym.split('-'); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${months[parseInt(m)-1]} ${y}`; }
+function creditCls(s){ return s==='Overdue'?'credit-late':s==='Suspended'?'credit-hold':'credit-ok'; }
+
+function showToast(msg,type='info'){
+  const d=document.createElement('div'); d.className=`toast ${type}`;
+  const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+  d.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.getElementById('tc').appendChild(d);
+  setTimeout(()=>d.remove(),4000);
+}
+function showLoader(s){ document.getElementById('gl').classList.toggle('show',s); }
+function toggleSB(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sOverlay').classList.toggle('open'); }
+function closeSB(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sOverlay').classList.remove('open'); }
+
+// Product checkboxes visual update
+document.addEventListener('change',e=>{
+  if(e.target.type==='checkbox') e.target.closest('.pcheck')?.classList.toggle('checked',e.target.checked);
 });
+// Close modal on overlay click
+document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o)o.classList.remove('open'); }));
 
 </script>
 </body>
