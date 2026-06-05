@@ -2425,6 +2425,22 @@ function planTab(tab,btn){
 }
 
 function renderPlansPage(){
+  // Hide detail/dashboard tabs — they only appear after a plan name is clicked
+  const dtTab=document.getElementById('planDetailTab');
+  const dbTab=document.getElementById('planDashTab');
+  if(dtTab) dtTab.style.display='none';
+  if(dbTab) dbTab.style.display='none';
+  // Make sure list panel is shown and others hidden
+  const pl=document.getElementById('plan-list');
+  const pd=document.getElementById('plan-detail');
+  const pdb=document.getElementById('plan-dashboard');
+  if(pl) pl.style.display='block';
+  if(pd) pd.style.display='none';
+  if(pdb) pdb.style.display='none';
+  // Reset active tab highlight to Plan List
+  document.querySelectorAll('#planTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#planTabs .tab')?.classList.add('active');
+
   const search=(document.getElementById('planSearch')?.value||'').toLowerCase();
   const typeF=document.getElementById('planTypeF')?.value||'';
   const statusF=document.getElementById('planStatusF')?.value||'';
