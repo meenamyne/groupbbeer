@@ -1155,6 +1155,29 @@ async function api(url,opts={}){
 async function shGet(range){ const d=await api(`${BASE()}/values/${encodeURIComponent(range)}`); return d.values||[]; }
 async function shAppend(sh,vals){ return api(`${BASE()}/values/${encodeURIComponent(sh)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{method:'POST',body:JSON.stringify({values:vals})}); }
 async function shUpdate(range,vals){ return api(`${BASE()}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:'PUT',body:JSON.stringify({values:vals})}); }
+// shBatchUpdate: used to create new sheet tabs (addSheet requests)
+async function shBatchUpdate(requests){ return api(`${BASE()}:batchUpdate`,{method:'POST',body:JSON.stringify({requests})}); }
+
+// ensurePlanSheets: checks which of the three planning tabs exist and creates any that are missing,
+// then writes their headers. Safe to call on every load — no-ops if tabs already exist.
+async function ensurePlanSheets(){
+  try{
+    const meta=await api(`${BASE()}?fields=sheets.properties.title`);
+    const existing=new Set((meta.sheets||[]).map(s=>s.properties.title));
+    const needed=[
+      {title:SHEETS.PLANS,      headers:[['PlanID','PlanName','PlanType','Objective','Strategy','PeriodType','StartDate','EndDate','Owner','AssignedSalesperson','ProductCategory','Status','Notes','CreatedAt','UpdatedAt','CreatedBy']]},
+      {title:SHEETS.PLAN_SHOPS, headers:[['PlanShopID','PlanID','ClientCode','ShopName','Province','StoreType','OriginalSalesperson','AssignedSalesperson','ProductTypes','PreferredProducts','CurrentMonthlyStatus','LastOrderDate','LastContactDate','CreditStatus','PriorityLevel','VisitDate','VisitTime','VisitObjective','ShopStrategy','ProductToPush','ExpectedOutcome','TaskStatus','FollowUpDate','ResultFeedback','NextMonthActionPlan','Notes','CreatedAt','UpdatedAt']]},
+      {title:SHEETS.PLAN_TASKS, headers:[['TaskID','PlanID','PlanShopID','ClientCode','ShopName','TaskName','TaskDescription','AssignedTo','DueDate','Priority','Status','CompletionDate','Notes','CreatedAt','UpdatedAt']]},
+    ];
+    const toCreate=needed.filter(s=>!existing.has(s.title));
+    if(!toCreate.length) return; // all tabs already exist
+    // Create all missing tabs in one API call
+    await shBatchUpdate(toCreate.map(s=>({addSheet:{properties:{title:s.title}}})));
+    // Write headers for each newly created tab
+    for(const s of toCreate){ await shUpdate(`${s.title}!A1`,s.headers); }
+    console.log('Planning sheets created:',toCreate.map(s=>s.title));
+  }catch(e){ console.warn('ensurePlanSheets skipped:',e.message); }
+}
 
 // ══════════════════════════════════════════
 // INIT SHEETS
@@ -1188,6 +1211,7 @@ async function loadAllData(){
   showLoader(true);
   try{
     await upgradeHeaders(); // must complete before data load — columns must exist first
+    await ensurePlanSheets(); // create Plans/PlanShops/PlanTasks tabs if they don't exist yet
     await Promise.all([loadClients(), loadHistory(), loadSalesTeam(), loadPlans(), loadPlanShops(), loadPlanTasks()]);
     await checkMonthReset();
     renderCurrentPage();
