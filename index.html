@@ -2414,8 +2414,16 @@ let S_activePlanId='';
 
 function planTab(tab,btn){
   S_planSubTab=tab;
+  // Show/hide the detail + dashboard tab BUTTONS based on whether a plan is open
+  const dtBtn=document.getElementById('planDetailTab');
+  const dbBtn=document.getElementById('planDashTab');
+  const hasPlan=!!S_activePlanId;
+  if(dtBtn) dtBtn.style.display=(tab==='list'||!hasPlan)?'none':'';
+  if(dbBtn) dbBtn.style.display=(tab==='list'||!hasPlan)?'none':'';
+  // Active highlight — only on visible tabs
   document.querySelectorAll('#planTabs .tab').forEach(t=>t.classList.remove('active'));
   if(btn) btn.classList.add('active');
+  // Show/hide content panels
   document.getElementById('plan-list').style.display=tab==='list'?'block':'none';
   document.getElementById('plan-detail').style.display=tab==='detail'?'block':'none';
   document.getElementById('plan-dashboard').style.display=tab==='dashboard'?'block':'none';
@@ -2425,22 +2433,6 @@ function planTab(tab,btn){
 }
 
 function renderPlansPage(){
-  // Hide detail/dashboard tabs — they only appear after a plan name is clicked
-  const dtTab=document.getElementById('planDetailTab');
-  const dbTab=document.getElementById('planDashTab');
-  if(dtTab) dtTab.style.display='none';
-  if(dbTab) dbTab.style.display='none';
-  // Make sure list panel is shown and others hidden
-  const pl=document.getElementById('plan-list');
-  const pd=document.getElementById('plan-detail');
-  const pdb=document.getElementById('plan-dashboard');
-  if(pl) pl.style.display='block';
-  if(pd) pd.style.display='none';
-  if(pdb) pdb.style.display='none';
-  // Reset active tab highlight to Plan List
-  document.querySelectorAll('#planTabs .tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector('#planTabs .tab')?.classList.add('active');
-
   const search=(document.getElementById('planSearch')?.value||'').toLowerCase();
   const typeF=document.getElementById('planTypeF')?.value||'';
   const statusF=document.getElementById('planStatusF')?.value||'';
