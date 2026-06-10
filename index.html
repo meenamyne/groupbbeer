@@ -2454,8 +2454,8 @@ function renderPlansPage(){
     const done=tasks.filter(t=>t.status==='Done').length;
     const pct=tasks.length?Math.round(done/tasks.length*100):0;
     const period=p.startDate&&p.endDate?`${fmtDate(p.startDate)} – ${fmtDate(p.endDate)}`:p.periodType||'—';
-    return `<tr>
-      <td class="tds" style="cursor:pointer" onclick="openPlanDetail('${esc(p.id)}')">${esc(p.name)}</td>
+    return `<tr style="cursor:pointer" onclick="openPlanDetail('${esc(p.id)}')">
+      <td class="tds">${esc(p.name)}</td>
       <td><span class="badge bk2">${esc(p.type)||'—'}</span></td>
       <td style="font-size:12px">${esc(period)}</td>
       <td>${esc(p.owner)||'—'}</td>
