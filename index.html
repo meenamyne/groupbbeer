@@ -581,6 +581,19 @@ td.tds{font-weight:600;color:var(--primary)}
         <div id="planDashContent"></div>
       </div>
     </div>
+        <div class="pa"><button class="btn bp" onclick="openMovementModal()">+ Log Movement</button></div>
+      </div>
+      <div id="whTabs" style="display:flex;gap:4px;padding:0 14px 12px;flex-wrap:wrap">
+        <button class="tab active" id="whTab-overview" onclick="whTab('overview',this)">📊 Overview</button>
+        <button class="tab" id="whTab-warehouses" onclick="whTab('warehouses',this)">🏭 Warehouses</button>
+        <button class="tab" id="whTab-log" onclick="whTab('log',this)">📋 Movement Log</button>
+        <button class="tab" id="whTab-reports" onclick="whTab('reports',this)">📈 Reports</button>
+      </div>
+      <div id="wh-overview" style="padding:0 14px"></div>
+      <div id="wh-warehouses" style="padding:0 14px;display:none"></div>
+      <div id="wh-log" style="padding:0 14px;display:none"></div>
+      <div id="wh-reports" style="padding:0 14px;display:none"></div>
+    </div>
 
 
     <div class="page" id="page-history">
@@ -743,7 +756,7 @@ td.tds{font-weight:600;color:var(--primary)}
       <div class="fg"><label class="fl">Task Description</label><textarea class="fta" id="ptm-desc" style="min-height:60px"></textarea></div>
       <div class="fr">
         <div class="fg"><label class="fl">Assigned To</label>
-          <select class="fsel2" id="ptm-assignee"><option value="">— Select —</option></select>
+          <div id="ptm-assignee" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;min-height:38px;max-height:90px;overflow-y:auto;background:#fff;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start"></div>
         </div>
         <div class="fg"><label class="fl">Due Date</label><input class="fi" type="date" id="ptm-due"></div>
       </div>
@@ -2614,22 +2627,32 @@ function renderPlanDetail(planId){
       const shopTasks=tasks.filter(t=>t.shopRowId===String(ps.row));
       const doneTasks=shopTasks.filter(t=>t.status==='Done').length;
       return `<div class="plan-shop-row">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <div style="flex:1;min-width:200px">
-            <div style="font-size:14px;font-weight:700;color:var(--primary)">${esc(ps.shopName)}</div>
-            <div style="font-size:12px;color:var(--muted)">${esc(ps.province)||'—'} · ${esc(ps.storeType)||'—'} · 👤 ${esc(ps.assignedSP||ps.originalSP)||'—'}</div>
-            ${ps.visitDate?`<div style="font-size:12px;margin-top:4px">📅 Visit: ${fmtDate(ps.visitDate)}${ps.visitTime?' '+ps.visitTime:''}</div>`:''}
-            ${ps.productToPush?`<div style="font-size:12px;color:var(--accent)">📦 Push: ${esc(ps.productToPush)}</div>`:''}
-            ${ps.shopStrategy?`<div style="font-size:12px;color:var(--muted);margin-top:2px">💡 ${esc(ps.shopStrategy)}</div>`:''}
-            ${ps.resultFeedback?`<div style="font-size:12px;color:var(--success);margin-top:2px">✅ ${esc(ps.resultFeedback)}</div>`:''}
+        <div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:14px;font-weight:700;color:var(--primary)">${esc(ps.shopName)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(ps.province)||'—'} · ${esc(ps.storeType)||'—'} · 👤 ${esc(ps.assignedSP||ps.originalSP)||'—'}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0">
+              <span class="badge ${(tsCls[ps.taskStatus]||'ts-not-started')}">${ps.taskStatus||'Not Started'}</span>
+              <span class="s-pill ${{Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'}[ps.currentStatus]||'sp-grey'}">${ps.currentStatus||'Grey'}</span>
+              <button class="btn bo bxs" onclick="openPlanShopModal('${esc(planId)}',${ps.row})">✏️ Details</button>
+              <button class="btn bp bxs" onclick="openPlanTaskModal('${esc(planId)}',${ps.row},'${esc(ps.shopName)}')">+ Task</button>
+              <button class="btn bxs" style="background:#fee2e2;color:#991b1b" onclick="removePlanShop(${ps.row})">🗑️</button>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span class="badge ${(tsCls[ps.taskStatus]||'ts-not-started')}">${ps.taskStatus||'Not Started'}</span>
-            <span class="s-pill ${{Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'}[ps.currentStatus]||'sp-grey'}">${ps.currentStatus||'Grey'}</span>
-            <button class="btn bo bxs" onclick="openPlanShopModal('${esc(planId)}',${ps.row})">✏️ Details</button>
-            <button class="btn bp bxs" onclick="openPlanTaskModal('${esc(planId)}',${ps.row},'${esc(ps.shopName)}')">+ Task</button>
-            <button class="btn bxs" style="background:#fee2e2;color:#991b1b" onclick="removePlanShop(${ps.row})">🗑️</button>
-          </div>
+          ${(ps.visitDate||ps.visitObjective||ps.productToPush||ps.expectedOutcome||ps.shopStrategy||ps.resultFeedback||ps.followUpDate||ps.nextMonthPlan||ps.notes)?`
+          <div style="margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px 16px;font-size:12px">
+            ${ps.visitDate?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">📅 Visit Date</div><div>${fmtDate(ps.visitDate)}${ps.visitTime?' · '+ps.visitTime:''}</div></div>`:''}
+            ${ps.visitObjective?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🎯 Objective</div><div>${esc(ps.visitObjective)}</div></div>`:''}
+            ${ps.productToPush?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">📦 Product to Push</div><div style="color:var(--accent);font-weight:600">${esc(ps.productToPush)}</div></div>`:''}
+            ${ps.expectedOutcome?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">💡 Expected</div><div>${esc(ps.expectedOutcome)}</div></div>`:''}
+            ${ps.shopStrategy?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🗺️ Strategy</div><div>${esc(ps.shopStrategy)}</div></div>`:''}
+            ${ps.resultFeedback?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">✅ Result</div><div style="color:var(--success);font-weight:600">${esc(ps.resultFeedback)}</div></div>`:''}
+            ${ps.followUpDate?`<div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔔 Follow-up</div><div>${fmtDate(ps.followUpDate)}</div></div>`:''}
+            ${ps.nextMonthPlan?`<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">📋 Next Month Plan</div><div>${esc(ps.nextMonthPlan)}</div></div>`:''}
+            ${ps.notes?`<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">📝 Notes</div><div style="color:var(--muted)">${esc(ps.notes)}</div></div>`:''}
+          </div>`:''}
         </div>
         ${shopTasks.length?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
           <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">TASKS (${doneTasks}/${shopTasks.length} done)</div>
@@ -2893,12 +2916,25 @@ function openPlanTaskModal(planId, shopRow, shopName){
   setVal('ptm-name',''); setVal('ptm-desc','');
   setVal('ptm-due',''); setVal('ptm-priority','Medium');
   setVal('ptm-status','Not Started'); setVal('ptm-notes','');
-  const sel=document.getElementById('ptm-assignee');
-  if(sel){
-    sel.innerHTML='<option value="">— Select —</option>';
-    S.salesTeam.forEach(s=>{const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o);});
+  const wrap=document.getElementById('ptm-assignee');
+  if(wrap){
+    wrap.innerHTML='';
+    S.salesTeam.forEach(s=>{
+      const lbl=document.createElement('label');
+      lbl.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 9px;cursor:pointer;white-space:nowrap;user-select:none';
+      const cb=document.createElement('input');
+      cb.type='checkbox'; cb.value=s.name; cb.style.accentColor='var(--success)';
+      lbl.appendChild(cb); lbl.appendChild(document.createTextNode(' '+s.name));
+      wrap.appendChild(lbl);
+    });
   }
   openModal('planTaskModal');
+}
+
+function getCheckedAssignees(wrapperId){
+  const wrap=document.getElementById(wrapperId);
+  if(!wrap) return '';
+  return [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map(cb=>cb.value).join(', ');
 }
 
 async function savePlanTask(){
@@ -2911,7 +2947,7 @@ async function savePlanTask(){
   const id=genId('TSK');
   const row=[
     id,planId,shopRow,existingPlanShop?.clientCode||'',existingPlanShop?.shopName||'',
-    name,val('ptm-desc'),val('ptm-assignee'),val('ptm-due'),
+    name,val('ptm-desc'),getCheckedAssignees('ptm-assignee'),val('ptm-due'),
     val('ptm-priority'),val('ptm-status'),'',val('ptm-notes'),now,now
   ];
   showLoader(true);
@@ -3023,6 +3059,7 @@ function renderPlanDashboard(planId){
 
 // ── upgradeHeaders: add Plans/PlanShops/PlanTasks ────────────────────────────
 // (Plans sheets are initialized via initSheets; upgradeHeaders handles Clients+History only)
+
 
 
 // ══════════════════════════════════════════
