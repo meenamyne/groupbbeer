@@ -275,9 +275,10 @@ tr:hover td{background:rgba(0,0,0,.012)}
 
 <!-- ══ MOVEMENT MODAL ═══════════════════════════════════════════════════════ -->
 <div class="mo" id="movementModal">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:600px">
     <div class="mh"><h3>Log Stock Movement</h3><button class="mc-x" onclick="closeModal('movementModal')">✕</button></div>
     <div class="mb">
+      <!-- Type -->
       <div><label class="fl">Movement Type *</label>
         <select class="fi" id="mv-type" onchange="onMvTypeChange()">
           <option value="">— Select Type —</option>
@@ -290,25 +291,59 @@ tr:hover td{background:rgba(0,0,0,.012)}
           <option value="Loss">❌ Loss / Shortage</option>
           <option value="Adjustment">🔧 Manual Adjustment</option>
         </select></div>
-      <div id="mv-from-row" style="display:none"><label class="fl">From Warehouse *</label><select class="fi" id="mv-from"></select></div>
+      <!-- Warehouses -->
+      <div id="mv-from-row" style="display:none"><label class="fl">From Warehouse *</label><select class="fi" id="mv-from" onchange="onMvFromChange()"></select></div>
       <div id="mv-to-row" style="display:none"><label class="fl">To Warehouse *</label><select class="fi" id="mv-to"></select></div>
+      <!-- Product search -->
       <div>
         <label class="fl">Product *</label>
         <input class="fi" id="mv-product-search" placeholder="Type to search product..." oninput="filterMvProducts()" autocomplete="off" style="margin-bottom:5px">
         <select class="fi" id="mv-product" onchange="onMvProductChange()"><option value="">— Select Product —</option></select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label class="fl">Quantity *</label><input class="fi" type="number" id="mv-qty" min="0.01" step="any" placeholder="0"></div>
-        <div><label class="fl">Unit (auto-filled)</label><input class="fi" id="mv-unit" readonly placeholder="select product first"></div>
+      <!-- Lot Date (Receive only) -->
+      <div id="mv-lotdate-row" style="display:none">
+        <label class="fl">Packing Lot Date * <span style="font-size:11px;color:var(--muted)">(YYYY-MM-DD)</span></label>
+        <input class="fi" type="date" id="mv-lotdate" onchange="onLotDateChange()">
       </div>
+      <!-- Lot selector (Delivery / Transfer / Damage / Expired / Loss) -->
+      <div id="mv-lot-row" style="display:none">
+        <label class="fl">Select Lot *</label>
+        <select class="fi" id="mv-lot" onchange="onLotSelectChange()"><option value="">— Select Lot —</option></select>
+        <div id="mv-lot-info" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+      </div>
+      <!-- FIFO warning panel -->
+      <div id="mv-fifo-panel" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px;margin-top:6px">
+        <div style="font-weight:600;color:#92400e;margin-bottom:6px">⚠️ FIFO Warning</div>
+        <div id="mv-fifo-msg" style="font-size:12px;color:#92400e;margin-bottom:8px"></div>
+        <label class="fl" style="color:#92400e">Override Reason *</label>
+        <input class="fi" id="mv-fifo-reason" placeholder="Explain why you are not following FIFO order...">
+      </div>
+      <!-- Movement unit + qty -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label class="fl">Quantity *</label>
+          <input class="fi" type="number" id="mv-qty" min="0.01" step="any" placeholder="0" oninput="updateBasePreview()">
+        </div>
+        <div>
+          <label class="fl">Movement Unit</label>
+          <select class="fi" id="mv-unit" onchange="updateBasePreview()">
+            <option value="">— Select Unit —</option>
+          </select>
+        </div>
+      </div>
+      <!-- Base qty preview -->
+      <div id="mv-base-preview" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px;font-size:12px;color:#1e40af;margin-top:2px"></div>
+      <!-- Adjustment direction -->
       <div id="mv-adj-row" style="display:none">
         <label class="fl">Adjustment Direction</label>
         <select class="fi" id="mv-adj-dir"><option value="+">+ Add to stock</option><option value="-">− Remove from stock</option></select>
       </div>
+      <!-- Shop link -->
       <div id="mv-shop-row" style="display:none">
         <label class="fl">Linked Shop (optional)</label>
         <select class="fi" id="mv-shop"><option value="">— No shop link —</option></select>
       </div>
+      <!-- Date / Ref / Notes -->
       <div><label class="fl">Date *</label><input class="fi" type="date" id="mv-date"></div>
       <div><label class="fl">Reference</label><input class="fi" id="mv-reference" placeholder="Invoice #, transfer ref, delivery slip..."></div>
       <div><label class="fl">Notes</label><textarea class="fi" id="mv-notes" rows="2" placeholder="Additional notes..."></textarea></div>
@@ -361,6 +396,12 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <div><label class="fl">Keg Type</label><input class="fi" id="pd-keg" placeholder="e.g. 30L Sankey"></div>
       </div>
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:#16a34a;margin-bottom:8px">📦 Stock Settings</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px">
+          <div><label class="fl">Base Unit</label><input class="fi" id="pd-baseunit" placeholder="e.g. Can, Bottle, Keg"></div>
+          <div><label class="fl">Case Unit Name</label><input class="fi" id="pd-caseunit" placeholder="e.g. Case, Box"></div>
+          <div><label class="fl">Units / Case</label><input class="fi" type="number" id="pd-upc" min="1" step="1" placeholder="e.g. 24"></div>
+        </div>
         <label class="fl" style="color:#16a34a">⚠️ Minimum Stock Quantity</label>
         <input class="fi" type="number" id="pd-minqty" min="0" step="1" placeholder="e.g. 10 — alert when stock falls below this">
         <div style="font-size:11px;color:var(--muted);margin-top:5px">Leave blank or 0 for no minimum threshold.</div>
@@ -388,14 +429,14 @@ const CONFIG = {
   CRM_SHEET_ID: '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U', // for client list in Delivery
 };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings' };
+const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance' };
 
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
 const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
-  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], minQtyMap:{},
+  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], minQtyMap:{},
   clients:[], // from CRM sheet for delivery linking
   page:'overview', rptTab:'category',
 };
@@ -466,8 +507,9 @@ async function ensureWarehouseSheets(){
     const needed = [
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
-      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','Unit','Quantity','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt']]},
-      {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty']]},
+      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus']]},
+      {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
+      {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated']]},
     ];
     const toCreate = needed.filter(s=>!existing.has(s.title));
     if(!toCreate.length) return;
@@ -485,7 +527,7 @@ async function loadAllData(){
   try{
     await ensureWarehouseSheets();
     await Promise.all([
-      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(),
+      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(), loadStockLots(),
     ]);
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
@@ -503,7 +545,7 @@ function clearOvFilters(){
 async function refreshWhData(){
   showLoader(true);
   try{
-    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings()]);
+    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots()]);
     renderCurrentPage();
     showToast('Data refreshed','success');
   }catch(e){ showToast('Refresh error: '+e.message,'error'); }
@@ -548,13 +590,16 @@ async function loadStock(){
 
 async function loadStockMovements(){
   try{
-    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:P`);
+    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:W`);
     S.stockMovements = rows.slice(1).map((r,i)=>({
       row:i+2, id:r[0]||'', type:r[1]||'', date:r[2]||'',
       fromWh:r[3]||'', toWh:r[4]||'', productCode:r[5]||'',
       productName:r[6]||'', brand:r[7]||'', unit:r[8]||'',
       quantity:parseFloat(r[9])||0, clientCode:r[10]||'', shopName:r[11]||'',
       reference:r[12]||'', notes:r[13]||'', createdBy:r[14]||'', createdAt:r[15]||'',
+      lotDate:r[16]||'', baseQty:parseFloat(r[17])||0, baseUnit:r[18]||'',
+      fifoWarning:r[19]==='TRUE', fifoOverrideReason:r[20]||'',
+      bbeDate:r[21]||'', bbeStatus:r[22]||'',
     })).filter(m=>m.id);
   }catch(e){ S.stockMovements=[]; }
 }
@@ -568,21 +613,37 @@ async function loadClients(){
 
 async function loadProdSettings(){
   try{
-    const rows=await whGet(`${WH_SHEETS.PROD_SETTINGS}!A:B`);
+    const rows=await whGet(`${WH_SHEETS.PROD_SETTINGS}!A:E`);
     S.minQtyMap={};
     rows.slice(1).forEach((r,i)=>{
-      if(r[0]) S.minQtyMap[r[0]]={row:i+2, minQty:parseFloat(r[1])||0};
+      if(r[0]) S.minQtyMap[r[0]]={
+        row:i+2, minQty:parseFloat(r[1])||0,
+        baseUnit:r[2]||'', caseUnitName:r[3]||'', unitsPerCase:parseFloat(r[4])||0,
+      };
     });
   }catch(e){ S.minQtyMap={}; }
 }
 
-async function saveProdMinQty(code, qty){
+async function saveProdSettings(code, minQty, baseUnit, caseUnitName, unitsPerCase){
   const entry=S.minQtyMap[code];
+  const row=[code, minQty||0, baseUnit||'', caseUnitName||'', unitsPerCase||0];
   if(entry){
-    await whUpdate(`${WH_SHEETS.PROD_SETTINGS}!A${entry.row}:B${entry.row}`,[[code,qty]]);
+    await whUpdate(`${WH_SHEETS.PROD_SETTINGS}!A${entry.row}:E${entry.row}`,[row]);
   } else {
-    await whAppend(WH_SHEETS.PROD_SETTINGS,[[code,qty]]);
+    await whAppend(WH_SHEETS.PROD_SETTINGS,[row]);
   }
+}
+
+
+async function loadStockLots(){
+  try{
+    const rows=await whGet(`${WH_SHEETS.STOCK_LOT}!A:H`);
+    S.stockLots=rows.slice(1).map((r,i)=>({
+      row:i+2, id:r[0]||'', warehouseId:r[1]||'', productCode:r[2]||'',
+      lotDate:r[3]||'', bbeDate:r[4]||'', baseQty:parseFloat(r[5])||0,
+      baseUnit:r[6]||'', lastUpdated:r[7]||'',
+    })).filter(l=>l.warehouseId&&l.productCode&&l.lotDate);
+  }catch(e){ S.stockLots=[]; }
 }
 
 // ══════════════════════════════════════════
@@ -621,12 +682,52 @@ function renderOverview(){
   const totalUnits=S.stock.reduce((a,s)=>a+s.quantity,0);
   const zeroStock=prods.filter(p=>whs.reduce((a,w)=>a+(smap[p.code]?.[w.id]||0),0)===0).length;
 
+  // BBE lot counts
+  const bbeCounts={Normal:0,Warning:0,Critical:0,Expired:0};
+  S.stockLots.filter(l=>l.baseQty>0).forEach(l=>{
+    const st=l.bbeDate?getBBEStatus(l.bbeDate):'Normal';
+    if(bbeCounts[st]!==undefined) bbeCounts[st]++;
+  });
+  const bbeAlert=bbeCounts.Critical+bbeCounts.Expired;
+
   let h=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px">
     <div class="sc"><div class="sci"><div class="sic" style="background:#dbeafe">📦</div><div><div class="sl2">Products</div><div class="sv">${prods.length}</div><div class="ss">in catalogue</div></div></div></div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#dcfce7">🏭</div><div><div class="sl2">Locations</div><div class="sv">${whs.length}</div><div class="ss">active warehouses</div></div></div></div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#ede9fe">📊</div><div><div class="sl2">Total Units</div><div class="sv">${totalUnits.toLocaleString()}</div><div class="ss">across all locations</div></div></div></div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#fee2e2">⚠️</div><div><div class="sl2">Zero Stock</div><div class="sv">${zeroStock}</div><div class="ss">products</div></div></div></div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#fef9c3">📋</div><div><div class="sl2">Movements</div><div class="sv">${S.stockMovements.length}</div><div class="ss">total logged</div></div></div></div>
+  </div>
+  <div style="margin-bottom:18px">
+    <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📅 Lot / BBE Status</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      <div class="sc" style="cursor:pointer;border-left:4px solid #16a34a" onclick="showBbeLots('Normal')">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:22px;font-weight:800;color:#16a34a">${bbeCounts.Normal}</div>
+          <div style="font-size:11px;color:#16a34a;font-weight:600">✅ Normal</div>
+          <div style="font-size:10px;color:var(--muted)">lots</div>
+        </div></div>
+      <div class="sc" style="cursor:pointer;border-left:4px solid #d97706" onclick="showBbeLots('Warning')">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:22px;font-weight:800;color:#d97706">${bbeCounts.Warning}</div>
+          <div style="font-size:11px;color:#d97706;font-weight:600">🟡 Warning</div>
+          <div style="font-size:10px;color:var(--muted)">&lt;6 months</div>
+        </div></div>
+      <div class="sc" style="cursor:pointer;border-left:4px solid #dc2626" onclick="showBbeLots('Critical')">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:22px;font-weight:800;color:#dc2626">${bbeCounts.Critical}</div>
+          <div style="font-size:11px;color:#dc2626;font-weight:600">🔴 Critical</div>
+          <div style="font-size:10px;color:var(--muted)">&lt;3 months</div>
+        </div></div>
+      <div class="sc" style="cursor:pointer;border-left:4px solid #6b7280" onclick="showBbeLots('Expired')">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:22px;font-weight:800;color:#6b7280">${bbeCounts.Expired}</div>
+          <div style="font-size:11px;color:#6b7280;font-weight:600">💀 Expired</div>
+          <div style="font-size:10px;color:var(--muted)">lots</div>
+        </div></div>
+    </div>
+    ${bbeAlert>0?`<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:12px;color:#dc2626">
+      ⚠️ <strong>${bbeAlert} lot(s)</strong> are Critical or Expired — click the cards above to view details and take action.
+    </div>`:''}
   </div>`;
 
   // Read current filter values FIRST so we can inject them back into the rebuilt HTML
@@ -699,6 +800,49 @@ function renderOverview(){
   </table></div>
   <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${filtProds.length} of ${prods.length} product(s)</div>`;
 
+  el.innerHTML=h;
+}
+
+function showBbeLots(filterStatus){
+  const lots=S.stockLots.filter(l=>l.baseQty>0&&(l.bbeDate?getBBEStatus(l.bbeDate):getBBEStatus(''))===(filterStatus||getBBEStatus('')));
+  // Build and show detail in a modal-style overlay inside the overview content area
+  const el=document.getElementById('overview-content');
+  if(!el) return;
+  const statusColors={Normal:'#16a34a',Warning:'#d97706',Critical:'#dc2626',Expired:'#6b7280'};
+  const color=statusColors[filterStatus]||'#6b7280';
+  const getWhName=id=>S.warehouses.find(w=>w.id===id)?.name||id||'—';
+  const getProdName=code=>S.whProducts.find(p=>p.code===code)?.name||code||'—';
+
+  let h=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
+    <button class="btn bo" onclick="renderOverview()">← Back to Overview</button>
+    <span style="font-weight:700;font-size:16px;color:${color}">${filterStatus} Lots (${lots.length})</span>
+  </div>`;
+
+  if(!lots.length){
+    h+='<div class="empty"><div class="ei">✅</div><h3>No lots with this status</h3><p>No active lot balances in this BBE category.</p></div>';
+    el.innerHTML=h; return;
+  }
+  h+=`<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Product</th><th>Warehouse</th><th>Lot Date</th>
+      <th style="text-align:center">Qty</th><th>Unit</th>
+      <th>BBE Date</th><th style="text-align:center">Status</th>
+    </tr></thead>
+    <tbody>
+    ${lots.sort((a,b)=>a.bbeDate.localeCompare(b.bbeDate)).map(l=>{
+      const st=l.bbeDate?getBBEStatus(l.bbeDate):'Normal';
+      return`<tr>
+        <td><div style="font-weight:600">${esc(getProdName(l.productCode))}</div>
+            <div style="font-size:10px;color:var(--muted)">${esc(l.productCode)}</div></td>
+        <td style="font-size:12px">${esc(getWhName(l.warehouseId))}</td>
+        <td style="font-size:12px;white-space:nowrap">${l.lotDate||'—'}</td>
+        <td style="text-align:center;font-weight:700">${l.baseQty}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(l.baseUnit)||'units'}</td>
+        <td style="font-size:12px;white-space:nowrap;color:${color}">${l.bbeDate||'—'}</td>
+        <td style="text-align:center">${bbeBadge(st)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
   el.innerHTML=h;
 }
 
@@ -790,17 +934,25 @@ function renderLog(){
     <thead><tr>
       <th>Date</th><th>Type</th><th>Product</th>
       <th style="text-align:center">Qty</th>
+      <th>Lot Date</th><th style="text-align:center">BBE</th>
       <th>From</th><th>To</th><th>Reference</th><th>Logged By</th>
     </tr></thead>
     <tbody>
       ${movs.map(m=>{
         const tc=typeColors[m.type]||'#6b7280';
+        const bbeStatusVal=m.bbeStatus||(m.bbeDate?getBBEStatus(m.bbeDate):'');
+        const unitLabel=m.unit&&m.baseUnit&&m.unit!==m.baseUnit
+          ?`${m.quantity} ${esc(m.unit)} = ${m.baseQty} ${esc(m.baseUnit)}`
+          :`${m.quantity} ${esc(m.unit||m.baseUnit||'')}`;
         return`<tr>
           <td style="white-space:nowrap;font-size:12px">${m.date?fmtDate(m.date):'—'}</td>
-          <td><span class="badge" style="background:${tc}20;color:${tc}">${m.type}</span></td>
+          <td><span class="badge" style="background:${tc}20;color:${tc}">${m.type}</span>
+              ${m.fifoWarning?'<span title="FIFO override: '+esc(m.fifoOverrideReason)+'" style="cursor:help;font-size:10px;color:#d97706">⚠️FIFO</span>':''}</td>
           <td><div style="font-weight:600">${esc(m.productName)||esc(m.productCode)}</div>
               <div style="font-size:10px;color:var(--muted)">${esc(m.brand)} · ${esc(m.productCode)}</div></td>
-          <td style="text-align:center;font-weight:700">${m.quantity}<br><span style="font-size:10px;color:var(--muted);font-weight:400">${esc(m.unit)}</span></td>
+          <td style="text-align:center;font-weight:700;font-size:12px">${unitLabel}</td>
+          <td style="font-size:11px;color:var(--muted);white-space:nowrap">${m.lotDate||'—'}</td>
+          <td style="text-align:center">${bbeStatusVal?bbeBadge(bbeStatusVal):'—'}</td>
           <td style="font-size:12px;color:var(--muted)">${esc(getWhName(m.fromWh))}</td>
           <td style="font-size:12px;color:var(--muted)">${esc(getWhName(m.toWh))}</td>
           <td style="font-size:12px;color:var(--muted)">${esc(m.reference)||'—'}</td>
@@ -1038,16 +1190,111 @@ async function saveWarehouse(){
 // ══════════════════════════════════════════
 // MOVEMENT MODAL
 // ══════════════════════════════════════════
+
+// ── Lot / BBE helpers ─────────────────────
+function addMonths(dateStr, months){
+  if(!dateStr||!months) return '';
+  try{
+    const d=new Date(dateStr); d.setMonth(d.getMonth()+months);
+    return d.toISOString().split('T')[0];
+  }catch{ return ''; }
+}
+
+function getBBEStatus(bbeDateStr){
+  if(!bbeDateStr) return 'Unknown';
+  try{
+    const bbe=new Date(bbeDateStr); const now=new Date();
+    const daysLeft=Math.floor((bbe-now)/86400000);
+    if(daysLeft<0) return 'Expired';
+    if(daysLeft<=90) return 'Critical';
+    if(daysLeft<=180) return 'Warning';
+    return 'Normal';
+  }catch{ return 'Unknown'; }
+}
+
+function bbeBadge(status){
+  const cfg={Normal:'#16a34a',Warning:'#d97706',Critical:'#dc2626',Expired:'#6b7280',Unknown:'#6b7280'};
+  return `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${cfg[status]||'#6b7280'};color:#fff;font-weight:600">${status}</span>`;
+}
+
+function getProdConfig(code){
+  return S.minQtyMap[code]||{baseUnit:'',caseUnitName:'',unitsPerCase:0,minQty:0};
+}
+
+function getAvailableLots(warehouseId, productCode){
+  return S.stockLots
+    .filter(l=>l.warehouseId===warehouseId&&l.productCode===productCode&&l.baseQty>0)
+    .sort((a,b)=>a.lotDate.localeCompare(b.lotDate));
+}
+
+function populateLotSelector(warehouseId, productCode){
+  const sel=document.getElementById('mv-lot');
+  const info=document.getElementById('mv-lot-info');
+  if(!sel) return;
+  const lots=getAvailableLots(warehouseId, productCode);
+  if(!lots.length){
+    sel.innerHTML='<option value="">— No lots in stock —</option>';
+    if(info) info.textContent='No available lots found for this product in this warehouse.';
+  } else {
+    sel.innerHTML='<option value="">— Select Lot —</option>'+lots.map(l=>{
+      const bbe=l.bbeDate?` | BBE: ${l.bbeDate} [${getBBEStatus(l.bbeDate)}]`:'';
+      return `<option value="${esc(l.lotDate)}">${l.lotDate}${bbe} — ${l.baseQty} ${l.baseUnit||'units'}</option>`;
+    }).join('');
+    if(info) info.textContent=`${lots.length} lot(s) available. Oldest lot shown first (FIFO).`;
+  }
+}
+
+function checkFIFOWarning(selectedLotDate, warehouseId, productCode){
+  const panel=document.getElementById('mv-fifo-panel');
+  const msg=document.getElementById('mv-fifo-msg');
+  if(!panel||!msg) return;
+  const lots=getAvailableLots(warehouseId, productCode);
+  const older=lots.filter(l=>l.lotDate<selectedLotDate&&l.baseQty>0);
+  if(older.length){
+    const oldestQty=older[0].baseQty;
+    const oldestUnit=older[0].baseUnit||'units';
+    msg.textContent=`Older lot(s) still have stock (e.g. lot ${older[0].lotDate}: ${oldestQty} ${oldestUnit}). FIFO order suggests using the oldest lot first.`;
+    panel.style.display='';
+  } else {
+    panel.style.display='none';
+  }
+}
+
+function updateBasePreview(){
+  const preview=document.getElementById('mv-base-preview');
+  if(!preview) return;
+  const prodCode=val('mv-product');
+  const cfg=getProdConfig(prodCode);
+  const qty=parseFloat(val('mv-qty'))||0;
+  const unitSel=document.getElementById('mv-unit');
+  const unitVal=unitSel?.value||'';
+  if(!qty||!unitVal||!prodCode){ preview.style.display='none'; return; }
+  let baseQty=qty, baseUnit=cfg.baseUnit||unitVal;
+  if(cfg.caseUnitName&&unitVal===cfg.caseUnitName&&cfg.unitsPerCase>0){
+    baseQty=qty*cfg.unitsPerCase;
+    baseUnit=cfg.baseUnit||'units';
+    preview.textContent=`= ${baseQty} ${baseUnit} (${qty} × ${cfg.unitsPerCase} per case)`;
+    preview.style.display='';
+  } else {
+    preview.style.display='none';
+  }
+}
+
+// ── Modal open / type change / product change ─────────────────────────────────
 function openMovementModal(){
   setVal('mv-type',''); setVal('mv-product',''); setVal('mv-product-search','');
-  setVal('mv-qty',''); setVal('mv-unit',''); setVal('mv-reference',''); setVal('mv-notes','');
-  setVal('mv-adj-dir','+');
+  setVal('mv-qty',''); setVal('mv-reference',''); setVal('mv-notes','');
+  setVal('mv-adj-dir','+'); setVal('mv-lotdate',''); setVal('mv-fifo-reason','');
   setVal('mv-date',new Date().toISOString().split('T')[0]);
   const whOpts='<option value="">— Select Location —</option>'+S.warehouses.map(w=>`<option value="${esc(w.id)}">${esc(w.name)} (${w.type})</option>`).join('');
   const fromSel=document.getElementById('mv-from'); if(fromSel) fromSel.innerHTML=whOpts;
   const toSel=document.getElementById('mv-to');   if(toSel)   toSel.innerHTML=whOpts;
   const shopSel=document.getElementById('mv-shop');
   if(shopSel) shopSel.innerHTML='<option value="">— No shop link —</option>'+S.clients.map(c=>`<option value="${esc(c.code)}|${esc(c.shop)}">${esc(c.shop)} (${esc(c.code)})</option>`).join('');
+  const unitSel=document.getElementById('mv-unit'); if(unitSel) unitSel.innerHTML='<option value="">— Select Unit —</option>';
+  const lotSel=document.getElementById('mv-lot'); if(lotSel) lotSel.innerHTML='<option value="">— Select Lot —</option>';
+  const fifoPanel=document.getElementById('mv-fifo-panel'); if(fifoPanel) fifoPanel.style.display='none';
+  const bPreview=document.getElementById('mv-base-preview'); if(bPreview) bPreview.style.display='none';
   filterMvProducts();
   onMvTypeChange();
   openModal('movementModal');
@@ -1057,10 +1304,29 @@ function onMvTypeChange(){
   const t=val('mv-type');
   const showFrom=['Transfer','Delivery','Damage','Expired','Loss','Adjustment'].includes(t);
   const showTo=['Receive','Transfer','Return'].includes(t);
+  const showLotDate=['Receive','Return'].includes(t);
+  const showLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(t);
   document.getElementById('mv-from-row').style.display=showFrom?'':'none';
   document.getElementById('mv-to-row').style.display=showTo?'':'none';
   document.getElementById('mv-shop-row').style.display=t==='Delivery'?'':'none';
   document.getElementById('mv-adj-row').style.display=t==='Adjustment'?'':'none';
+  document.getElementById('mv-lotdate-row').style.display=showLotDate?'':'none';
+  document.getElementById('mv-lot-row').style.display=showLotSel?'':'none';
+  const fifoPanel=document.getElementById('mv-fifo-panel'); if(fifoPanel) fifoPanel.style.display='none';
+  // Re-trigger lot selector if warehouse + product already selected
+  if(showLotSel){
+    const fromId=val('mv-from'); const prodCode=val('mv-product');
+    if(fromId&&prodCode) populateLotSelector(fromId,prodCode);
+  }
+}
+
+function onMvFromChange(){
+  const t=val('mv-type');
+  const showLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(t);
+  if(showLotSel){
+    const fromId=val('mv-from'); const prodCode=val('mv-product');
+    if(fromId&&prodCode) populateLotSelector(fromId,prodCode);
+  }
 }
 
 function filterMvProducts(){
@@ -1072,10 +1338,44 @@ function filterMvProducts(){
 }
 
 function onMvProductChange(){
-  const p=S.whProducts.find(x=>x.code===val('mv-product'));
-  setVal('mv-unit',p?[p.type,p.size].filter(Boolean).join(' · '):'');
+  const prodCode=val('mv-product');
+  const cfg=getProdConfig(prodCode);
+  const unitSel=document.getElementById('mv-unit');
+  if(unitSel){
+    let opts='<option value="">— Select Unit —</option>';
+    if(cfg.baseUnit) opts+=`<option value="${esc(cfg.baseUnit)}">${esc(cfg.baseUnit)} (base unit)</option>`;
+    if(cfg.caseUnitName&&cfg.unitsPerCase>0) opts+=`<option value="${esc(cfg.caseUnitName)}">${esc(cfg.caseUnitName)} (${cfg.unitsPerCase} ${cfg.baseUnit||'units'})</option>`;
+    if(!cfg.baseUnit){
+      // Fallback: use product type
+      const p=S.whProducts.find(x=>x.code===prodCode);
+      const fallback=p?[p.type,p.size].filter(Boolean).join(' '):'unit';
+      opts=`<option value="${esc(fallback)}">${esc(fallback)}</option>`;
+    }
+    unitSel.innerHTML=opts;
+    // Auto-select first real option
+    if(unitSel.options.length>1) unitSel.selectedIndex=1;
+  }
+  updateBasePreview();
+  // Refresh lot selector if warehouse already chosen
+  const t=val('mv-type');
+  if(['Delivery','Transfer','Damage','Expired','Loss'].includes(t)){
+    const fromId=val('mv-from');
+    if(fromId&&prodCode) populateLotSelector(fromId,prodCode);
+  }
 }
 
+function onLotDateChange(){
+  // No auto-action needed; BBE computed at save time
+}
+
+function onLotSelectChange(){
+  const selectedLot=val('mv-lot');
+  if(!selectedLot){ document.getElementById('mv-fifo-panel').style.display='none'; return; }
+  const fromId=val('mv-from'); const prodCode=val('mv-product');
+  if(fromId&&prodCode) checkFIFOWarning(selectedLot, fromId, prodCode);
+}
+
+// ── Save movement ─────────────────────────────────────────────────────────────
 async function saveMovement(){
   const type=val('mv-type');
   if(!type){ showToast('Select a movement type','warning'); return; }
@@ -1085,31 +1385,102 @@ async function saveMovement(){
   if(!qty||qty<=0){ showToast('Enter a valid quantity','warning'); return; }
   const date=val('mv-date');
   if(!date){ showToast('Select a date','warning'); return; }
+
   const fromWhId=val('mv-from'), toWhId=val('mv-to');
   const needsFrom=['Transfer','Delivery','Damage','Expired','Loss','Adjustment'].includes(type);
   const needsTo=['Receive','Transfer','Return'].includes(type);
+  const needsLotDate=['Receive','Return'].includes(type);
+  const needsLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(type);
+
   if(needsFrom&&!fromWhId){ showToast('Select a "From" location','warning'); return; }
   if(needsTo&&!toWhId){ showToast('Select a "To" location','warning'); return; }
+
+  let lotDate='', lotRow=null;
+  if(needsLotDate){
+    lotDate=val('mv-lotdate');
+    if(!lotDate){ showToast('Enter the packing lot date','warning'); return; }
+  }
+  if(needsLotSel){
+    lotDate=val('mv-lot');
+    if(!lotDate){ showToast('Select a lot','warning'); return; }
+    // Find the lot entry
+    lotRow=S.stockLots.find(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.lotDate===lotDate);
+  }
+
+  // FIFO check
+  const fifoPanelVisible=document.getElementById('mv-fifo-panel')?.style.display!=='none';
+  let fifoWarning=false, fifoReason='';
+  if(fifoPanelVisible){
+    fifoReason=val('mv-fifo-reason').trim();
+    if(!fifoReason){ showToast('Provide a reason for overriding FIFO order','warning'); return; }
+    fifoWarning=true;
+  }
+
+  // Unit conversion
+  const cfg=getProdConfig(prodCode);
+  const unitSel=document.getElementById('mv-unit');
+  const movementUnit=unitSel?.value||cfg.baseUnit||'unit';
+  let baseQty=qty;
+  const baseUnit=cfg.baseUnit||movementUnit;
+  if(cfg.caseUnitName&&movementUnit===cfg.caseUnitName&&cfg.unitsPerCase>0){
+    baseQty=qty*cfg.unitsPerCase;
+  }
+
+  // BBE calculation
   const prod=S.whProducts.find(p=>p.code===prodCode);
-  const unit=val('mv-unit')||prod?.type||'';
+  const shelfMonths=parseFloat(prod?.shelfLife)||0;
+  let bbeDate='', bbeStatus='';
+  if(lotDate&&shelfMonths>0){
+    bbeDate=addMonths(lotDate,shelfMonths);
+    bbeStatus=getBBEStatus(bbeDate);
+  }
+
   const shopVal=val('mv-shop')||'';
   const [clientCode='',shopName='']=(shopVal||'').split('|');
-  const adjDir=val('mv-adj-dir')||'+';
   const id=genId('MV');
   const now=new Date().toISOString();
-  const row=[id,type,date,fromWhId,toWhId,prodCode,prod?.name||'',prod?.brand||'',unit,qty,clientCode,shopName,val('mv-reference'),val('mv-notes'),S.user?.name||S.user?.email||'',now];
+
+  // StockMovements row (A-W, 23 columns)
+  const mvRow=[
+    id, type, date, fromWhId, toWhId,
+    prodCode, prod?.name||'', prod?.brand||'',
+    movementUnit, qty, clientCode, shopName,
+    val('mv-reference'), val('mv-notes'),
+    S.user?.name||S.user?.email||'', now,
+    lotDate, baseQty, baseUnit,
+    fifoWarning?'TRUE':'FALSE', fifoReason,
+    bbeDate, bbeStatus,
+  ];
+
   showLoader(true);
   try{
-    await whAppend(WH_SHEETS.MOVEMENTS,[row]);
+    await whAppend(WH_SHEETS.MOVEMENTS,[mvRow]);
+
+    // Stock aggregates
+    const adjDir=val('mv-adj-dir')||'+';
     if(type==='Adjustment'){
-      if(fromWhId) await applyWhStock(fromWhId,prodCode,adjDir==='+'?qty:-qty);
+      if(fromWhId) await applyWhStock(fromWhId,prodCode,adjDir==='+'?baseQty:-baseQty);
     } else {
-      if(needsFrom&&fromWhId) await applyWhStock(fromWhId,prodCode,-qty);
-      if(needsTo&&toWhId)     await applyWhStock(toWhId,prodCode,qty);
+      if(needsFrom&&fromWhId) await applyWhStock(fromWhId,prodCode,-baseQty);
+      if(needsTo&&toWhId)     await applyWhStock(toWhId,prodCode,baseQty);
     }
+
+    // Lot balance
+    if(needsLotDate&&toWhId&&lotDate){
+      // Receive / Return: add to lot balance in toWhId
+      await applyLotStock(toWhId,prodCode,lotDate,bbeDate,baseQty,baseUnit,true);
+    } else if(needsLotSel&&fromWhId&&lotDate){
+      // Deduct from lot in fromWhId
+      await applyLotStock(fromWhId,prodCode,lotDate,lotRow?.bbeDate||bbeDate,-baseQty,baseUnit,false);
+      // Transfer: also credit to toWhId (same lot)
+      if(type==='Transfer'&&toWhId){
+        await applyLotStock(toWhId,prodCode,lotDate,lotRow?.bbeDate||bbeDate,baseQty,baseUnit,true);
+      }
+    }
+
     showToast('Movement saved','success');
     closeModal('movementModal');
-    await Promise.all([loadStock(),loadStockMovements()]);
+    await Promise.all([loadStock(),loadStockMovements(),loadStockLots()]);
     renderCurrentPage();
   }catch(e){ showToast('Error: '+e.message,'error'); }
   finally{ showLoader(false); }
@@ -1123,6 +1494,18 @@ async function applyWhStock(warehouseId,productCode,delta){
     await whUpdate(`${WH_SHEETS.STOCK}!D${existing.row}:E${existing.row}`,[[newQty,now]]);
   } else {
     await whAppend(WH_SHEETS.STOCK,[[`${warehouseId}|${productCode}`,warehouseId,productCode,Math.max(0,delta),now]]);
+  }
+}
+
+async function applyLotStock(warehouseId,productCode,lotDate,bbeDate,delta,baseUnit,allowCreate){
+  const now=new Date().toISOString();
+  const lotId=`${warehouseId}|${productCode}|${lotDate}`;
+  const existing=S.stockLots.find(l=>l.warehouseId===warehouseId&&l.productCode===productCode&&l.lotDate===lotDate);
+  if(existing){
+    const newQty=Math.max(0,existing.baseQty+delta);
+    await whUpdate(`${WH_SHEETS.STOCK_LOT}!F${existing.row}:H${existing.row}`,[[newQty,baseUnit||existing.baseUnit,now]]);
+  } else if(allowCreate&&delta>0){
+    await whAppend(WH_SHEETS.STOCK_LOT,[[lotId,warehouseId,productCode,lotDate,bbeDate||'',delta,baseUnit||'',now]]);
   }
 }
 
@@ -1278,6 +1661,10 @@ function openProductModal(row=0){
   setVal('pd-keg',      p?.kegType||'');
   setVal('pd-shelf',    p?.shelfLife||'');
   setVal('pd-minqty',   p?.minQty!=null&&p.minQty>0?p.minQty:'');
+  const cfg=p?S.minQtyMap[p.code]:null;
+  setVal('pd-baseunit', cfg?.baseUnit||'');
+  setVal('pd-caseunit', cfg?.caseUnitName||'');
+  setVal('pd-upc',      cfg?.unitsPerCase>0?cfg.unitsPerCase:'');
   setVal('pd-row',      row||'');
   // Populate size dropdown from existing product sizes
   const sizeSel=document.getElementById('pd-size');
@@ -1326,18 +1713,20 @@ async function saveProduct(){
   showLoader(true);
   try{
     const minQtyVal=parseFloat(val('pd-minqty'))||0;
+    const baseUnitVal=val('pd-baseunit').trim();
+    const caseUnitVal=val('pd-caseunit').trim();
+    const upcVal=parseFloat(val('pd-upc'))||0;
     if(editRow){
       await whUpdate(`${WH_SHEETS.PRODUCTS}!A${editRow}:L${editRow}`,[rowData]);
-      await saveProdMinQty(code, minQtyVal);
+      await saveProdSettings(code, minQtyVal, baseUnitVal, caseUnitVal, upcVal);
       showToast('Product updated','success');
     } else {
       await whAppend(WH_SHEETS.PRODUCTS,[rowData]);
-      if(minQtyVal>0) await saveProdMinQty(code, minQtyVal);
+      await saveProdSettings(code, minQtyVal, baseUnitVal, caseUnitVal, upcVal);
       showToast('Product added','success');
     }
     closeModal('productModal');
-    await loadProdSettings();
-    await loadWhProducts();
+    await Promise.all([loadProdSettings(), loadWhProducts()]);
     renderProducts();
   }catch(e){ showToast('Error: '+e.message,'error'); }
   finally{ showLoader(false); }
