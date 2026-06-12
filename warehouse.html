@@ -179,6 +179,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
     <div class="sb-user">Signed in as<span id="sb-username">—</span></div>
     <div class="log-btn-wrap">
       <button onclick="openMovementModal()">+ Log Movement</button>
+      <button onclick="openBatchDeliveryModal()" style="margin-top:6px;background:#f59e0b">🚚 Batch Delivery</button>
     </div>
     <nav>
       <div class="snl">Inventory</div>
@@ -223,7 +224,10 @@ tr:hover td{background:rgba(0,0,0,.012)}
     <div class="page" id="page-log">
       <div class="ph">
         <div class="pt"><h1>📋 Movement Log</h1><p>Complete stock movement audit trail</p></div>
-        <div class="pa"><button class="btn bp" onclick="openMovementModal()">+ Log Movement</button></div>
+        <div class="pa" style="display:flex;gap:8px">
+          <button class="btn bo" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" onclick="openBatchDeliveryModal()">🚚 Batch Delivery</button>
+          <button class="btn bp" onclick="openMovementModal()">+ Log Movement</button>
+        </div>
       </div>
       <div id="log-content"></div>
     </div>
@@ -356,6 +360,46 @@ tr:hover td{background:rgba(0,0,0,.012)}
 </div>
 
 <!-- ══ PRODUCT MODAL ══════════════════════════════════════════════════════ -->
+<div class="mo" id="batchDeliveryModal">
+  <div class="modal" style="max-width:1000px;width:98vw">
+    <div class="mh"><h3>🚚 Batch Delivery to Shop</h3><button class="mc-x" onclick="closeModal('batchDeliveryModal')">✕</button></div>
+    <div class="mb" style="max-height:82vh;overflow-y:auto;padding-bottom:4px">
+      <!-- Delivery header -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div><label class="fl">From Warehouse *</label><select class="fi" id="bd-from" onchange="onBdWarehouseChange()"><option value="">— Select Warehouse —</option></select></div>
+        <div><label class="fl">Movement Date *</label><input class="fi" type="date" id="bd-date"></div>
+        <div><label class="fl">Reference / Delivery Note</label><input class="fi" id="bd-reference" placeholder="Delivery slip, invoice #, PO number..."></div>
+        <div><label class="fl">Notes</label><input class="fi" id="bd-notes" placeholder="Optional notes..."></div>
+      </div>
+      <!-- Products section -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--primary)">Products to Deliver</div>
+        <button class="btn bp" onclick="addBatchRow()" style="font-size:12px;padding:5px 14px">+ Add Product</button>
+      </div>
+      <!-- Column headers (sticky) -->
+      <div style="display:grid;grid-template-columns:minmax(180px,2fr) 58px minmax(135px,1fr) 68px 100px 74px 78px 32px;gap:6px;padding:7px 6px;background:var(--bg);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;position:sticky;top:0;z-index:2">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Product</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.4px">Stock</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Lot</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.4px">BBE</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Unit</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.4px">Qty Out</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.4px">Base Qty</div>
+        <div></div>
+      </div>
+      <!-- Dynamic product rows -->
+      <div id="batch-rows" style="border:1px solid var(--border);border-radius:0 0 6px 6px;overflow-y:auto;max-height:380px"></div>
+      <div style="text-align:center;padding:10px 0 2px">
+        <button class="btn bo" onclick="addBatchRow()" style="font-size:12px;padding:6px 18px">＋ Add Another Product</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('batchDeliveryModal')">Cancel</button>
+      <button class="btn bp" onclick="saveBatchDelivery()">💾 Save Batch Delivery</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="productModal">
   <div class="modal" style="max-width:600px">
     <div class="mh"><h3 id="prodModalTitle">Add Product</h3><button class="mc-x" onclick="closeModal('productModal')">✕</button></div>
@@ -507,7 +551,7 @@ async function ensureWarehouseSheets(){
     const needed = [
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
-      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus']]},
+      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID']]},
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
       {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated']]},
     ];
@@ -532,6 +576,21 @@ async function loadAllData(){
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
   finally{ showLoader(false); }
+}
+
+function clearLogFilters(){
+  ['log-type','log-wh','log-q','log-from','log-to','log-batch'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  renderLog();
+}
+
+function filterLogByBatch(batchId){
+  navigate('log');
+  setTimeout(()=>{
+    const el=document.getElementById('log-batch');
+    if(el){ el.value=batchId; renderLog(); }
+  },50);
 }
 
 function clearOvFilters(){
@@ -590,7 +649,7 @@ async function loadStock(){
 
 async function loadStockMovements(){
   try{
-    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:W`);
+    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:X`);
     S.stockMovements = rows.slice(1).map((r,i)=>({
       row:i+2, id:r[0]||'', type:r[1]||'', date:r[2]||'',
       fromWh:r[3]||'', toWh:r[4]||'', productCode:r[5]||'',
@@ -599,7 +658,7 @@ async function loadStockMovements(){
       reference:r[12]||'', notes:r[13]||'', createdBy:r[14]||'', createdAt:r[15]||'',
       lotDate:r[16]||'', baseQty:parseFloat(r[17])||0, baseUnit:r[18]||'',
       fifoWarning:r[19]==='TRUE', fifoOverrideReason:r[20]||'',
-      bbeDate:r[21]||'', bbeStatus:r[22]||'',
+      bbeDate:r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'',
     })).filter(m=>m.id);
   }catch(e){ S.stockMovements=[]; }
 }
@@ -895,25 +954,31 @@ function renderLog(){
   const typeColors={Receive:'#10b981',Transfer:'#3b82f6',Delivery:'#f59e0b',Return:'#8b5cf6',Damage:'#ef4444',Expired:'#f97316',Loss:'#dc2626',Adjustment:'#6b7280'};
   const getWhName=id=>S.warehouses.find(w=>w.id===id)?.name||id||'—';
 
-  let h=`<div class="fb" style="margin-bottom:14px">
-    <select class="fsel" id="log-type" onchange="renderLog()">
-      <option value="">— All Types —</option>
-      ${['Receive','Transfer','Delivery','Return','Damage','Expired','Loss','Adjustment'].map(t=>`<option>${t}</option>`).join('')}
-    </select>
-    <select class="fsel" id="log-wh" onchange="renderLog()">
-      <option value="">— All Locations —</option>
-      ${S.warehouses.map(w=>`<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}
-    </select>
-    <input class="si" type="text" id="log-q" placeholder="Search product..." oninput="renderLog()" style="max-width:180px">
-    <input class="fsel" type="date" id="log-from" onchange="renderLog()" title="From date">
-    <input class="fsel" type="date" id="log-to"   onchange="renderLog()" title="To date">
-  </div>`;
-
+  // Read all filter values FIRST (before rebuilding DOM)
   const typeF=document.getElementById('log-type')?.value||'';
   const whF=document.getElementById('log-wh')?.value||'';
   const qF=(document.getElementById('log-q')?.value||'').toLowerCase();
   const fromF=document.getElementById('log-from')?.value||'';
   const toF=document.getElementById('log-to')?.value||'';
+  const batchRaw=document.getElementById('log-batch')?.value||'';
+  const batchF=batchRaw.toLowerCase();
+  const hasLogFilter=typeF||whF||qF||fromF||toF||batchF;
+
+  let h=`<div class="fb" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">
+    <select class="fsel" id="log-type" onchange="renderLog()">
+      <option value="">— All Types —</option>
+      ${['Receive','Transfer','Delivery','Return','Damage','Expired','Loss','Adjustment'].map(t=>`<option${typeF===t?' selected':''}>${t}</option>`).join('')}
+    </select>
+    <select class="fsel" id="log-wh" onchange="renderLog()">
+      <option value="">— All Locations —</option>
+      ${S.warehouses.map(w=>`<option value="${esc(w.id)}"${whF===w.id?' selected':''}>${esc(w.name)}</option>`).join('')}
+    </select>
+    <input class="si" type="text" id="log-q" placeholder="Search product..." oninput="renderLog()" style="max-width:160px" value="${esc(qF)}">
+    <input class="fsel" type="date" id="log-from" onchange="renderLog()" title="From date" value="${esc(fromF)}">
+    <input class="fsel" type="date" id="log-to"   onchange="renderLog()" title="To date" value="${esc(toF)}">
+    <input class="si" type="text" id="log-batch" placeholder="🔍 Filter by Batch ID..." oninput="renderLog()" style="max-width:180px" value="${esc(batchRaw)}">
+    ${hasLogFilter?`<button class="btn bo" style="font-size:12px;padding:6px 12px;color:#dc2626;border-color:#fecaca" onclick="clearLogFilters()">✕ Clear</button>`:''}
+  </div>`;
 
   const movs=[...S.stockMovements].reverse().filter(m=>{
     if(typeF&&m.type!==typeF) return false;
@@ -921,6 +986,7 @@ function renderLog(){
     if(qF&&!`${m.productName} ${m.productCode} ${m.brand}`.toLowerCase().includes(qF)) return false;
     if(fromF&&m.date<fromF) return false;
     if(toF&&m.date>toF) return false;
+    if(batchF&&!(m.batchId||'').toLowerCase().includes(batchF)) return false;
     return true;
   });
 
@@ -932,7 +998,7 @@ function renderLog(){
   h+=`<div class="tbl-wrap">
   <table>
     <thead><tr>
-      <th>Date</th><th>Type</th><th>Product</th>
+      <th>Date</th><th>Type / Batch</th><th>Product</th>
       <th style="text-align:center">Qty</th>
       <th>Lot Date</th><th style="text-align:center">BBE</th>
       <th>From</th><th>To</th><th>Reference</th><th>Logged By</th>
@@ -947,7 +1013,8 @@ function renderLog(){
         return`<tr>
           <td style="white-space:nowrap;font-size:12px">${m.date?fmtDate(m.date):'—'}</td>
           <td><span class="badge" style="background:${tc}20;color:${tc}">${m.type}</span>
-              ${m.fifoWarning?'<span title="FIFO override: '+esc(m.fifoOverrideReason)+'" style="cursor:help;font-size:10px;color:#d97706">⚠️FIFO</span>':''}</td>
+              ${m.fifoWarning?'<span title="FIFO override: '+esc(m.fifoOverrideReason)+'" style="cursor:help;font-size:10px;color:#d97706"> ⚠️FIFO</span>':''}
+              ${m.batchId?`<div style="font-size:10px;color:#d97706;margin-top:2px;cursor:pointer;white-space:nowrap" onclick="filterLogByBatch('${esc(m.batchId)}')" title="Click to filter this batch">📦 ${esc(m.batchId)}</div>`:''}</td>
           <td><div style="font-weight:600">${esc(m.productName)||esc(m.productCode)}</div>
               <div style="font-size:10px;color:var(--muted)">${esc(m.brand)} · ${esc(m.productCode)}</div></td>
           <td style="text-align:center;font-weight:700;font-size:12px">${unitLabel}</td>
@@ -1464,7 +1531,7 @@ async function saveMovement(){
     S.user?.name||S.user?.email||'', now,
     lotDate, baseQty, baseUnit,
     fifoWarning?'TRUE':'FALSE', fifoReason,
-    bbeDate, bbeStatus,
+    bbeDate, bbeStatus, '',
   ];
 
   showLoader(true);
@@ -1522,6 +1589,296 @@ async function applyLotStock(warehouseId,productCode,lotDate,bbeDate,delta,baseU
   } else if(allowCreate&&delta>0){
     await whAppend(WH_SHEETS.STOCK_LOT,[[lotId,warehouseId,productCode,lotDate,bbeDate||'',delta,baseUnit||'',now]]);
   }
+}
+
+// ══════════════════════════════════════════
+// BATCH DELIVERY
+// ══════════════════════════════════════════
+
+function genBatchId(){
+  const d=new Date();
+  const ds=d.toISOString().split('T')[0].replace(/-/g,'');
+  return `BTCH-${ds}-${String(Math.floor(Math.random()*9000)+1000)}`;
+}
+
+function openBatchDeliveryModal(){
+  const whOpts='<option value="">— Select Warehouse —</option>'+
+    S.warehouses.map(w=>`<option value="${esc(w.id)}">${esc(w.name)} (${w.type})</option>`).join('');
+  document.getElementById('bd-from').innerHTML=whOpts;
+  document.getElementById('bd-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('bd-reference').value='';
+  document.getElementById('bd-notes').value='';
+  document.getElementById('batch-rows').innerHTML='';
+  addBatchRow();
+  openModal('batchDeliveryModal');
+}
+
+function onBdWarehouseChange(){
+  // Refresh stock + lots for all rows when warehouse changes
+  document.querySelectorAll('#batch-rows .batch-row').forEach(rowEl=>{
+    const sel=rowEl.querySelector('.bpr-prod');
+    if(sel&&sel.value) onBatchProductChange(sel);
+  });
+}
+
+function addBatchRow(){
+  const container=document.getElementById('batch-rows');
+  const div=document.createElement('div');
+  div.className='batch-row';
+  div.style.cssText='border-bottom:1px solid var(--border);padding:8px 6px';
+  const prodOpts='<option value="">— Select Product —</option>'+
+    S.whProducts.map(p=>`<option value="${esc(p.code)}">${esc(p.brand)} · ${esc(p.name)} · ${esc(p.size)} ${esc(p.type)}</option>`).join('');
+  div.innerHTML=`
+    <div style="display:grid;grid-template-columns:minmax(180px,2fr) 58px minmax(135px,1fr) 68px 100px 74px 78px 32px;gap:6px;align-items:start">
+      <div>
+        <input class="fi bpr-search" placeholder="Search product..." style="margin-bottom:4px;font-size:12px;padding:5px 8px" oninput="filterBatchProduct(this)">
+        <select class="fi bpr-prod" style="font-size:12px" onchange="onBatchProductChange(this)">${prodOpts}</select>
+      </div>
+      <div class="bpr-stock" style="text-align:center;padding-top:52px;font-size:14px;font-weight:800;color:#16a34a">—</div>
+      <div style="padding-top:28px">
+        <select class="fi bpr-lot" style="font-size:12px" onchange="onBatchLotChange(this)">
+          <option value="">— Lot —</option>
+        </select>
+      </div>
+      <div class="bpr-bbe" style="text-align:center;padding-top:34px">—</div>
+      <div style="padding-top:28px">
+        <select class="fi bpr-unit" style="font-size:12px" onchange="updateBatchRowPreview(this)">
+          <option value="">— Unit —</option>
+        </select>
+      </div>
+      <div style="padding-top:28px">
+        <input type="number" class="fi bpr-qty" min="0" step="any" placeholder="0" style="font-size:13px;text-align:center;font-weight:600" oninput="updateBatchRowPreview(this)">
+      </div>
+      <div class="bpr-base" style="text-align:center;padding-top:34px;font-size:11px;color:var(--muted);line-height:1.4">—</div>
+      <div style="padding-top:30px;text-align:center">
+        <button style="padding:4px 8px;font-size:14px;background:none;color:#ef4444;border:1px solid #fecaca;border-radius:6px;cursor:pointer" onclick="removeBatchRow(this)" title="Remove row">🗑</button>
+      </div>
+    </div>
+    <div class="bpr-fifo" style="display:none;margin-top:6px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:8px 10px">
+      <div class="bpr-fifo-msg" style="font-size:11px;font-weight:600;color:#92400e;margin-bottom:6px"></div>
+      <input class="fi bpr-fifo-reason" placeholder="FIFO override reason (required)..." style="font-size:12px">
+    </div>`;
+  container.appendChild(div);
+}
+
+function removeBatchRow(btn){
+  const row=btn.closest('.batch-row');
+  const container=document.getElementById('batch-rows');
+  if(container.querySelectorAll('.batch-row').length<=1){
+    showToast('At least one product row is required','warning'); return;
+  }
+  row.remove();
+}
+
+function filterBatchProduct(input){
+  const row=input.closest('.batch-row');
+  const q=input.value.toLowerCase();
+  const sel=row.querySelector('.bpr-prod');
+  if(!sel) return;
+  const cur=sel.value;
+  const list=q?S.whProducts.filter(p=>`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase().includes(q)):S.whProducts;
+  sel.innerHTML='<option value="">— Select Product —</option>'+
+    list.slice(0,100).map(p=>`<option value="${esc(p.code)}"${p.code===cur?' selected':''}>${esc(p.brand)} · ${esc(p.name)} · ${esc(p.size)} ${esc(p.type)}</option>`).join('');
+}
+
+function onBatchProductChange(sel){
+  const row=sel.closest('.batch-row');
+  const prodCode=sel.value;
+  const whId=document.getElementById('bd-from')?.value||'';
+
+  // Available stock
+  const stockEl=row.querySelector('.bpr-stock');
+  if(stockEl){
+    if(!prodCode||!whId){ stockEl.textContent='—'; stockEl.style.color='#16a34a'; }
+    else{
+      const s=S.stock.find(x=>x.warehouseId===whId&&x.productCode===prodCode);
+      const qty=s?.quantity||0;
+      stockEl.textContent=qty||'0';
+      stockEl.style.color=qty>0?'#16a34a':'#ef4444';
+    }
+  }
+
+  // Lot selector
+  const lotSel=row.querySelector('.bpr-lot');
+  if(lotSel){
+    if(!prodCode||!whId){
+      lotSel.innerHTML='<option value="">— Lot —</option>';
+    } else {
+      const lots=getAvailableLots(whId,prodCode);
+      if(lots.length){
+        lotSel.innerHTML='<option value="">— Select Lot —</option>'+lots.map(l=>{
+          const st=l.bbeDate?getBBEStatus(l.bbeDate):'';
+          return `<option value="${esc(l.lotDate)}">${l.lotDate} — ${l.baseQty}${l.baseUnit?' '+l.baseUnit:''}${l.bbeDate?' | BBE:'+l.bbeDate+(st?' ['+st+']':''):''}`;
+        }).join('');
+      } else {
+        lotSel.innerHTML='<option value="">— No lots in stock —</option>';
+      }
+    }
+  }
+
+  // Unit selector
+  const cfg=getProdConfig(prodCode);
+  const p=S.whProducts.find(x=>x.code===prodCode);
+  const unitSel=row.querySelector('.bpr-unit');
+  if(unitSel){
+    let opts='<option value="">— Unit —</option>';
+    if(cfg.baseUnit){
+      opts+=`<option value="${esc(cfg.baseUnit)}">${esc(cfg.baseUnit)}</option>`;
+      if(cfg.caseUnitName&&cfg.unitsPerCase>0)
+        opts+=`<option value="${esc(cfg.caseUnitName)}">${esc(cfg.caseUnitName)} (${cfg.unitsPerCase}×${cfg.baseUnit})</option>`;
+    } else {
+      const base=p?[p.type,p.size].filter(Boolean).join(' '):'unit';
+      opts+=`<option value="${esc(base)}">${esc(base)}</option>`;
+      const pack=p?parseFloat(p.pack)||0:0;
+      if(pack>0) opts+=`<option value="Pack">Pack (${pack}×${base})</option>`;
+    }
+    unitSel.innerHTML=opts;
+    if(unitSel.options.length>1) unitSel.selectedIndex=1;
+  }
+
+  // Reset BBE, base preview, FIFO
+  const bbeEl=row.querySelector('.bpr-bbe'); if(bbeEl) bbeEl.innerHTML='—';
+  const baseEl=row.querySelector('.bpr-base'); if(baseEl) baseEl.textContent='—';
+  const fifoEl=row.querySelector('.bpr-fifo'); if(fifoEl) fifoEl.style.display='none';
+}
+
+function onBatchLotChange(sel){
+  const row=sel.closest('.batch-row');
+  const lotDate=sel.value;
+  const whId=document.getElementById('bd-from')?.value||'';
+  const prodCode=row.querySelector('.bpr-prod')?.value||'';
+
+  // BBE badge
+  const bbeEl=row.querySelector('.bpr-bbe');
+  if(bbeEl){
+    const lot=lotDate?S.stockLots.find(l=>l.warehouseId===whId&&l.productCode===prodCode&&l.lotDate===lotDate):null;
+    if(lot&&lot.bbeDate){
+      const st=getBBEStatus(lot.bbeDate);
+      bbeEl.innerHTML=bbeBadge(st)+'<div style="font-size:9px;color:var(--muted);margin-top:2px">'+lot.bbeDate+'</div>';
+    } else { bbeEl.innerHTML='—'; }
+  }
+
+  // FIFO warning
+  const fifoEl=row.querySelector('.bpr-fifo');
+  const fifoMsg=row.querySelector('.bpr-fifo-msg');
+  if(fifoEl&&fifoMsg){
+    if(lotDate&&whId&&prodCode){
+      const older=getAvailableLots(whId,prodCode).filter(l=>l.lotDate<lotDate&&l.baseQty>0);
+      if(older.length){
+        fifoMsg.textContent=`⚠️ FIFO: Older lot ${older[0].lotDate} still has ${older[0].baseQty} ${older[0].baseUnit||'units'}. Provide an override reason to continue.`;
+        fifoEl.style.display='';
+      } else { fifoEl.style.display='none'; }
+    } else { fifoEl.style.display='none'; }
+  }
+}
+
+function updateBatchRowPreview(el){
+  const row=el.closest('.batch-row');
+  const prodCode=row.querySelector('.bpr-prod')?.value||'';
+  const unitVal=row.querySelector('.bpr-unit')?.value||'';
+  const qty=parseFloat(row.querySelector('.bpr-qty')?.value)||0;
+  const baseEl=row.querySelector('.bpr-base');
+  if(!baseEl) return;
+  if(!prodCode||!qty){ baseEl.textContent='—'; return; }
+  const {multiplier,baseUnit}=getMvUnitConversion(prodCode,unitVal||'');
+  const baseQty=qty*multiplier;
+  if(multiplier>1){
+    baseEl.innerHTML=`<strong style="color:#1e40af">${baseQty}</strong><br><span style="font-size:10px">${baseUnit}</span>`;
+  } else {
+    baseEl.innerHTML=`<span style="color:var(--muted)">${baseQty}</span>`;
+  }
+}
+
+async function saveBatchDelivery(){
+  const fromWhId=document.getElementById('bd-from')?.value||'';
+  const date=document.getElementById('bd-date')?.value||'';
+  const reference=document.getElementById('bd-reference')?.value?.trim()||'';
+  const notes=document.getElementById('bd-notes')?.value?.trim()||'';
+
+  if(!fromWhId){ showToast('Select a warehouse','warning'); return; }
+  if(!date){ showToast('Select a movement date','warning'); return; }
+
+  const rowEls=[...document.querySelectorAll('#batch-rows .batch-row')];
+  if(!rowEls.length){ showToast('Add at least one product','warning'); return; }
+
+  const rowData=[]; const seenCodes=new Set();
+  for(const rowEl of rowEls){
+    const prodCode=rowEl.querySelector('.bpr-prod')?.value||'';
+    if(!prodCode){ showToast('Select a product for every row','warning'); return; }
+    if(seenCodes.has(prodCode)){
+      const pn=S.whProducts.find(x=>x.code===prodCode)?.name||prodCode;
+      showToast(`Duplicate: ${pn} — each product can only appear once per batch`,'warning'); return;
+    }
+    seenCodes.add(prodCode);
+
+    const qty=parseFloat(rowEl.querySelector('.bpr-qty')?.value)||0;
+    const pn=S.whProducts.find(x=>x.code===prodCode)?.name||prodCode;
+    if(!qty||qty<=0){ showToast(`Enter quantity for ${pn}`,'warning'); return; }
+
+    const unitVal=rowEl.querySelector('.bpr-unit')?.value||'';
+    const {multiplier,baseUnit}=getMvUnitConversion(prodCode,unitVal);
+    const baseQty=qty*multiplier;
+
+    // Stock availability
+    const stockItem=S.stock.find(s=>s.warehouseId===fromWhId&&s.productCode===prodCode);
+    if(stockItem&&baseQty>stockItem.quantity){
+      showToast(`${pn}: quantity (${baseQty} ${baseUnit}) exceeds available stock (${stockItem.quantity})`,'warning'); return;
+    }
+
+    // Lot
+    const lotDate=rowEl.querySelector('.bpr-lot')?.value||'';
+    const hasLots=S.stockLots.some(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.baseQty>0);
+    if(hasLots&&!lotDate){ showToast(`Select a lot for ${pn}`,'warning'); return; }
+
+    // FIFO
+    const fifoVisible=rowEl.querySelector('.bpr-fifo')?.style.display!=='none';
+    let fifoWarning=false, fifoReason='';
+    if(fifoVisible){
+      fifoReason=rowEl.querySelector('.bpr-fifo-reason')?.value?.trim()||'';
+      if(!fifoReason){ showToast(`FIFO override reason required for ${pn}`,'warning'); return; }
+      fifoWarning=true;
+    }
+
+    // BBE from lot
+    const lot=lotDate?S.stockLots.find(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.lotDate===lotDate):null;
+    const bbeDate=lot?.bbeDate||'';
+    const bbeStatus=bbeDate?getBBEStatus(bbeDate):'';
+
+    rowData.push({prodCode,lotDate,unitVal,qty,baseQty,baseUnit,fifoWarning,fifoReason,bbeDate,bbeStatus,lot});
+  }
+
+  const batchId=genBatchId();
+  const now=new Date().toISOString();
+  const createdBy=S.user?.name||S.user?.email||'';
+
+  showLoader(true);
+  try{
+    // Save all movement rows
+    for(const rd of rowData){
+      const prod=S.whProducts.find(p=>p.code===rd.prodCode);
+      const mvId=genId('MV');
+      const mvRow=[
+        mvId,'Delivery',date,fromWhId,'',
+        rd.prodCode,prod?.name||'',prod?.brand||'',
+        rd.unitVal,rd.qty,'','',
+        reference,notes,createdBy,now,
+        rd.lotDate,rd.baseQty,rd.baseUnit,
+        rd.fifoWarning?'TRUE':'FALSE',rd.fifoReason,
+        rd.bbeDate,rd.bbeStatus,batchId
+      ];
+      await whAppend(WH_SHEETS.MOVEMENTS,[mvRow]);
+    }
+    // Update stock aggregates + lot balances
+    for(const rd of rowData){
+      await applyWhStock(fromWhId,rd.prodCode,-rd.baseQty);
+      if(rd.lotDate) await applyLotStock(fromWhId,rd.prodCode,rd.lotDate,rd.bbeDate,-rd.baseQty,rd.baseUnit,false);
+    }
+    showToast(`✅ Batch saved — ${rowData.length} product(s) | ID: ${batchId}`,'success');
+    closeModal('batchDeliveryModal');
+    await Promise.all([loadStock(),loadStockMovements(),loadStockLots()]);
+    renderCurrentPage();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
 }
 
 // ══════════════════════════════════════════
