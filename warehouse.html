@@ -344,7 +344,9 @@ tr:hover td{background:rgba(0,0,0,.012)}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div><label class="fl">Beer Style</label><input class="fi" id="pd-style" placeholder="e.g. Lager"></div>
-        <div><label class="fl">Size</label><input class="fi" id="pd-size" placeholder="e.g. 330ml"></div>
+        <div><label class="fl">Size</label>
+          <select class="fi" id="pd-size"></select>
+        </div>
         <div><label class="fl">ABV %</label><input class="fi" type="number" id="pd-abv" step="0.1" min="0" max="100" placeholder="e.g. 5.0"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -1246,6 +1248,19 @@ function openProductModal(row=0){
   setVal('pd-shelf',    p?.shelfLife||'');
   setVal('pd-minqty',   p?.minQty!=null&&p.minQty>0?p.minQty:'');
   setVal('pd-row',      row||'');
+  // Populate size dropdown from existing product sizes
+  const sizeSel=document.getElementById('pd-size');
+  if(sizeSel){
+    const sizes=[...new Set(S.allProducts.map(x=>x.size).filter(Boolean))].sort((a,b)=>{
+      const n=s=>parseFloat(s)||Infinity;
+      return n(a)-n(b)||a.localeCompare(b);
+    });
+    const currentSize=p?.size||'';
+    // Include current value even if not in list (e.g. edited externally)
+    const allSizes=[...new Set([...sizes, currentSize].filter(Boolean))];
+    sizeSel.innerHTML='<option value="">— Select Size —</option>'
+      + allSizes.map(s=>`<option value="${esc(s)}"${s===currentSize?' selected':''}>${esc(s)}</option>`).join('');
+  }
   openModal('productModal');
 }
 
