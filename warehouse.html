@@ -492,6 +492,14 @@ async function loadAllData(){
   finally{ showLoader(false); }
 }
 
+function clearOvFilters(){
+  ['ov-q','ov-brand','ov-style','ov-type','ov-wh'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  renderOverview();
+}
+
 async function refreshWhData(){
   showLoader(true);
   try{
@@ -621,31 +629,35 @@ function renderOverview(){
     <div class="sc"><div class="sci"><div class="sic" style="background:#fef9c3">📋</div><div><div class="sl2">Movements</div><div class="sv">${S.stockMovements.length}</div><div class="ss">total logged</div></div></div></div>
   </div>`;
 
-  h+=`<div class="fb" style="margin-bottom:14px">
-    <input class="si" type="text" id="ov-q" placeholder="Search product..." oninput="renderOverview()" style="max-width:210px">
-    <select class="fsel" id="ov-brand" onchange="renderOverview()">
-      <option value="">— All Brands —</option>
-      ${[...new Set(prods.map(p=>p.brand).filter(Boolean))].sort().map(b=>`<option>${esc(b)}</option>`).join('')}
-    </select>
-    <select class="fsel" id="ov-style" onchange="renderOverview()">
-      <option value="">— All Styles —</option>
-      ${[...new Set(prods.map(p=>p.style).filter(Boolean))].sort().map(s=>`<option>${esc(s)}</option>`).join('')}
-    </select>
-    <select class="fsel" id="ov-type" onchange="renderOverview()">
-      <option value="">— All Types —</option>
-      ${[...new Set(prods.map(p=>p.type).filter(Boolean))].sort().map(t=>`<option>${esc(t)}</option>`).join('')}
-    </select>
-    <select class="fsel" id="ov-wh" onchange="renderOverview()">
-      <option value="">— All Locations —</option>
-      ${whs.map(w=>`<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}
-    </select>
-  </div>`;
-
-  const q=(document.getElementById('ov-q')?.value||'').toLowerCase();
+  // Read current filter values FIRST so we can inject them back into the rebuilt HTML
+  const qRaw=document.getElementById('ov-q')?.value||'';
+  const q=qRaw.toLowerCase();
   const bF=document.getElementById('ov-brand')?.value||'';
   const sF=document.getElementById('ov-style')?.value||'';
   const tF=document.getElementById('ov-type')?.value||'';
   const wF=document.getElementById('ov-wh')?.value||'';
+  const hasFilter=qRaw||bF||sF||tF||wF;
+
+  h+=`<div class="fb" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">
+    <input class="si" type="text" id="ov-q" placeholder="Search product..." oninput="renderOverview()" style="max-width:210px" value="${esc(qRaw)}">
+    <select class="fsel" id="ov-brand" onchange="renderOverview()">
+      <option value="">— All Brands —</option>
+      ${[...new Set(prods.map(p=>p.brand).filter(Boolean))].sort().map(b=>`<option${bF===b?' selected':''}>${esc(b)}</option>`).join('')}
+    </select>
+    <select class="fsel" id="ov-style" onchange="renderOverview()">
+      <option value="">— All Styles —</option>
+      ${[...new Set(prods.map(p=>p.style).filter(Boolean))].sort().map(s=>`<option${sF===s?' selected':''}>${esc(s)}</option>`).join('')}
+    </select>
+    <select class="fsel" id="ov-type" onchange="renderOverview()">
+      <option value="">— All Types —</option>
+      ${[...new Set(prods.map(p=>p.type).filter(Boolean))].sort().map(t=>`<option${tF===t?' selected':''}>${esc(t)}</option>`).join('')}
+    </select>
+    <select class="fsel" id="ov-wh" onchange="renderOverview()">
+      <option value="">— All Locations —</option>
+      ${whs.map(w=>`<option value="${esc(w.id)}"${wF===w.id?' selected':''}>${esc(w.name)}</option>`).join('')}
+    </select>
+    ${hasFilter?`<button class="btn bo" style="font-size:12px;padding:6px 12px;color:#dc2626;border-color:#fecaca" onclick="clearOvFilters()">✕ Clear</button>`:''}
+  </div>`;
   const dispWh=wF?whs.filter(w=>w.id===wF):whs;
   const filtProds=prods.filter(p=>{
     const txt=`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase();
@@ -1350,7 +1362,17 @@ function val(id){ return document.getElementById(id)?.value||''; }
 function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v||''; }
 function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmtDate(d){ if(!d) return '—'; try{ return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }catch{ return d; } }
+function fmtDate(d){
+  if(!d) return '—';
+  try{
+    const n=parseFloat(d);
+    // Google Sheets stores USER_ENTERED dates as Excel serial numbers (~40000–60000 = 2009–2063)
+    if(!isNaN(n) && String(d).trim()===String(Math.round(n)) && n>40000 && n<100000){
+      return new Date(Math.round((n-25569)*86400*1000)).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    }
+    return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }catch{ return d; }
+}
 function genId(prefix){ return prefix+'-'+Date.now().toString(36).toUpperCase(); }
 
 function showLoader(on){ document.getElementById('loader').classList.toggle('show',on); }
