@@ -345,7 +345,8 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div><label class="fl">Beer Style</label><input class="fi" id="pd-style" placeholder="e.g. Lager"></div>
         <div><label class="fl">Size</label>
-          <select class="fi" id="pd-size"></select>
+          <select class="fi" id="pd-size" onchange="onSizeChange(this)"></select>
+          <input class="fi" id="pd-size-new" placeholder="Type new size, e.g. 500ml" style="display:none;margin-top:6px" oninput="onSizeNewInput(this)">
         </div>
         <div><label class="fl">ABV %</label><input class="fi" type="number" id="pd-abv" step="0.1" min="0" max="100" placeholder="e.g. 5.0"></div>
       </div>
@@ -1230,6 +1231,24 @@ function renderProducts(){
   el.innerHTML=h;
 }
 
+// ── Size dropdown helpers ─────────────────────────────────────────────────
+function onSizeChange(sel){
+  const newInput=document.getElementById('pd-size-new');
+  if(sel.value==='__new__'){
+    sel.style.display='none';
+    newInput.style.display=''; newInput.value=''; newInput.focus();
+  }
+}
+function onSizeNewInput(inp){
+  // Keep select hidden; the text input IS the value now
+}
+function getSizeValue(){
+  const sel=document.getElementById('pd-size');
+  const newInput=document.getElementById('pd-size-new');
+  if(newInput && newInput.style.display!=='none') return newInput.value.trim();
+  return sel?.value||'';
+}
+
 // ── Product CRUD ─────────────────────────────────────────────────────────
 function openProductModal(row=0){
   const p=row?S.allProducts.find(x=>x.row===row):null;
@@ -1259,7 +1278,16 @@ function openProductModal(row=0){
     // Include current value even if not in list (e.g. edited externally)
     const allSizes=[...new Set([...sizes, currentSize].filter(Boolean))];
     sizeSel.innerHTML='<option value="">— Select Size —</option>'
-      + allSizes.map(s=>`<option value="${esc(s)}"${s===currentSize?' selected':''}>${esc(s)}</option>`).join('');
+      + allSizes.map(s=>`<option value="${esc(s)}"${s===currentSize?' selected':''}>${esc(s)}</option>`).join('')
+      + '<option value="__new__">＋ Add new size...</option>';
+    // If editing a product whose size isn't in list, switch to text input mode
+    const newInput=document.getElementById('pd-size-new');
+    if(currentSize && !sizes.includes(currentSize)){
+      sizeSel.style.display='none';
+      newInput.style.display=''; newInput.value=currentSize;
+    } else {
+      sizeSel.style.display=''; newInput.style.display='none'; newInput.value='';
+    }
   }
   openModal('productModal');
 }
@@ -1279,7 +1307,7 @@ async function saveProduct(){
 
   const rowData=[
     val('pd-status')||'Available', code, brand, name,
-    val('pd-style'), val('pd-size'), val('pd-abv'),
+    val('pd-style'), getSizeValue(), val('pd-abv'),
     val('pd-type'), val('pd-pack'), val('pd-weight'),
     val('pd-keg'), val('pd-shelf'),
   ];
