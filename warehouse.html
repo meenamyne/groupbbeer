@@ -578,8 +578,12 @@ async function crmGet(range){ const d=await api(`${CRMB()}/values/${encodeURICom
 // ══════════════════════════════════════════
 async function ensureWarehouseSheets(){
   try{
-    const meta = await api(`${WHB()}?fields=sheets.properties.title`);
-    const existing = new Set((meta.sheets||[]).map(s=>s.properties.title));
+    // Fetch sheet metadata including sheetId (needed for row insertion)
+    const meta = await api(`${WHB()}?fields=sheets.properties(title,sheetId)`);
+    const sheetInfo = {};
+    (meta.sheets||[]).forEach(s=>{ sheetInfo[s.properties.title]=s.properties.sheetId; });
+    const existing = new Set(Object.keys(sheetInfo));
+
     const needed = [
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
@@ -587,11 +591,38 @@ async function ensureWarehouseSheets(){
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
       {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated']]},
     ];
+
+    // Create any missing sheets and capture their new sheetIds
     const toCreate = needed.filter(s=>!existing.has(s.title));
-    if(!toCreate.length) return;
-    await whBatchUpdate(toCreate.map(s=>({addSheet:{properties:{title:s.title}}})));
-    for(const s of toCreate) await whUpdate(`${s.title}!A1`, s.h);
-    showToast(`Created ${toCreate.length} new sheet(s)`,'success');
+    if(toCreate.length){
+      const createRes = await whBatchUpdate(toCreate.map(s=>({addSheet:{properties:{title:s.title}}})));
+      (createRes.replies||[]).forEach((r,i)=>{
+        if(r.addSheet) sheetInfo[toCreate[i].title]=r.addSheet.properties.sheetId;
+      });
+      showToast(`Created ${toCreate.length} new sheet(s)`,'success');
+    }
+
+    // Verify/repair header row for every sheet
+    // Handles: newly created sheets, existing sheets that somehow lost their header
+    for(const s of needed){
+      const check = await whGet(`${s.title}!A1`);
+      const firstCell = check?.[0]?.[0]||'';
+      if(firstCell === s.h[0][0]) continue; // header is already correct — skip
+
+      if(!firstCell){
+        // Sheet is empty — just write header to A1
+        await whUpdate(`${s.title}!A1`, s.h);
+      } else {
+        // Sheet has data in row 1 but no header — insert a blank row at the top
+        // so existing data shifts to row 2, then write header to the new row 1
+        const shId = sheetInfo[s.title];
+        if(shId !== undefined){
+          await whBatchUpdate([{insertDimension:{range:{sheetId:shId,dimension:'ROWS',startIndex:0,endIndex:1},inheritFromBefore:false}}]);
+        }
+        await whUpdate(`${s.title}!A1`, s.h);
+      }
+      console.log(`Repaired header for sheet: ${s.title}`);
+    }
   }catch(e){ console.warn('ensureWarehouseSheets:',e.message); }
 }
 
@@ -853,8 +884,16 @@ async function loadStock(){
 async function loadStockMovements(){
   try{
     const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:X`);
-    S.stockMovements = rows.slice(1).map((r,i)=>({
-      row:i+2, id:r[0]||'', type:r[1]||'', date:r[2]||'',
+    // Detect whether row 0 is a header row or actual data.
+    // This handles the edge case where the sheet was created without a header
+    // (ensureWarehouseSheets will repair it on next app load, but in the meantime
+    //  we still want to show existing data rather than silently hiding it).
+    const firstCell = rows?.[0]?.[0]||'';
+    const isHeaderRow = firstCell === 'MovementID';
+    const dataRows = rows.slice(isHeaderRow ? 1 : 0);
+    const rowOffset = isHeaderRow ? 2 : 1;
+    S.stockMovements = dataRows.map((r,i)=>({
+      row:i+rowOffset, id:r[0]||'', type:r[1]||'', date:r[2]||'',
       fromWh:r[3]||'', toWh:r[4]||'', productCode:r[5]||'',
       productName:r[6]||'', brand:r[7]||'', unit:r[8]||'',
       quantity:parseFloat(r[9])||0, clientCode:r[10]||'', shopName:r[11]||'',
@@ -863,7 +902,11 @@ async function loadStockMovements(){
       fifoWarning:r[19]==='TRUE', fifoOverrideReason:r[20]||'',
       bbeDate:r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'',
     })).filter(m=>m.id);
-  }catch(e){ S.stockMovements=[]; }
+  }catch(e){
+    console.error('loadStockMovements failed:',e.message);
+    showToast('⚠️ Could not load movement log: '+e.message,'warning');
+    S.stockMovements=[];
+  }
 }
 
 async function loadClients(){
