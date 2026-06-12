@@ -187,6 +187,8 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <button class="ni" id="nav-log" onclick="navigate('log')"><span class="ic">📋</span> Movement Log</button>
       <div class="snl" style="margin-top:6px">Analytics</div>
       <button class="ni" id="nav-reports" onclick="navigate('reports')"><span class="ic">📈</span> Reports</button>
+      <div class="snl" style="margin-top:6px">Catalogue</div>
+      <button class="ni" id="nav-products" onclick="navigate('products')"><span class="ic">🏷️</span> Products</button>
       <div class="snl" style="margin-top:6px">Links</div>
       <button class="ni" onclick="window.open('index.html','_self')"><span class="ic">🔗</span> Back to CRM</button>
     </nav>
@@ -239,6 +241,15 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <button class="tab" onclick="rptTab('aging',this)">⏱️ Stock Aging</button>
       </div>
       <div id="rpt-content"></div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="page" id="page-products">
+      <div class="ph">
+        <div class="pt"><h1>🏷️ Products</h1><p>Manage product catalogue</p></div>
+        <div class="pa"><button class="btn bp" onclick="openProductModal()">+ Add Product</button></div>
+      </div>
+      <div id="products-content"></div>
     </div>
 
   </div><!-- /main-content -->
@@ -309,6 +320,57 @@ tr:hover td{background:rgba(0,0,0,.012)}
   </div>
 </div>
 
+<!-- ══ PRODUCT MODAL ══════════════════════════════════════════════════════ -->
+<div class="mo" id="productModal">
+  <div class="modal" style="max-width:600px">
+    <div class="mh"><h3 id="prodModalTitle">Add Product</h3><button class="mc-x" onclick="closeModal('productModal')">✕</button></div>
+    <div class="mb">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="fl">Availability Status *</label>
+          <select class="fi" id="pd-status">
+            <option value="Available">✅ Available</option>
+            <option value="Seasonal">🍂 Seasonal</option>
+            <option value="Pre-order">🔮 Pre-order</option>
+            <option value="Limited">⭐ Limited Edition</option>
+            <option value="Promotional">🎉 Promotional</option>
+            <option value="Inactive">⏸️ Inactive (archived)</option>
+            <option value="Discontinued">❌ Discontinued</option>
+          </select></div>
+        <div><label class="fl">Product Code *</label><input class="fi" id="pd-code" placeholder="e.g. SB001"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="fl">Brand *</label><input class="fi" id="pd-brand" placeholder="e.g. Singha"></div>
+        <div><label class="fl">Product Name *</label><input class="fi" id="pd-name" placeholder="e.g. Singha Original"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div><label class="fl">Beer Style</label><input class="fi" id="pd-style" placeholder="e.g. Lager"></div>
+        <div><label class="fl">Size</label><input class="fi" id="pd-size" placeholder="e.g. 330ml"></div>
+        <div><label class="fl">ABV %</label><input class="fi" type="number" id="pd-abv" step="0.1" min="0" max="100" placeholder="e.g. 5.0"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div><label class="fl">Container Type</label>
+          <select class="fi" id="pd-type"><option value="">— Select —</option><option>Can</option><option>Bottle</option><option>Keg</option><option>Case</option></select></div>
+        <div><label class="fl">Pack / Case Size</label><input class="fi" id="pd-pack" placeholder="e.g. 24"></div>
+        <div><label class="fl">Shelf Life (months)</label><input class="fi" type="number" id="pd-shelf" placeholder="e.g. 12"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="fl">Weight per Pack (kg)</label><input class="fi" id="pd-weight" placeholder="e.g. 8.5"></div>
+        <div><label class="fl">Keg Type</label><input class="fi" id="pd-keg" placeholder="e.g. 30L Sankey"></div>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px">
+        <label class="fl" style="color:#16a34a">⚠️ Minimum Stock Quantity</label>
+        <input class="fi" type="number" id="pd-minqty" min="0" step="1" placeholder="e.g. 10 — alert when stock falls below this">
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Leave blank or 0 for no minimum threshold.</div>
+      </div>
+      <input type="hidden" id="pd-row">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('productModal')">Cancel</button>
+      <button class="btn bp" onclick="saveProduct()">💾 Save Product</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST + LOADER ══════════════════════════════════════════════════════ -->
 <div id="toast"></div>
 <div id="loader"><div class="spin"></div></div>
@@ -323,14 +385,14 @@ const CONFIG = {
   CRM_SHEET_ID: '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U', // for client list in Delivery
 };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements' };
+const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings' };
 
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
 const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
-  warehouses:[], whProducts:[], stock:[], stockMovements:[],
+  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], minQtyMap:{},
   clients:[], // from CRM sheet for delivery linking
   page:'overview', rptTab:'category',
 };
@@ -402,6 +464,7 @@ async function ensureWarehouseSheets(){
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
       {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','Unit','Quantity','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt']]},
+      {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty']]},
     ];
     const toCreate = needed.filter(s=>!existing.has(s.title));
     if(!toCreate.length) return;
@@ -419,7 +482,7 @@ async function loadAllData(){
   try{
     await ensureWarehouseSheets();
     await Promise.all([
-      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(),
+      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(),
     ]);
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
@@ -429,7 +492,7 @@ async function loadAllData(){
 async function refreshWhData(){
   showLoader(true);
   try{
-    await Promise.all([loadWarehouses(), loadStock(), loadStockMovements()]);
+    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings()]);
     renderCurrentPage();
     showToast('Data refreshed','success');
   }catch(e){ showToast('Refresh error: '+e.message,'error'); }
@@ -449,12 +512,17 @@ async function loadWarehouses(){
 async function loadWhProducts(){
   try{
     const rows = await whGet(`${WH_SHEETS.PRODUCTS}!A:L`);
-    S.whProducts = rows.slice(1).map((r,i)=>({
+    S.allProducts = rows.slice(1).map((r,i)=>({
       row:i+2, status:r[0]||'', code:r[1]||'', brand:r[2]||'',
       name:r[3]||'', style:r[4]||'', size:r[5]||'', abv:r[6]||'',
-      type:r[7]||'', pack:r[8]||'', shelfLife:r[11]||'',
-    })).filter(p=>p.code&&p.status!=='Inactive'&&p.status!=='Discontinued');
-  }catch(e){ S.whProducts=[]; }
+      type:r[7]||'', pack:r[8]||'', weight:r[9]||'', kegType:r[10]||'',
+      shelfLife:r[11]||'',
+    })).filter(p=>p.code);
+    const ARCHIVED=new Set(['Inactive','Discontinued']);
+    S.whProducts = S.allProducts.filter(p=>!ARCHIVED.has(p.status));
+    // merge minQty — done after loadProdSettings if already available
+    S.allProducts.forEach(p=>{ p.minQty=S.minQtyMap[p.code]?.minQty??null; });
+  }catch(e){ S.whProducts=[]; S.allProducts=[]; }
 }
 
 async function loadStock(){
@@ -487,6 +555,25 @@ async function loadClients(){
   }catch(e){ S.clients=[]; }
 }
 
+async function loadProdSettings(){
+  try{
+    const rows=await whGet(`${WH_SHEETS.PROD_SETTINGS}!A:B`);
+    S.minQtyMap={};
+    rows.slice(1).forEach((r,i)=>{
+      if(r[0]) S.minQtyMap[r[0]]={row:i+2, minQty:parseFloat(r[1])||0};
+    });
+  }catch(e){ S.minQtyMap={}; }
+}
+
+async function saveProdMinQty(code, qty){
+  const entry=S.minQtyMap[code];
+  if(entry){
+    await whUpdate(`${WH_SHEETS.PROD_SETTINGS}!A${entry.row}:B${entry.row}`,[[code,qty]]);
+  } else {
+    await whAppend(WH_SHEETS.PROD_SETTINGS,[[code,qty]]);
+  }
+}
+
 // ══════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════
@@ -508,6 +595,7 @@ function renderCurrentPage(){
   else if(p==='warehouses') renderWarehouses();
   else if(p==='log') renderLog();
   else if(p==='reports') renderReports();
+  else if(p==='products') renderProducts();
 }
 
 // ══════════════════════════════════════════
@@ -1021,6 +1109,195 @@ async function applyWhStock(warehouseId,productCode,delta){
   } else {
     await whAppend(WH_SHEETS.STOCK,[[`${warehouseId}|${productCode}`,warehouseId,productCode,Math.max(0,delta),now]]);
   }
+}
+
+// ══════════════════════════════════════════
+// PRODUCTS PAGE
+// ══════════════════════════════════════════
+const PROD_STATUS_CFG = {
+  Available:    {cls:'b-green',  icon:'✅'},
+  Seasonal:     {cls:'b-orange', icon:'🍂'},
+  'Pre-order':  {cls:'b-blue',   icon:'🔮'},
+  Limited:      {cls:'b-purple', icon:'⭐'},
+  Promotional:  {cls:'b-orange', icon:'🎉'},
+  Inactive:     {cls:'b-gray',   icon:'⏸️'},
+  Discontinued: {cls:'b-red',    icon:'❌'},
+};
+const ARCHIVED_STATUSES = new Set(['Inactive','Discontinued']);
+
+function prodStatusBadge(s){
+  const b=PROD_STATUS_CFG[s]||{cls:'b-gray',icon:'•'};
+  return `<span class="badge ${b.cls}" style="white-space:nowrap">${b.icon} ${esc(s||'—')}</span>`;
+}
+
+function renderProducts(){
+  const el=document.getElementById('products-content');
+  if(!el) return;
+  const all=S.allProducts;
+
+  // Read current filter values before re-render
+  const qRaw=document.getElementById('pr-q')?.value||'';
+  const q=qRaw.toLowerCase();
+  const brandF=document.getElementById('pr-brand')?.value||'';
+  const typeF=document.getElementById('pr-type')?.value||'';
+  const statusF=document.getElementById('pr-status')?.value||'';
+  const archiveF=document.getElementById('pr-archive')?.value||'active';
+
+  const brands=[...new Set(all.map(p=>p.brand).filter(Boolean))].sort();
+  const types=[...new Set(all.map(p=>p.type).filter(Boolean))].sort();
+  const statuses=['Available','Seasonal','Pre-order','Limited','Promotional','Inactive','Discontinued'];
+
+  let h=`<div class="fb" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <input class="si" type="text" id="pr-q" placeholder="Search product..." oninput="renderProducts()" style="max-width:200px" value="${esc(qRaw)}">
+    <select class="fsel" id="pr-brand" onchange="renderProducts()">
+      <option value="">— All Brands —</option>
+      ${brands.map(b=>`<option${brandF===b?' selected':''}>${esc(b)}</option>`).join('')}
+    </select>
+    <select class="fsel" id="pr-type" onchange="renderProducts()">
+      <option value="">— All Types —</option>
+      ${types.map(t=>`<option${typeF===t?' selected':''}>${esc(t)}</option>`).join('')}
+    </select>
+    <select class="fsel" id="pr-status" onchange="renderProducts()">
+      <option value="">— All Statuses —</option>
+      ${statuses.map(s=>`<option value="${s}"${statusF===s?' selected':''}>${s}</option>`).join('')}
+    </select>
+    <select class="fsel" id="pr-archive" onchange="renderProducts()">
+      <option value="active"${archiveF==='active'?' selected':''}>Active only</option>
+      <option value="all"${archiveF==='all'?' selected':''}>Show all (incl. archived)</option>
+      <option value="archived"${archiveF==='archived'?' selected':''}>Archived only</option>
+    </select>
+  </div>`;
+
+  const filtered=all.filter(p=>{
+    if(archiveF==='active'&&ARCHIVED_STATUSES.has(p.status)) return false;
+    if(archiveF==='archived'&&!ARCHIVED_STATUSES.has(p.status)) return false;
+    if(brandF&&p.brand!==brandF) return false;
+    if(typeF&&p.type!==typeF) return false;
+    if(statusF&&p.status!==statusF) return false;
+    if(q&&!`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if(!all.length){
+    el.innerHTML=h+'<div class="empty"><div class="ei">📋</div><h3>No products found</h3><p>Check that the product_info sheet exists in your warehouse spreadsheet, or add your first product above</p></div>';
+    return;
+  }
+  if(!filtered.length){
+    el.innerHTML=h+'<div class="empty"><div class="ei">🔍</div><h3>No products match</h3><p>Try adjusting the filters</p></div>';
+    return;
+  }
+
+  h+=`<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th style="min-width:120px">Status</th>
+      <th>Code</th>
+      <th>Brand</th>
+      <th style="min-width:160px">Name</th>
+      <th>Style</th>
+      <th>Size</th>
+      <th>Type</th>
+      <th style="text-align:center">ABV</th>
+      <th style="text-align:center">Shelf Life</th>
+      <th style="text-align:center">Min Qty</th>
+      <th style="text-align:center;min-width:140px">Actions</th>
+    </tr></thead>
+    <tbody>
+      ${filtered.map(p=>{
+        const isArch=ARCHIVED_STATUSES.has(p.status);
+        return`<tr style="${isArch?'opacity:.45':''}">
+          <td>${prodStatusBadge(p.status)}</td>
+          <td style="font-size:11px;font-weight:700;color:var(--primary)">${esc(p.code)}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(p.brand)||'—'}</td>
+          <td style="font-weight:600">${esc(p.name)}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(p.style)||'—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(p.size)||'—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(p.type)||'—'}</td>
+          <td style="text-align:center;font-size:12px">${p.abv?p.abv+'%':'—'}</td>
+          <td style="text-align:center;font-size:12px;color:var(--muted)">${p.shelfLife?p.shelfLife+'m':'—'}</td>
+          <td style="text-align:center;font-weight:${(p.minQty&&p.minQty>0)?'700':'400'};color:${(p.minQty&&p.minQty>0)?'#d97706':'var(--muted)'}">${(p.minQty&&p.minQty>0)?p.minQty:'—'}</td>
+          <td style="text-align:center;white-space:nowrap">
+            <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openProductModal(${p.row})">✏️ Edit</button>
+            <button class="btn" style="font-size:11px;padding:4px 10px;${isArch?'background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0':'background:#fee2e2;color:#dc2626;border:1px solid #fecaca'}" onclick="toggleProductArchive(${p.row},'${esc(p.status)}')">${isArch?'✅ Activate':'⏸️ Archive'}</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>
+  <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${filtered.length} of ${all.length} product(s)</div>`;
+
+  el.innerHTML=h;
+}
+
+// ── Product CRUD ─────────────────────────────────────────────────────────
+function openProductModal(row=0){
+  const p=row?S.allProducts.find(x=>x.row===row):null;
+  setText('prodModalTitle', p?`Edit — ${p.name}`:'Add New Product');
+  setVal('pd-status',   p?.status||'Available');
+  setVal('pd-code',     p?.code||'');
+  setVal('pd-brand',    p?.brand||'');
+  setVal('pd-name',     p?.name||'');
+  setVal('pd-style',    p?.style||'');
+  setVal('pd-size',     p?.size||'');
+  setVal('pd-abv',      p?.abv||'');
+  setVal('pd-type',     p?.type||'');
+  setVal('pd-pack',     p?.pack||'');
+  setVal('pd-weight',   p?.weight||'');
+  setVal('pd-keg',      p?.kegType||'');
+  setVal('pd-shelf',    p?.shelfLife||'');
+  setVal('pd-minqty',   p?.minQty!=null&&p.minQty>0?p.minQty:'');
+  setVal('pd-row',      row||'');
+  openModal('productModal');
+}
+
+async function saveProduct(){
+  const code=val('pd-code').trim().toUpperCase();
+  const name=val('pd-name').trim();
+  const brand=val('pd-brand').trim();
+  if(!code){ showToast('Product code is required','warning'); return; }
+  if(!name){ showToast('Product name is required','warning'); return; }
+  if(!brand){ showToast('Brand is required','warning'); return; }
+  const editRow=parseInt(val('pd-row'))||0;
+
+  // Duplicate code check
+  const dup=S.allProducts.find(p=>p.code===code&&p.row!==editRow);
+  if(dup){ showToast(`Code "${code}" already used by: ${dup.name}`,'warning'); return; }
+
+  const rowData=[
+    val('pd-status')||'Available', code, brand, name,
+    val('pd-style'), val('pd-size'), val('pd-abv'),
+    val('pd-type'), val('pd-pack'), val('pd-weight'),
+    val('pd-keg'), val('pd-shelf'),
+  ];
+  showLoader(true);
+  try{
+    const minQtyVal=parseFloat(val('pd-minqty'))||0;
+    if(editRow){
+      await whUpdate(`${WH_SHEETS.PRODUCTS}!A${editRow}:L${editRow}`,[rowData]);
+      await saveProdMinQty(code, minQtyVal);
+      showToast('Product updated','success');
+    } else {
+      await whAppend(WH_SHEETS.PRODUCTS,[rowData]);
+      if(minQtyVal>0) await saveProdMinQty(code, minQtyVal);
+      showToast('Product added','success');
+    }
+    closeModal('productModal');
+    await loadProdSettings();
+    await loadWhProducts();
+    renderProducts();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+async function toggleProductArchive(row, currentStatus){
+  const newStatus=ARCHIVED_STATUSES.has(currentStatus)?'Available':'Inactive';
+  showLoader(true);
+  try{
+    await whUpdate(`${WH_SHEETS.PRODUCTS}!A${row}:A${row}`,[[newStatus]]);
+    showToast(`Product ${newStatus==='Available'?'activated — now visible in stock movements':'archived — hidden from stock movements'}`,'success');
+    await loadWhProducts();
+    renderProducts();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
 }
 
 // ══════════════════════════════════════════
