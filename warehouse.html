@@ -1567,8 +1567,8 @@ function populateLotSelector(warehouseId, productCode){
   if(!sel) return;
   const lots=getAvailableLots(warehouseId, productCode);
   if(!lots.length){
-    sel.innerHTML='<option value="">— No lots in stock —</option>';
-    if(info) info.textContent='No available lots found for this product in this warehouse.';
+    sel.innerHTML='<option value="">— No lot records (legacy stock) —</option>';
+    if(info) info.innerHTML='<span style="color:#d97706">⚠️ No lot records for this product. Stock was received before lot tracking was set up — you can still save this delivery without a lot date.</span>';
   } else {
     sel.innerHTML='<option value="">— Select Lot —</option>'+lots.map(l=>{
       const bbe=l.bbeDate?` | BBE: ${l.bbeDate} [${getBBEStatus(l.bbeDate)}]`:'';
@@ -1755,9 +1755,12 @@ async function saveMovement(){
   }
   if(needsLotSel){
     lotDate=val('mv-lot');
-    if(!lotDate){ showToast('Select a lot','warning'); return; }
-    // Find the lot entry
-    lotRow=S.stockLots.find(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.lotDate===lotDate);
+    // Only require lot selection if lots actually exist for this product/warehouse.
+    // If no lots exist (stock received before lot tracking), allow delivery without a lot date.
+    const hasLotsForItem=S.stockLots.some(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.baseQty>0);
+    if(!lotDate&&hasLotsForItem){ showToast('Select a lot — use oldest lot first (FIFO)','warning'); return; }
+    // Find the lot entry (may be null if no lots tracked yet)
+    lotRow=lotDate?S.stockLots.find(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.lotDate===lotDate):null;
   }
 
   // FIFO check
@@ -1978,7 +1981,7 @@ function onBatchProductChange(sel){
           return `<option value="${esc(l.lotDate)}">${l.lotDate} — ${l.baseQty}${l.baseUnit?' '+l.baseUnit:''}${l.bbeDate?' | BBE:'+l.bbeDate+(st?' ['+st+']':''):''}`;
         }).join('');
       } else {
-        lotSel.innerHTML='<option value="">— No lots in stock —</option>';
+        lotSel.innerHTML='<option value="">— No lots (legacy stock, OK to skip) —</option>';
       }
     }
   }
