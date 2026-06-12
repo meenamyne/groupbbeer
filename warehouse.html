@@ -1260,20 +1260,33 @@ function checkFIFOWarning(selectedLotDate, warehouseId, productCode){
   }
 }
 
+function getMvUnitConversion(prodCode, unitVal){
+  // Returns {baseQty multiplier, baseUnit label} for the selected movement unit
+  const cfg=getProdConfig(prodCode);
+  const p=S.whProducts.find(x=>x.code===prodCode);
+  if(cfg.baseUnit&&cfg.caseUnitName&&cfg.unitsPerCase>0&&unitVal===cfg.caseUnitName){
+    return {multiplier:cfg.unitsPerCase, baseUnit:cfg.baseUnit};
+  }
+  if(!cfg.baseUnit&&unitVal==='Pack'){
+    const packSize=p?parseFloat(p.pack)||0:0;
+    const baseLabel=p?[p.type,p.size].filter(Boolean).join(' '):'unit';
+    if(packSize>0) return {multiplier:packSize, baseUnit:baseLabel};
+  }
+  return {multiplier:1, baseUnit:cfg.baseUnit||(p?[p.type,p.size].filter(Boolean).join(' '):'unit')};
+}
+
 function updateBasePreview(){
   const preview=document.getElementById('mv-base-preview');
   if(!preview) return;
   const prodCode=val('mv-product');
-  const cfg=getProdConfig(prodCode);
   const qty=parseFloat(val('mv-qty'))||0;
   const unitSel=document.getElementById('mv-unit');
   const unitVal=unitSel?.value||'';
   if(!qty||!unitVal||!prodCode){ preview.style.display='none'; return; }
-  let baseQty=qty, baseUnit=cfg.baseUnit||unitVal;
-  if(cfg.caseUnitName&&unitVal===cfg.caseUnitName&&cfg.unitsPerCase>0){
-    baseQty=qty*cfg.unitsPerCase;
-    baseUnit=cfg.baseUnit||'units';
-    preview.textContent=`= ${baseQty} ${baseUnit} (${qty} × ${cfg.unitsPerCase} per case)`;
+  const {multiplier, baseUnit}=getMvUnitConversion(prodCode, unitVal);
+  if(multiplier>1){
+    const baseQty=qty*multiplier;
+    preview.textContent=`= ${baseQty} ${baseUnit} (${qty} × ${multiplier} per ${unitVal})`;
     preview.style.display='';
   } else {
     preview.style.display='none';
@@ -1340,16 +1353,22 @@ function filterMvProducts(){
 function onMvProductChange(){
   const prodCode=val('mv-product');
   const cfg=getProdConfig(prodCode);
+  const p=S.whProducts.find(x=>x.code===prodCode);
   const unitSel=document.getElementById('mv-unit');
   if(unitSel){
     let opts='<option value="">— Select Unit —</option>';
-    if(cfg.baseUnit) opts+=`<option value="${esc(cfg.baseUnit)}">${esc(cfg.baseUnit)} (base unit)</option>`;
-    if(cfg.caseUnitName&&cfg.unitsPerCase>0) opts+=`<option value="${esc(cfg.caseUnitName)}">${esc(cfg.caseUnitName)} (${cfg.unitsPerCase} ${cfg.baseUnit||'units'})</option>`;
-    if(!cfg.baseUnit){
-      // Fallback: use product type
-      const p=S.whProducts.find(x=>x.code===prodCode);
-      const fallback=p?[p.type,p.size].filter(Boolean).join(' '):'unit';
-      opts=`<option value="${esc(fallback)}">${esc(fallback)}</option>`;
+    if(cfg.baseUnit){
+      // ProductSettings configured — use those values
+      opts+=`<option value="${esc(cfg.baseUnit)}">${esc(cfg.baseUnit)} (base unit)</option>`;
+      if(cfg.caseUnitName&&cfg.unitsPerCase>0)
+        opts+=`<option value="${esc(cfg.caseUnitName)}">${esc(cfg.caseUnitName)} (${cfg.unitsPerCase} × ${esc(cfg.baseUnit)})</option>`;
+    } else {
+      // Fallback: derive from product fields (type+size as base, pack column as case size)
+      const baseLabel=p?[p.type,p.size].filter(Boolean).join(' '):'unit';
+      opts+=`<option value="${esc(baseLabel)}">${esc(baseLabel)}</option>`;
+      const packSize=p?parseFloat(p.pack)||0:0;
+      if(packSize>0)
+        opts+=`<option value="Pack">Pack (${packSize} × ${esc(baseLabel)})</option>`;
     }
     unitSel.innerHTML=opts;
     // Auto-select first real option
@@ -1417,14 +1436,10 @@ async function saveMovement(){
   }
 
   // Unit conversion
-  const cfg=getProdConfig(prodCode);
   const unitSel=document.getElementById('mv-unit');
-  const movementUnit=unitSel?.value||cfg.baseUnit||'unit';
-  let baseQty=qty;
-  const baseUnit=cfg.baseUnit||movementUnit;
-  if(cfg.caseUnitName&&movementUnit===cfg.caseUnitName&&cfg.unitsPerCase>0){
-    baseQty=qty*cfg.unitsPerCase;
-  }
+  const movementUnit=unitSel?.value||'unit';
+  const {multiplier:unitMult, baseUnit}=getMvUnitConversion(prodCode, movementUnit);
+  const baseQty=qty*unitMult;
 
   // BBE calculation
   const prod=S.whProducts.find(p=>p.code===prodCode);
