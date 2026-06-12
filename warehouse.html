@@ -912,6 +912,12 @@ async function loadStockLots(){
 // NAVIGATION
 // ══════════════════════════════════════════
 function navigate(page){
+  // Clear log filters when navigating TO the log from a different page
+  if(page==='log' && S.page!=='log'){
+    ['log-type','log-wh','log-q','log-from','log-to','log-batch'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+  }
   S.page=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -938,6 +944,7 @@ function renderCurrentPage(){
 function renderOverview(){
   const el=document.getElementById('overview-content');
   if(!el) return;
+  const _f=_saveFocus();
   const whs=S.warehouses, prods=S.whProducts;
   const smap={};
   S.stock.forEach(s=>{ if(!smap[s.productCode]) smap[s.productCode]={}; smap[s.productCode][s.warehouseId]=s.quantity; });
@@ -1063,6 +1070,7 @@ function renderOverview(){
   <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${filtProds.length} of ${prods.length} product(s)</div>`;
 
   el.innerHTML=h;
+  _restoreFocus(_f);
 }
 
 function showBbeLots(filterStatus){
@@ -1154,6 +1162,7 @@ function renderWarehouses(){
 function renderLog(){
   const el=document.getElementById('log-content');
   if(!el) return;
+  const _f=_saveFocus();
   const typeColors={Receive:'#10b981',Transfer:'#3b82f6',Delivery:'#f59e0b',Return:'#8b5cf6',Damage:'#ef4444',Expired:'#f97316',Loss:'#dc2626',Adjustment:'#6b7280'};
   const getWhName=id=>S.warehouses.find(w=>w.id===id)?.name||id||'—';
 
@@ -1194,7 +1203,14 @@ function renderLog(){
   });
 
   if(!movs.length){
-    h+='<div class="empty"><div class="ei">📋</div><h3>No movements found</h3><p>Use "+ Log Movement" to record your first stock movement</p></div>';
+    if(hasLogFilter){
+      h+=`<div class="empty"><div class="ei">🔍</div><h3>No movements match your filters</h3>
+        <p style="margin-bottom:12px">Your current filters are hiding all records.</p>
+        ${batchF?`<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Batch filter "<strong>${esc(batchRaw)}</strong>" is active — use this only after saving a Batch Delivery.</p>`:''}
+        <button class="btn bp" onclick="clearLogFilters()">✕ Clear all filters — show everything</button></div>`;
+    } else {
+      h+='<div class="empty"><div class="ei">📋</div><h3>No movements found</h3><p>Use "+ Log Movement" or "🚚 Batch Delivery" to record your first stock movement</p></div>';
+    }
     el.innerHTML=h; return;
   }
 
@@ -1238,6 +1254,7 @@ function renderLog(){
   <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${movs.length} record(s)</div>`;
 
   el.innerHTML=h;
+  _restoreFocus(_f);
 }
 
 // ══════════════════════════════════════════
@@ -2110,6 +2127,7 @@ function prodStatusBadge(s){
 function renderProducts(){
   const el=document.getElementById('products-content');
   if(!el) return;
+  const _f=_saveFocus();
   const all=S.allProducts;
 
   // Read current filter values before re-render
@@ -2203,6 +2221,7 @@ function renderProducts(){
   <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${filtered.length} of ${all.length} product(s)</div>`;
 
   el.innerHTML=h;
+  _restoreFocus(_f);
 }
 
 // ── Size dropdown helpers ─────────────────────────────────────────────────
@@ -2330,6 +2349,20 @@ function val(id){ return document.getElementById(id)?.value||''; }
 function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v||''; }
 function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _saveFocus(){
+  const el=document.activeElement;
+  if(!el||!el.id) return null;
+  return {id:el.id, pos:el.selectionStart??null};
+}
+function _restoreFocus(saved){
+  if(!saved?.id) return;
+  const el=document.getElementById(saved.id);
+  if(!el) return;
+  el.focus();
+  if(saved.pos!==null && el.setSelectionRange){
+    try{ el.setSelectionRange(saved.pos,saved.pos); }catch(e){}
+  }
+}
 function fmtDate(d){
   if(!d) return '—';
   try{
