@@ -1049,6 +1049,14 @@ function renderOverview(){
   S.stock.forEach(s=>{ if(!smap[s.productCode]) smap[s.productCode]={}; smap[s.productCode][s.warehouseId]=s.quantity; });
   const totalUnits=S.stock.reduce((a,s)=>a+s.quantity,0);
   const zeroStock=prods.filter(p=>whs.reduce((a,w)=>a+(smap[p.code]?.[w.id]||0),0)===0).length;
+  // Below MinQty: products that have a min threshold set AND current total stock is below it
+  const belowMin=prods.filter(p=>{
+    const minQ=S.minQtyMap[p.code]?.minQty||0;
+    if(!minQ) return false;
+    const total=whs.reduce((a,w)=>a+(smap[p.code]?.[w.id]||0),0);
+    return total<minQ;
+  });
+  const belowMinCount=belowMin.length;
 
   // BBE lot counts
   const bbeCounts={Normal:0,Warning:0,Critical:0,Expired:0};
@@ -1063,6 +1071,16 @@ function renderOverview(){
     <div class="sc"><div class="sci"><div class="sic" style="background:#dcfce7">🏭</div><div><div class="sl2">Locations</div><div class="sv">${whs.length}</div><div class="ss">active warehouses</div></div></div></div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#ede9fe">📊</div><div><div class="sl2">Total Units</div><div class="sv">${totalUnits.toLocaleString()}</div><div class="ss">across all locations</div></div></div></div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#fee2e2">⚠️</div><div><div class="sl2">Zero Stock</div><div class="sv">${zeroStock}</div><div class="ss">products</div></div></div></div>
+    <div class="sc" style="cursor:pointer;${belowMinCount>0?'border:1px solid #fed7aa;background:#fffbeb':''}" onclick="showLowStockDetail()" title="Click to see products below minimum stock">
+      <div class="sci">
+        <div class="sic" style="background:${belowMinCount>0?'#fed7aa':'#f3f4f6'}">${belowMinCount>0?'🔔':'✅'}</div>
+        <div>
+          <div class="sl2">Below Min</div>
+          <div class="sv" style="color:${belowMinCount>0?'#d97706':'#16a34a'}">${belowMinCount}</div>
+          <div class="ss">${belowMinCount>0?'need reorder':'all sufficient'}</div>
+        </div>
+      </div>
+    </div>
     <div class="sc"><div class="sci"><div class="sic" style="background:#fef9c3">📋</div><div><div class="sl2">Movements</div><div class="sv">${S.stockMovements.length}</div><div class="ss">total logged</div></div></div></div>
   </div>
   <div style="margin-bottom:18px">
@@ -1212,6 +1230,90 @@ function showBbeLots(filterStatus){
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
+  el.innerHTML=h;
+}
+
+function showLowStockDetail(){
+  const el=document.getElementById('overview-content');
+  if(!el) return;
+
+  const smap={};
+  S.stock.forEach(s=>{ smap[s.productCode]=(smap[s.productCode]||0)+s.quantity; });
+
+  // All products with a min threshold set
+  const rows=S.whProducts
+    .map(p=>({
+      ...p,
+      minQ: S.minQtyMap[p.code]?.minQty||0,
+      baseUnit: S.minQtyMap[p.code]?.baseUnit||'',
+      total: smap[p.code]||0,
+    }))
+    .filter(p=>p.minQ>0)
+    .sort((a,b)=>{
+      // Sort by deficit severity first (how far below min, as %)
+      const aGap=a.total-a.minQ, bGap=b.total-b.minQ;
+      if(aGap<0&&bGap>=0) return -1;
+      if(aGap>=0&&bGap<0) return 1;
+      if(aGap<0&&bGap<0) return aGap-bGap; // most severe first
+      return a.name.localeCompare(b.name);
+    });
+
+  const belowRows=rows.filter(p=>p.total<p.minQ);
+  const okRows=rows.filter(p=>p.total>=p.minQ);
+
+  let h=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <button class="btn bo" onclick="renderOverview()">← Back to Overview</button>
+    <span style="font-weight:700;font-size:16px;color:#d97706">🔔 Products Below Minimum Stock</span>
+    ${belowRows.length?`<span style="background:#fef3c7;color:#92400e;font-size:12px;padding:3px 10px;border-radius:12px;font-weight:600">${belowRows.length} product${belowRows.length!==1?'s':''} need reorder</span>`:''}
+  </div>`;
+
+  function rowsHtml(list, showOk){
+    if(!list.length) return '';
+    return `<div class="tbl-wrap" style="margin-bottom:${showOk?'20':'0'}px"><table>
+      <thead><tr>
+        <th>Product</th>
+        <th>Brand</th>
+        <th style="text-align:center">Current Stock</th>
+        <th style="text-align:center">Min Threshold</th>
+        <th style="text-align:center">Gap</th>
+        <th>Unit</th>
+        <th style="text-align:center">Supplier</th>
+      </tr></thead>
+      <tbody>${list.map((p,i)=>{
+        const gap=p.total-p.minQ;
+        const isBelow=gap<0;
+        const gapColor=isBelow?'#dc2626':'#16a34a';
+        const gapLabel=isBelow?gap.toString():'+'+gap;
+        return`<tr style="${i%2?'background:rgba(0,0,0,.015)':''}${isBelow?';background:rgba(220,38,38,.04)':''}">
+          <td><div style="font-weight:600">${esc(p.name)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.code)}</div></td>
+          <td style="font-size:12px;color:var(--muted)">${esc(p.brand)}</td>
+          <td style="text-align:center;font-weight:700;font-size:15px;color:${isBelow?'#dc2626':'#16a34a'}">${p.total}</td>
+          <td style="text-align:center;font-size:12px;color:var(--muted)">${p.minQ}</td>
+          <td style="text-align:center;font-weight:700;color:${gapColor}">${gapLabel}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(p.baseUnit||'units')}</td>
+          <td style="text-align:center;font-size:11px;color:var(--muted)">${esc(p.supplierName||'—')}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+
+  if(!rows.length){
+    h+='<div class="empty"><div class="ei">✅</div><h3>No minimum thresholds set</h3><p>Set a Min Stock Quantity on products to enable this report.</p></div>';
+    el.innerHTML=h; return;
+  }
+
+  if(!belowRows.length){
+    h+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;margin-bottom:16px;color:#16a34a;font-weight:600">✅ All products are at or above their minimum stock threshold.</div>';
+  } else {
+    h+=`<div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚠️ Below Minimum (${belowRows.length})</div>`;
+    h+=rowsHtml(belowRows, okRows.length>0);
+  }
+
+  if(okRows.length){
+    h+=`<div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ Sufficient Stock (${okRows.length})</div>`;
+    h+=rowsHtml(okRows, false);
+  }
+
   el.innerHTML=h;
 }
 
