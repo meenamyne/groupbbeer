@@ -190,6 +190,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <button class="ni" id="nav-reports" onclick="navigate('reports')"><span class="ic">📈</span> Reports</button>
       <div class="snl" style="margin-top:6px">Catalogue</div>
       <button class="ni" id="nav-products" onclick="navigate('products')"><span class="ic">🏷️</span> Products</button>
+      <button class="ni" id="nav-suppliers" onclick="navigate('suppliers')"><span class="ic">🏢</span> Suppliers</button>
       <div class="snl" style="margin-top:6px">Links</div>
       <button class="ni" onclick="window.open('index.html','_self')"><span class="ic">🔗</span> Back to CRM</button>
     </nav>
@@ -264,6 +265,15 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <div id="products-content"></div>
     </div>
 
+    <!-- SUPPLIERS -->
+    <div class="page" id="page-suppliers">
+      <div class="ph">
+        <div class="pt"><h1>🏢 Suppliers</h1><p>Manage supplier master data</p></div>
+        <div class="pa"><button class="btn bp" onclick="openSupplierModal()">+ Add Supplier</button></div>
+      </div>
+      <div id="suppliers-content"></div>
+    </div>
+
   </div><!-- /main-content -->
 </div><!-- /app -->
 
@@ -306,6 +316,11 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <!-- Warehouses -->
       <div id="mv-from-row" style="display:none"><label class="fl">From Warehouse *</label><select class="fi" id="mv-from" onchange="onMvFromChange()"></select></div>
       <div id="mv-to-row" style="display:none"><label class="fl">To Warehouse *</label><select class="fi" id="mv-to"></select></div>
+      <!-- Supplier (Receive only) -->
+      <div id="mv-supplier-row" style="display:none">
+        <label class="fl">Supplier *</label>
+        <select class="fi" id="mv-supplier"><option value="">— Select Supplier —</option></select>
+      </div>
       <!-- Product search -->
       <div>
         <label class="fl">Product *</label>
@@ -482,11 +497,38 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <input class="fi" type="number" id="pd-minqty" min="0" step="1" placeholder="e.g. 10 — alert when stock falls below this">
         <div style="font-size:11px;color:var(--muted);margin-top:5px">Leave blank or 0 for no minimum threshold.</div>
       </div>
+      <div>
+        <label class="fl">📝 Product Notes</label>
+        <textarea class="fi" id="pd-notes" rows="3" placeholder="e.g. Min order: 1 case (24 cans). Special storage: keep refrigerated. Client pricing notes..."></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Visible to warehouse staff. Use for min order qty, client info, storage notes, etc.</div>
+      </div>
+      <div>
+        <label class="fl">🏢 Supplier</label>
+        <select class="fi" id="pd-supplier">
+          <option value="">— Select Supplier (optional) —</option>
+        </select>
+      </div>
       <input type="hidden" id="pd-row">
     </div>
     <div class="mf">
       <button class="btn bo" onclick="closeModal('productModal')">Cancel</button>
       <button class="btn bp" onclick="saveProduct()">💾 Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUPPLIER MODAL ═══════════════════════════════════════════════════════ -->
+<div class="mo" id="supplierModal">
+  <div class="modal" style="max-width:480px">
+    <div class="mh"><h3 id="supModalTitle">Add Supplier</h3><button class="mc-x" onclick="closeModal('supplierModal')">✕</button></div>
+    <div class="mb">
+      <div><label class="fl">Supplier Name *</label><input class="fi" id="sup-name" placeholder="e.g. Bangkok Beer Trading Co."></div>
+      <div><label class="fl">Notes</label><textarea class="fi" id="sup-notes" rows="3" placeholder="Contact info, payment terms, delivery schedule..."></textarea></div>
+      <input type="hidden" id="sup-id">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('supplierModal')">Cancel</button>
+      <button class="btn bp" onclick="saveSupplier()">💾 Save Supplier</button>
     </div>
   </div>
 </div>
@@ -505,14 +547,14 @@ const CONFIG = {
   CRM_SHEET_ID: '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U', // for client list in Delivery
 };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance' };
+const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance', SUPPLIERS:'Suppliers' };
 
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
 const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
-  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], minQtyMap:{},
+  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], suppliers:[], minQtyMap:{},
   clients:[], // from CRM sheet for delivery linking
   page:'overview', rptTab:'category',
 };
@@ -586,8 +628,10 @@ async function ensureWarehouseSheets(){
 
     const needed = [
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
+      {title:WH_SHEETS.PRODUCTS,   h:[['Status','ProductCode','Brand','ProductName','Style','Size','ABV','ContainerType','PackSize','Weight','KegType','ShelfLifeMonths','Notes','SupplierName']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
-      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID']]},
+      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID','SupplierName']]},
+      {title:WH_SHEETS.SUPPLIERS,    h:[['SupplierID','SupplierName','Notes']]},
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
       {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated']]},
     ];
@@ -634,7 +678,7 @@ async function loadAllData(){
   try{
     await ensureWarehouseSheets();
     await Promise.all([
-      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(), loadStockLots(),
+      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(), loadStockLots(), loadSuppliers(),
     ]);
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
@@ -785,7 +829,7 @@ async function saveEditMovement(){
 
   showLoader(true);
   try{
-    // Update StockMovements row (A:X = 24 columns)
+    // Update StockMovements row (A:Y = 25 columns)
     const updatedRow=[
       m.id,m.type,m.date,m.fromWh||'',m.toWh||'',
       m.productCode,m.productName||'',m.brand||'',
@@ -793,9 +837,10 @@ async function saveEditMovement(){
       newRef,newNotes,m.createdBy||'',m.createdAt||'',
       m.lotDate||'',newBase,newBU||m.baseUnit||'',
       m.fifoWarning?'TRUE':'FALSE',m.fifoOverrideReason||'',
-      m.bbeDate||'',m.bbeStatus||'',m.batchId||''
+      m.bbeDate||'',m.bbeStatus||'',m.batchId||'',
+      m.supplierName||''
     ];
-    await whUpdate(`${WH_SHEETS.MOVEMENTS}!A${m.row}:X${m.row}`,[updatedRow]);
+    await whUpdate(`${WH_SHEETS.MOVEMENTS}!A${m.row}:Y${m.row}`,[updatedRow]);
 
     if(delta!==0){
       // Stock aggregate correction
@@ -838,7 +883,7 @@ function clearOvFilters(){
 async function refreshWhData(){
   showLoader(true);
   try{
-    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots()]);
+    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers()]);
     renderCurrentPage();
     showToast('Data refreshed','success');
   }catch(e){ showToast('Refresh error: '+e.message,'error'); }
@@ -857,12 +902,12 @@ async function loadWarehouses(){
 
 async function loadWhProducts(){
   try{
-    const rows = await whGet(`${WH_SHEETS.PRODUCTS}!A:L`);
+    const rows = await whGet(`${WH_SHEETS.PRODUCTS}!A:N`);
     S.allProducts = rows.slice(1).map((r,i)=>({
       row:i+2, status:r[0]||'', code:r[1]||'', brand:r[2]||'',
       name:r[3]||'', style:r[4]||'', size:r[5]||'', abv:r[6]||'',
       type:r[7]||'', pack:r[8]||'', weight:r[9]||'', kegType:r[10]||'',
-      shelfLife:r[11]||'',
+      shelfLife:r[11]||'', notes:r[12]||'', supplierName:r[13]||'',
     })).filter(p=>p.code);
     const ARCHIVED=new Set(['Inactive','Discontinued']);
     S.whProducts = S.allProducts.filter(p=>!ARCHIVED.has(p.status));
@@ -883,7 +928,7 @@ async function loadStock(){
 
 async function loadStockMovements(){
   try{
-    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:X`);
+    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:Y`);
     // Detect whether row 0 is a header row or actual data.
     // This handles the edge case where the sheet was created without a header
     // (ensureWarehouseSheets will repair it on next app load, but in the meantime
@@ -900,7 +945,7 @@ async function loadStockMovements(){
       reference:r[12]||'', notes:r[13]||'', createdBy:r[14]||'', createdAt:r[15]||'',
       lotDate:r[16]||'', baseQty:parseFloat(r[17])||0, baseUnit:r[18]||'',
       fifoWarning:r[19]==='TRUE', fifoOverrideReason:r[20]||'',
-      bbeDate:r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'',
+      bbeDate:r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'', supplierName:r[24]||'',
     })).filter(m=>m.id);
   }catch(e){
     console.error('loadStockMovements failed:',e.message);
@@ -951,6 +996,15 @@ async function loadStockLots(){
   }catch(e){ S.stockLots=[]; }
 }
 
+async function loadSuppliers(){
+  try{
+    const rows=await whGet(`${WH_SHEETS.SUPPLIERS}!A:C`);
+    S.suppliers=rows.slice(1).map((r,i)=>({
+      row:i+2, id:r[0]||'', name:r[1]||'', notes:r[2]||'',
+    })).filter(s=>s.name);
+  }catch(e){ S.suppliers=[]; }
+}
+
 // ══════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════
@@ -979,6 +1033,7 @@ function renderCurrentPage(){
   else if(p==='log') renderLog();
   else if(p==='reports') renderReports();
   else if(p==='products') renderProducts();
+  else if(p==='suppliers') renderSuppliers();
 }
 
 // ══════════════════════════════════════════
@@ -1640,6 +1695,8 @@ function openMovementModal(){
   if(shopSel) shopSel.innerHTML='<option value="">— No shop link —</option>'+S.clients.map(c=>`<option value="${esc(c.code)}|${esc(c.shop)}">${esc(c.shop)} (${esc(c.code)})</option>`).join('');
   const unitSel=document.getElementById('mv-unit'); if(unitSel) unitSel.innerHTML='<option value="">— Select Unit —</option>';
   const lotSel=document.getElementById('mv-lot'); if(lotSel) lotSel.innerHTML='<option value="">— Select Lot —</option>';
+  const supSel=document.getElementById('mv-supplier');
+  if(supSel) supSel.innerHTML='<option value="">— Select Supplier —</option>'+S.suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
   const fifoPanel=document.getElementById('mv-fifo-panel'); if(fifoPanel) fifoPanel.style.display='none';
   const bPreview=document.getElementById('mv-base-preview'); if(bPreview) bPreview.style.display='none';
   filterMvProducts();
@@ -1655,6 +1712,7 @@ function onMvTypeChange(){
   const showLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(t);
   document.getElementById('mv-from-row').style.display=showFrom?'':'none';
   document.getElementById('mv-to-row').style.display=showTo?'':'none';
+  document.getElementById('mv-supplier-row').style.display=t==='Receive'?'':'none';
   document.getElementById('mv-shop-row').style.display=t==='Delivery'?'':'none';
   document.getElementById('mv-adj-row').style.display=t==='Adjustment'?'':'none';
   document.getElementById('mv-lotdate-row').style.display=showLotDate?'':'none';
@@ -1792,7 +1850,11 @@ async function saveMovement(){
   const id=genId('MV');
   const now=new Date().toISOString();
 
-  // StockMovements row (A-W, 23 columns)
+  // Supplier (Receive only)
+  const supplierName=type==='Receive'?val('mv-supplier').trim():'';
+  if(type==='Receive'&&S.suppliers.length>0&&!supplierName){ showToast('Select a supplier for this receive','warning'); return; }
+
+  // StockMovements row (A-Y, 25 columns)
   const mvRow=[
     id, type, date, fromWhId, toWhId,
     prodCode, prod?.name||'', prod?.brand||'',
@@ -1802,6 +1864,7 @@ async function saveMovement(){
     lotDate, baseQty, baseUnit,
     fifoWarning?'TRUE':'FALSE', fifoReason,
     bbeDate, bbeStatus, '',
+    supplierName,
   ];
 
   showLoader(true);
@@ -2240,6 +2303,7 @@ function renderProducts(){
       <th style="text-align:center">ABV</th>
       <th style="text-align:center">Shelf Life</th>
       <th style="text-align:center">Min Qty</th>
+      <th style="min-width:160px">Notes</th>
       <th style="text-align:center;min-width:140px">Actions</th>
     </tr></thead>
     <tbody>
@@ -2256,6 +2320,7 @@ function renderProducts(){
           <td style="text-align:center;font-size:12px">${p.abv?p.abv+'%':'—'}</td>
           <td style="text-align:center;font-size:12px;color:var(--muted)">${p.shelfLife?p.shelfLife+'m':'—'}</td>
           <td style="text-align:center;font-weight:${(p.minQty&&p.minQty>0)?'700':'400'};color:${(p.minQty&&p.minQty>0)?'#d97706':'var(--muted)'}">${(p.minQty&&p.minQty>0)?p.minQty:'—'}</td>
+          <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.notes||'')}">${p.notes?esc(p.notes):'—'}</td>
           <td style="text-align:center;white-space:nowrap">
             <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openProductModal(${p.row})">✏️ Edit</button>
             <button class="btn" style="font-size:11px;padding:4px 10px;${isArch?'background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0':'background:#fee2e2;color:#dc2626;border:1px solid #fecaca'}" onclick="toggleProductArchive(${p.row},'${esc(p.status)}')">${isArch?'✅ Activate':'⏸️ Archive'}</button>
@@ -2305,6 +2370,13 @@ function openProductModal(row=0){
   setVal('pd-keg',      p?.kegType||'');
   setVal('pd-shelf',    p?.shelfLife||'');
   setVal('pd-minqty',   p?.minQty!=null&&p.minQty>0?p.minQty:'');
+  setVal('pd-notes',    p?.notes||'');
+  // Populate supplier dropdown
+  const supDropdown=document.getElementById('pd-supplier');
+  if(supDropdown){
+    supDropdown.innerHTML='<option value="">— Select Supplier (optional) —</option>'
+      +S.suppliers.map(s=>`<option value="${esc(s.name)}"${s.name===(p?.supplierName||'')?' selected':''}>${esc(s.name)}</option>`).join('');
+  }
   const cfg=p?S.minQtyMap[p.code]:null;
   setVal('pd-baseunit', cfg?.baseUnit||'');
   setVal('pd-caseunit', cfg?.caseUnitName||'');
@@ -2353,6 +2425,8 @@ async function saveProduct(){
     val('pd-style'), getSizeValue(), val('pd-abv'),
     val('pd-type'), val('pd-pack'), val('pd-weight'),
     val('pd-keg'), val('pd-shelf'),
+    val('pd-notes').trim(),
+    val('pd-supplier').trim(),
   ];
   showLoader(true);
   try{
@@ -2361,7 +2435,7 @@ async function saveProduct(){
     const caseUnitVal=val('pd-caseunit').trim();
     const upcVal=parseFloat(val('pd-upc'))||0;
     if(editRow){
-      await whUpdate(`${WH_SHEETS.PRODUCTS}!A${editRow}:L${editRow}`,[rowData]);
+      await whUpdate(`${WH_SHEETS.PRODUCTS}!A${editRow}:N${editRow}`,[rowData]);
       await saveProdSettings(code, minQtyVal, baseUnitVal, caseUnitVal, upcVal);
       showToast('Product updated','success');
     } else {
@@ -2372,6 +2446,103 @@ async function saveProduct(){
     closeModal('productModal');
     await Promise.all([loadProdSettings(), loadWhProducts()]);
     renderProducts();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ══════════════════════════════════════════
+// RENDER — SUPPLIERS
+// ══════════════════════════════════════════
+function renderSuppliers(){
+  const el=document.getElementById('suppliers-content');
+  if(!el) return;
+
+  // ── Dashboard: product count by supplier ─────────────────────────────────
+  const countBySupplier={};
+  S.allProducts.filter(p=>p.supplierName).forEach(p=>{
+    countBySupplier[p.supplierName]=(countBySupplier[p.supplierName]||0)+1;
+  });
+  const noSupCount=S.allProducts.filter(p=>!p.supplierName).length;
+
+  let dashHtml='<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px">';
+  dashHtml+='<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">📊 Products by Supplier</div>';
+  dashHtml+='<div style="display:flex;flex-wrap:wrap;gap:10px">';
+  if(S.suppliers.length===0&&S.allProducts.length===0){
+    dashHtml+='<div style="color:var(--muted);font-size:13px">No data yet.</div>';
+  } else {
+    S.suppliers.forEach(s=>{
+      const cnt=countBySupplier[s.name]||0;
+      dashHtml+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px;text-align:center;cursor:pointer" onclick="navigate('products')">
+        <div style="font-size:22px;font-weight:700;color:var(--primary)">${cnt}</div>
+        <div style="font-size:12px;font-weight:600;margin-top:2px">${esc(s.name)}</div>
+        <div style="font-size:11px;color:var(--muted)">product${cnt!==1?'s':''}</div>
+      </div>`;
+    });
+    if(noSupCount>0){
+      dashHtml+=`<div style="background:#f9fafb;border:1px dashed var(--border);border-radius:8px;padding:10px 16px;min-width:140px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--muted)">${noSupCount}</div>
+        <div style="font-size:12px;color:var(--muted)">No supplier</div>
+      </div>`;
+    }
+  }
+  dashHtml+='</div></div>';
+
+  // ── Suppliers table ────────────────────────────────────────────────────────
+  let tableHtml='';
+  if(S.suppliers.length===0){
+    tableHtml='<div class="empty"><div class="ei">🏢</div><h3>No suppliers yet</h3><p>Add your first supplier to link products and track receives.</p></div>';
+  } else {
+    tableHtml='<div class="tbl-wrap"><table class="tbl"><thead><tr>';
+    tableHtml+='<th>Supplier Name</th><th>Notes</th><th style="text-align:center">Products</th><th style="text-align:right">Actions</th>';
+    tableHtml+='</tr></thead><tbody>';
+    S.suppliers.forEach(s=>{
+      const cnt=countBySupplier[s.name]||0;
+      tableHtml+=`<tr>
+        <td style="font-weight:600">${esc(s.name)}</td>
+        <td style="color:var(--muted);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.notes||'')}">${s.notes?esc(s.notes):'—'}</td>
+        <td style="text-align:center"><span style="font-weight:600">${cnt}</span></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openSupplierModal('${esc(s.id)}')">✏️ Edit</button>
+        </td>
+      </tr>`;
+    });
+    tableHtml+='</tbody></table></div>';
+  }
+
+  el.innerHTML=dashHtml+tableHtml;
+}
+
+function openSupplierModal(id=''){
+  const s=id?S.suppliers.find(x=>x.id===id):null;
+  setText('supModalTitle', s?`Edit — ${s.name}`:'Add New Supplier');
+  setVal('sup-id', id||'');
+  setVal('sup-name', s?.name||'');
+  setVal('sup-notes', s?.notes||'');
+  openModal('supplierModal');
+}
+
+async function saveSupplier(){
+  const name=val('sup-name').trim();
+  if(!name){ showToast('Supplier name is required','warning'); return; }
+  const id=val('sup-id');
+  const existing=S.suppliers.find(s=>s.name===name&&s.id!==id);
+  if(existing){ showToast(`Supplier "${name}" already exists`,'warning'); return; }
+
+  showLoader(true);
+  try{
+    if(id){
+      // Edit existing
+      const s=S.suppliers.find(x=>x.id===id);
+      if(s){ await whUpdate(`${WH_SHEETS.SUPPLIERS}!A${s.row}:C${s.row}`,[[id, name, val('sup-notes').trim()]]); }
+    } else {
+      // New supplier
+      const newId=genId('SUP');
+      await whAppend(WH_SHEETS.SUPPLIERS,[[newId, name, val('sup-notes').trim()]]);
+    }
+    showToast(id?'Supplier updated':'Supplier added','success');
+    closeModal('supplierModal');
+    await loadSuppliers();
+    renderSuppliers();
   }catch(e){ showToast('Error: '+e.message,'error'); }
   finally{ showLoader(false); }
 }
@@ -2449,4 +2620,3 @@ document.querySelectorAll('.mo').forEach(mo=>{
 </script>
 </body>
 </html>
-
