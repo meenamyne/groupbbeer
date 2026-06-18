@@ -248,6 +248,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px" id="rpt-tabs">
         <button class="tab active" onclick="rptTab('category',this)">📂 By Category</button>
+        <button class="tab" onclick="rptTab('supplier',this)">🏢 By Supplier</button>
         <button class="tab" onclick="rptTab('external',this)">🔗 External Warehouses</button>
         <button class="tab" onclick="rptTab('slow',this)">🐢 Slow Moving</button>
         <button class="tab" onclick="rptTab('defect',this)">💔 Defects</button>
@@ -1373,6 +1374,7 @@ function rptTab(tab,btn){
   else if(tab==='slow') renderRptSlow(el);
   else if(tab==='defect') renderRptDefect(el);
   else if(tab==='aging') renderRptAging(el);
+  else if(tab==='supplier') renderRptSupplier(el);
 }
 
 function renderRptCategory(el){
@@ -1536,6 +1538,96 @@ function renderRptAging(el){
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
+}
+
+function renderRptSupplier(el){
+  // Stock map: productCode → total qty across all warehouses
+  const smap={};
+  S.stock.forEach(s=>{ smap[s.productCode]=(smap[s.productCode]||0)+s.quantity; });
+
+  // Last-receive map: productCode → latest receive date
+  const lastRecv={};
+  S.stockMovements.filter(m=>m.type==='Receive').forEach(m=>{
+    if(!lastRecv[m.productCode]||m.date>lastRecv[m.productCode]) lastRecv[m.productCode]=m.date;
+  });
+
+  if(!S.suppliers.length){
+    el.innerHTML='<div class="empty"><div class="ei">🏢</div><h3>No suppliers configured</h3><p>Add suppliers in the <a href="#" onclick="navigate('suppliers');return false" style="color:var(--primary)">Suppliers</a> page, then link them to products.</p></div>';
+    return;
+  }
+
+  let html='';
+
+  function supplierSection(supplierName, prods, isUnassigned){
+    const totalUnits   = prods.reduce((a,p)=>a+(smap[p.code]||0),0);
+    const lowStockProds= prods.filter(p=>{ const m=S.minQtyMap[p.code]?.minQty||0; return m>0&&(smap[p.code]||0)<m; });
+    const zeroStock    = prods.filter(p=>(smap[p.code]||0)===0).length;
+    const headerBg     = isUnassigned?'#f9fafb':'var(--bg)';
+    const headerColor  = isUnassigned?'var(--muted)':'var(--primary)';
+
+    html+=`<div style="margin-bottom:18px;border:1px solid var(--border);border-radius:10px;overflow:hidden">`;
+    html+=`<div style="background:${headerBg};padding:11px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">`;
+    html+=`<span style="font-weight:700;font-size:14px;color:${headerColor}">${esc(supplierName)}</span>`;
+    html+=`<span style="display:flex;gap:16px;font-size:12px;color:var(--muted)">`;
+    html+=`<span><strong style="color:var(--primary);font-size:15px">${prods.length}</strong> SKU${prods.length!==1?'s':''}</span>`;
+    html+=`<span><strong style="color:#16a34a;font-size:15px">${totalUnits.toLocaleString()}</strong> units total</span>`;
+    if(lowStockProds.length) html+=`<span style="color:#dc2626;font-weight:600">⚠️ ${lowStockProds.length} low stock</span>`;
+    if(zeroStock) html+=`<span style="color:#9ca3af">${zeroStock} at zero</span>`;
+    html+=`</span></div>`;
+
+    if(!prods.length){
+      html+=`<div style="padding:12px 16px;font-size:12px;color:var(--muted)">No products linked to this supplier yet. Edit a product and assign this supplier.</div>`;
+    } else {
+      html+=`<table style="width:100%;border-collapse:collapse;font-size:12px">`;
+      html+=`<thead><tr style="background:rgba(0,0,0,.025)">`;
+      html+=`<th style="padding:7px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">Product</th>`;
+      html+=`<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">Brand · Size</th>`;
+      html+=`<th style="padding:7px 14px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">Stock</th>`;
+      html+=`<th style="padding:7px 14px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">Min</th>`;
+      html+=`<th style="padding:7px 14px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">Last Received</th>`;
+      html+=`</tr></thead><tbody>`;
+
+      // Sort: low-stock first, then zero-stock, then alphabetical
+      const sorted=[...prods].sort((a,b)=>{
+        const aLow=(S.minQtyMap[a.code]?.minQty||0)>0&&(smap[a.code]||0)<(S.minQtyMap[a.code]?.minQty||0);
+        const bLow=(S.minQtyMap[b.code]?.minQty||0)>0&&(smap[b.code]||0)<(S.minQtyMap[b.code]?.minQty||0);
+        if(aLow&&!bLow) return -1; if(!aLow&&bLow) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      sorted.forEach((p,i)=>{
+        const qty=smap[p.code]||0;
+        const minQ=S.minQtyMap[p.code]?.minQty||0;
+        const isLow=minQ>0&&qty<minQ;
+        const isZero=qty===0;
+        const qtyColor=isLow?'#dc2626':isZero?'#9ca3af':'#16a34a';
+        const rowBg=isLow?'rgba(220,38,38,.04)':i%2?'rgba(0,0,0,.015)':'';
+        const lastR=lastRecv[p.code]||'';
+        html+=`<tr style="background:${rowBg}">`;
+        html+=`<td style="padding:8px 14px">`;
+        if(isLow) html+=`<span style="font-size:9px;background:#dc2626;color:#fff;border-radius:3px;padding:1px 5px;margin-right:5px;font-weight:700">LOW</span>`;
+        html+=`<strong>${esc(p.name)}</strong> <span style="color:var(--muted);font-size:10px">${esc(p.code)}</span></td>`;
+        html+=`<td style="padding:8px 8px;color:var(--muted)">${esc(p.brand)}${p.size?' · '+esc(p.size):''}</td>`;
+        html+=`<td style="padding:8px 14px;text-align:center;font-weight:700;font-size:14px;color:${qtyColor}">${qty}</td>`;
+        html+=`<td style="padding:8px 14px;text-align:center;font-size:12px;color:${minQ?'#6b7280':'#d1d5db'}">${minQ||'—'}</td>`;
+        html+=`<td style="padding:8px 14px;text-align:center;font-size:11px;color:var(--muted)">${lastR?fmtDate(lastR):'—'}</td>`;
+        html+=`</tr>`;
+      });
+      html+=`</tbody></table>`;
+    }
+    html+=`</div>`;
+  }
+
+  // Each configured supplier (sorted A-Z)
+  S.suppliers.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(s=>{
+    supplierSection(s.name, S.allProducts.filter(p=>p.supplierName===s.name), false);
+  });
+
+  // Products with stock but no supplier assigned
+  const unassigned=S.allProducts.filter(p=>!p.supplierName&&(smap[p.code]||0)>0);
+  if(unassigned.length) supplierSection('No Supplier Assigned', unassigned, true);
+
+  el.innerHTML=html||'<div class="empty"><div class="ei">🏢</div><h3>No products linked to suppliers</h3><p>Edit products and select a supplier to see them grouped here.</p></div>';
 }
 
 // ══════════════════════════════════════════
@@ -2457,96 +2549,34 @@ function renderSuppliers(){
   const el=document.getElementById('suppliers-content');
   if(!el) return;
 
-  // ── Dashboard: product count by supplier ─────────────────────────────────
+  if(S.suppliers.length===0){
+    el.innerHTML='<div class="empty"><div class="ei">🏢</div><h3>No suppliers yet</h3><p>Add your first supplier to link products and track receives.</p></div>';
+    return;
+  }
+
+  // Count products per supplier
   const countBySupplier={};
   S.allProducts.filter(p=>p.supplierName).forEach(p=>{
     countBySupplier[p.supplierName]=(countBySupplier[p.supplierName]||0)+1;
   });
-  const noSupCount=S.allProducts.filter(p=>!p.supplierName).length;
 
-  let dashHtml='<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px">';
-  dashHtml+='<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">📊 Products by Supplier</div>';
-  dashHtml+='<div style="display:flex;flex-wrap:wrap;gap:10px">';
-  if(S.suppliers.length===0&&S.allProducts.length===0){
-    dashHtml+='<div style="color:var(--muted);font-size:13px">No data yet.</div>';
-  } else {
-    S.suppliers.forEach(s=>{
-      const cnt=countBySupplier[s.name]||0;
-      dashHtml+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px;text-align:center;cursor:pointer" onclick="navigate('products')">
-        <div style="font-size:22px;font-weight:700;color:var(--primary)">${cnt}</div>
-        <div style="font-size:12px;font-weight:600;margin-top:2px">${esc(s.name)}</div>
-        <div style="font-size:11px;color:var(--muted)">product${cnt!==1?'s':''}</div>
-      </div>`;
-    });
-    if(noSupCount>0){
-      dashHtml+=`<div style="background:#f9fafb;border:1px dashed var(--border);border-radius:8px;padding:10px 16px;min-width:140px;text-align:center">
-        <div style="font-size:22px;font-weight:700;color:var(--muted)">${noSupCount}</div>
-        <div style="font-size:12px;color:var(--muted)">No supplier</div>
-      </div>`;
-    }
-  }
-  dashHtml+='</div></div>';
-
-  // ── Suppliers table ────────────────────────────────────────────────────────
-  let tableHtml='';
-  if(S.suppliers.length===0){
-    tableHtml='<div class="empty"><div class="ei">🏢</div><h3>No suppliers yet</h3><p>Add your first supplier to link products and track receives.</p></div>';
-  } else {
-    tableHtml='<div class="tbl-wrap"><table class="tbl"><thead><tr>';
-    tableHtml+='<th>Supplier Name</th><th>Notes</th><th style="text-align:center">Products</th><th style="text-align:right">Actions</th>';
-    tableHtml+='</tr></thead><tbody>';
-    S.suppliers.forEach(s=>{
-      const cnt=countBySupplier[s.name]||0;
-      tableHtml+=`<tr>
-        <td style="font-weight:600">${esc(s.name)}</td>
-        <td style="color:var(--muted);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.notes||'')}">${s.notes?esc(s.notes):'—'}</td>
-        <td style="text-align:center"><span style="font-weight:600">${cnt}</span></td>
-        <td style="text-align:right;white-space:nowrap">
-          <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openSupplierModal('${esc(s.id)}')">✏️ Edit</button>
-        </td>
-      </tr>`;
-    });
-    tableHtml+='</tbody></table></div>';
-  }
-
-  el.innerHTML=dashHtml+tableHtml;
+  let tableHtml='<div class="tbl-wrap"><table class="tbl"><thead><tr>';
+  tableHtml+='<th>Supplier Name</th><th>Notes</th><th style="text-align:center">Products</th><th style="text-align:right">Actions</th>';
+  tableHtml+='</tr></thead><tbody>';
+  S.suppliers.forEach(s=>{
+    const cnt=countBySupplier[s.name]||0;
+    tableHtml+=`<tr>
+      <td style="font-weight:600">${esc(s.name)}</td>
+      <td style="color:var(--muted);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.notes||'')}">${s.notes?esc(s.notes):'—'}</td>
+      <td style="text-align:center;font-weight:600">${cnt}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openSupplierModal('${esc(s.id)}')">✏️ Edit</button>
+      </td>
+    </tr>`;
+  });
+  tableHtml+='</tbody></table></div>';
+  el.innerHTML=tableHtml;
 }
-
-function openSupplierModal(id=''){
-  const s=id?S.suppliers.find(x=>x.id===id):null;
-  setText('supModalTitle', s?`Edit — ${s.name}`:'Add New Supplier');
-  setVal('sup-id', id||'');
-  setVal('sup-name', s?.name||'');
-  setVal('sup-notes', s?.notes||'');
-  openModal('supplierModal');
-}
-
-async function saveSupplier(){
-  const name=val('sup-name').trim();
-  if(!name){ showToast('Supplier name is required','warning'); return; }
-  const id=val('sup-id');
-  const existing=S.suppliers.find(s=>s.name===name&&s.id!==id);
-  if(existing){ showToast(`Supplier "${name}" already exists`,'warning'); return; }
-
-  showLoader(true);
-  try{
-    if(id){
-      // Edit existing
-      const s=S.suppliers.find(x=>x.id===id);
-      if(s){ await whUpdate(`${WH_SHEETS.SUPPLIERS}!A${s.row}:C${s.row}`,[[id, name, val('sup-notes').trim()]]); }
-    } else {
-      // New supplier
-      const newId=genId('SUP');
-      await whAppend(WH_SHEETS.SUPPLIERS,[[newId, name, val('sup-notes').trim()]]);
-    }
-    showToast(id?'Supplier updated':'Supplier added','success');
-    closeModal('supplierModal');
-    await loadSuppliers();
-    renderSuppliers();
-  }catch(e){ showToast('Error: '+e.message,'error'); }
-  finally{ showLoader(false); }
-}
-
 async function toggleProductArchive(row, currentStatus){
   const newStatus=ARCHIVED_STATUSES.has(currentStatus)?'Available':'Inactive';
   showLoader(true);
