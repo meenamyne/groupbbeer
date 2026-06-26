@@ -190,8 +190,9 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <div class="snl" style="margin-top:6px">Analytics</div>
       <button class="ni" id="nav-reports" onclick="navigate('reports')"><span class="ic">📈</span> Reports</button>
       <div class="snl" style="margin-top:6px">Catalogue</div>
-      <button class="ni" id="nav-products" onclick="navigate('products')"><span class="ic">🏷️</span> Products</button>
       <button class="ni" id="nav-suppliers" onclick="navigate('suppliers')"><span class="ic">🏢</span> Suppliers</button>
+      <button class="ni" id="nav-brands" onclick="navigate('brands')"><span class="ic">🍺</span> Brands</button>
+      <button class="ni" id="nav-products" onclick="navigate('products')"><span class="ic">🏷️</span> Products</button>
       <div class="snl" style="margin-top:6px">Links</div>
       <button class="ni" onclick="window.open('index.html','_self')"><span class="ic">🔗</span> Back to CRM</button>
     </nav>
@@ -265,6 +266,15 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <div class="pa"><button class="btn bp" onclick="openProductModal()">+ Add Product</button></div>
       </div>
       <div id="products-content"></div>
+    </div>
+
+    <!-- BRANDS -->
+    <div class="page" id="page-brands">
+      <div class="ph">
+        <div class="pt"><h1>🍺 Brands</h1><p>Beer brand catalogue</p></div>
+        <div class="pa"><button class="btn bp" onclick="openBrandModal()">+ Add Brand</button></div>
+      </div>
+      <div id="brands-content"></div>
     </div>
 
     <!-- SUPPLIERS -->
@@ -450,9 +460,29 @@ tr:hover td{background:rgba(0,0,0,.012)}
 </div>
 
 <div class="mo" id="productModal">
-  <div class="modal" style="max-width:600px">
+  <div class="modal" style="max-width:620px">
     <div class="mh"><h3 id="prodModalTitle">Add Product</h3><button class="mc-x" onclick="closeModal('productModal')">✕</button></div>
     <div class="mb">
+      <!-- Supplier & Brand linked filter -->
+      <div style="background:#f8faf9;border:1px solid #bbf7d0;border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:#16a34a;margin-bottom:8px">🔗 Supplier &amp; Brand</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="fl">Supplier</label>
+            <select class="fi" id="pd-supplier" onchange="onPdSupplierChange()">
+              <option value="">— All Suppliers —</option>
+            </select>
+          </div>
+          <div>
+            <label class="fl">Brand *</label>
+            <select class="fi" id="pd-brand">
+              <option value="">— Select Brand —</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Select a supplier to filter brands. <a href="#" onclick="navigate('brands');closeModal('productModal');return false" style="color:var(--primary)">Manage brands →</a></div>
+      </div>
+      <!-- Status + Code -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div><label class="fl">Availability Status *</label>
           <select class="fi" id="pd-status">
@@ -466,10 +496,9 @@ tr:hover td{background:rgba(0,0,0,.012)}
           </select></div>
         <div><label class="fl">Product Code *</label><input class="fi" id="pd-code" placeholder="e.g. SB001"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><label class="fl">Brand *</label><input class="fi" id="pd-brand" placeholder="e.g. Singha"></div>
-        <div><label class="fl">Product Name *</label><input class="fi" id="pd-name" placeholder="e.g. Singha Original"></div>
-      </div>
+      <!-- Product Name -->
+      <div><label class="fl">Product Name *</label><input class="fi" id="pd-name" placeholder="e.g. Singha Original Lager"></div>
+      <!-- Style, Size, ABV -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div><label class="fl">Beer Style</label><input class="fi" id="pd-style" placeholder="e.g. Lager"></div>
         <div><label class="fl">Size</label>
@@ -478,16 +507,19 @@ tr:hover td{background:rgba(0,0,0,.012)}
         </div>
         <div><label class="fl">ABV %</label><input class="fi" type="number" id="pd-abv" step="0.1" min="0" max="100" placeholder="e.g. 5.0"></div>
       </div>
+      <!-- Container, Pack, Shelf -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div><label class="fl">Container Type</label>
           <select class="fi" id="pd-type"><option value="">— Select —</option><option>Can</option><option>Bottle</option><option>Keg</option><option>Case</option></select></div>
         <div><label class="fl">Pack / Case Size</label><input class="fi" id="pd-pack" placeholder="e.g. 24"></div>
         <div><label class="fl">Shelf Life (months)</label><input class="fi" type="number" id="pd-shelf" placeholder="e.g. 12"></div>
       </div>
+      <!-- Weight, Keg -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div><label class="fl">Weight per Pack (kg)</label><input class="fi" id="pd-weight" placeholder="e.g. 8.5"></div>
         <div><label class="fl">Keg Type</label><input class="fi" id="pd-keg" placeholder="e.g. 30L Sankey"></div>
       </div>
+      <!-- Stock Settings -->
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px">
         <div style="font-size:12px;font-weight:600;color:#16a34a;margin-bottom:8px">📦 Stock Settings</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px">
@@ -499,16 +531,11 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <input class="fi" type="number" id="pd-minqty" min="0" step="1" placeholder="e.g. 10 — alert when stock falls below this">
         <div style="font-size:11px;color:var(--muted);margin-top:5px">Leave blank or 0 for no minimum threshold.</div>
       </div>
+      <!-- Notes -->
       <div>
         <label class="fl">📝 Product Notes</label>
-        <textarea class="fi" id="pd-notes" rows="3" placeholder="e.g. Min order: 1 case (24 cans). Special storage: keep refrigerated. Client pricing notes..."></textarea>
+        <textarea class="fi" id="pd-notes" rows="3" placeholder="e.g. Min order: 1 case (24 cans). Special storage: keep refrigerated..."></textarea>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">Visible to warehouse staff. Use for min order qty, client info, storage notes, etc.</div>
-      </div>
-      <div>
-        <label class="fl">🏢 Supplier</label>
-        <select class="fi" id="pd-supplier">
-          <option value="">— Select Supplier (optional) —</option>
-        </select>
       </div>
       <input type="hidden" id="pd-row">
     </div>
@@ -535,6 +562,27 @@ tr:hover td{background:rgba(0,0,0,.012)}
   </div>
 </div>
 
+<!-- ══ BRAND MODAL ══════════════════════════════════════════════════════════ -->
+<div class="mo" id="brandModal">
+  <div class="modal" style="max-width:480px">
+    <div class="mh"><h3 id="brandModalTitle">Add Brand</h3><button class="mc-x" onclick="closeModal('brandModal')">✕</button></div>
+    <div class="mb">
+      <div><label class="fl">Supplier *</label>
+        <select class="fi" id="br-supplier">
+          <option value="">— Select Supplier —</option>
+        </select>
+      </div>
+      <div><label class="fl">Brand Name *</label><input class="fi" id="br-name" placeholder="e.g. Singha"></div>
+      <div><label class="fl">Notes</label><textarea class="fi" id="br-notes" rows="2" placeholder="Origin, style focus, contact info..."></textarea></div>
+      <input type="hidden" id="br-id">
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('brandModal')">Cancel</button>
+      <button class="btn bp" onclick="saveBrand()">💾 Save Brand</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST + LOADER ══════════════════════════════════════════════════════ -->
 <div id="toast"></div>
 <div id="loader"><div class="spin"></div></div>
@@ -549,14 +597,14 @@ const CONFIG = {
   CRM_SHEET_ID: '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U', // for client list in Delivery
 };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance', SUPPLIERS:'Suppliers' };
+const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance', SUPPLIERS:'Suppliers', BRANDS:'Brands' };
 
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
 const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
-  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], suppliers:[], minQtyMap:{},
+  warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], suppliers:[], brands:[], minQtyMap:{},
   clients:[], // from CRM sheet for delivery linking
   page:'overview', rptTab:'category',
 };
@@ -696,6 +744,7 @@ async function ensureWarehouseSheets(){
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
       {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID','SupplierName']]},
       {title:WH_SHEETS.SUPPLIERS,    h:[['SupplierID','SupplierName','Notes']]},
+      {title:WH_SHEETS.BRANDS,       h:[['BrandID','BrandName','SupplierName','Notes']]},
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
       {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated']]},
     ];
@@ -742,7 +791,7 @@ async function loadAllData(){
   try{
     await ensureWarehouseSheets();
     await Promise.all([
-      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(), loadStockLots(), loadSuppliers(),
+      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands(),
     ]);
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
@@ -947,7 +996,7 @@ function clearOvFilters(){
 async function refreshWhData(){
   showLoader(true);
   try{
-    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers()]);
+    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands()]);
     renderCurrentPage();
     showToast('Data refreshed','success');
   }catch(e){ showToast('Refresh error: '+e.message,'error'); }
@@ -1069,6 +1118,15 @@ async function loadSuppliers(){
   }catch(e){ S.suppliers=[]; }
 }
 
+async function loadBrands(){
+  try{
+    const rows=await whGet(`${WH_SHEETS.BRANDS}!A:D`);
+    S.brands=rows.slice(1).map((r,i)=>({
+      row:i+2, id:r[0]||'', name:r[1]||'', supplierName:r[2]||'', notes:r[3]||'',
+    })).filter(b=>b.name);
+  }catch(e){ S.brands=[]; }
+}
+
 // ══════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════
@@ -1097,6 +1155,7 @@ function renderCurrentPage(){
   else if(p==='log') renderLog();
   else if(p==='reports') renderReports();
   else if(p==='products') renderProducts();
+  else if(p==='brands') renderBrands();
   else if(p==='suppliers') renderSuppliers();
 }
 
@@ -2648,7 +2707,6 @@ function openProductModal(row=0){
   setText('prodModalTitle', p?`Edit — ${p.name}`:'Add New Product');
   setVal('pd-status',   p?.status||'Available');
   setVal('pd-code',     p?.code||'');
-  setVal('pd-brand',    p?.brand||'');
   setVal('pd-name',     p?.name||'');
   setVal('pd-style',    p?.style||'');
   setVal('pd-size',     p?.size||'');
@@ -2660,11 +2718,20 @@ function openProductModal(row=0){
   setVal('pd-shelf',    p?.shelfLife||'');
   setVal('pd-minqty',   p?.minQty!=null&&p.minQty>0?p.minQty:'');
   setVal('pd-notes',    p?.notes||'');
-  // Populate supplier dropdown
+  // Populate supplier dropdown then cascade-filter brand
   const supDropdown=document.getElementById('pd-supplier');
   if(supDropdown){
-    supDropdown.innerHTML='<option value="">— Select Supplier (optional) —</option>'
-      +S.suppliers.map(s=>`<option value="${esc(s.name)}"${s.name===(p?.supplierName||'')?' selected':''}>${esc(s.name)}</option>`).join('');
+    supDropdown.innerHTML='<option value="">— All Suppliers —</option>'
+      +S.suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+    supDropdown.value=p?.supplierName||'';
+  }
+  onPdSupplierChange(); // populates brand dropdown filtered by supplier
+  if(p?.brand){
+    const brandSel=document.getElementById('pd-brand');
+    if(brandSel&&![...brandSel.options].some(o=>o.value===p.brand)){
+      brandSel.innerHTML+=`<option value="${esc(p.brand)}">${esc(p.brand)}</option>`;
+    }
+    setVal('pd-brand',p.brand);
   }
   const cfg=p?S.minQtyMap[p.code]:null;
   setVal('pd-baseunit', cfg?.baseUnit||'');
@@ -2702,7 +2769,7 @@ async function saveProduct(){
   const brand=val('pd-brand').trim();
   if(!code){ showToast('Product code is required','warning'); return; }
   if(!name){ showToast('Product name is required','warning'); return; }
-  if(!brand){ showToast('Brand is required','warning'); return; }
+  if(!brand){ showToast('Please select a brand','warning'); return; }
   const editRow=parseInt(val('pd-row'))||0;
 
   // Duplicate code check
@@ -2747,25 +2814,41 @@ function renderSuppliers(){
   if(!el) return;
 
   if(S.suppliers.length===0){
-    el.innerHTML='<div class="empty"><div class="ei">🏢</div><h3>No suppliers yet</h3><p>Add your first supplier to link products and track receives.</p></div>';
+    el.innerHTML='<div class="empty"><div class="ei">🏢</div><h3>No suppliers yet</h3><p>Add your first supplier to link brands and products.</p></div>';
     return;
   }
 
-  // Count products per supplier
-  const countBySupplier={};
+  // Count brands and products per supplier
+  const brandsBySupplier={};
+  S.brands.forEach(b=>{
+    if(b.supplierName) brandsBySupplier[b.supplierName]=(brandsBySupplier[b.supplierName]||0)+1;
+  });
+  const productsBySupplier={};
   S.allProducts.filter(p=>p.supplierName).forEach(p=>{
-    countBySupplier[p.supplierName]=(countBySupplier[p.supplierName]||0)+1;
+    productsBySupplier[p.supplierName]=(productsBySupplier[p.supplierName]||0)+1;
   });
 
-  let tableHtml='<div class="tbl-wrap"><table class="tbl"><thead><tr>';
-  tableHtml+='<th>Supplier Name</th><th>Notes</th><th style="text-align:center">Products</th><th style="text-align:right">Actions</th>';
-  tableHtml+='</tr></thead><tbody>';
+  let tableHtml=`<div class="tbl-wrap"><table class="tbl">
+    <colgroup><col style="width:28%"><col style="width:32%"><col style="width:14%"><col style="width:14%"><col style="width:12%"></colgroup>
+    <thead><tr>
+      <th>Supplier Name</th>
+      <th>Notes</th>
+      <th style="text-align:center">Brands</th>
+      <th style="text-align:center">Products</th>
+      <th style="text-align:right">Actions</th>
+    </tr></thead><tbody>`;
   S.suppliers.forEach(s=>{
-    const cnt=countBySupplier[s.name]||0;
+    const bCnt=brandsBySupplier[s.name]||0;
+    const pCnt=productsBySupplier[s.name]||0;
     tableHtml+=`<tr>
       <td style="font-weight:600">${esc(s.name)}</td>
-      <td style="color:var(--muted);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.notes||'')}">${s.notes?esc(s.notes):'—'}</td>
-      <td style="text-align:center;font-weight:600">${cnt}</td>
+      <td style="color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.notes||'')}">${s.notes?esc(s.notes):'—'}</td>
+      <td style="text-align:center">
+        ${bCnt>0
+          ? `<button onclick="navToBrandsFiltered('${esc(s.name)}')" style="background:none;border:none;cursor:pointer;font-weight:700;color:var(--primary);text-decoration:underline;font-size:13px">${bCnt}</button>`
+          : `<span style="color:var(--muted)">0</span>`}
+      </td>
+      <td style="text-align:center;font-weight:600;color:${pCnt>0?'inherit':'var(--muted)'}">${pCnt||'0'}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openSupplierModal('${esc(s.id)}')">✏️ Edit</button>
       </td>
@@ -2773,6 +2856,14 @@ function renderSuppliers(){
   });
   tableHtml+='</tbody></table></div>';
   el.innerHTML=tableHtml;
+}
+
+function navToBrandsFiltered(supName){
+  navigate('brands');
+  setTimeout(()=>{
+    const el=document.getElementById('br-search');
+    if(el){ el.value=supName; filterBrands(); }
+  },50);
 }
 
 function openSupplierModal(id=''){
@@ -2805,6 +2896,131 @@ async function saveSupplier(){
     renderSuppliers();
   }catch(e){ showToast('Error: '+e.message,'error'); }
   finally{ showLoader(false); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BRANDS CATALOGUE
+// ──────────────────────────────────────────────────────────────────────────────
+
+function renderBrands(){
+  const el=document.getElementById('brands-content');
+  if(!el) return;
+
+  if(S.brands.length===0){
+    el.innerHTML=`<div class="empty"><div class="ei">🍺</div><h3>No brands yet</h3><p>Add your first brand and link it to a supplier.</p></div>`;
+    return;
+  }
+
+  // Count products per brand
+  const productsByBrand={};
+  S.allProducts.filter(p=>p.brand).forEach(p=>{
+    productsByBrand[p.brand]=(productsByBrand[p.brand]||0)+1;
+  });
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      <input type="text" id="br-search" class="fi" placeholder="🔍 Search brand or supplier..." oninput="filterBrands()" style="max-width:300px;margin:0;padding:7px 12px">
+      <span id="br-count" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div class="tbl-wrap"><table class="tbl" id="br-table">
+      <colgroup><col style="width:26%"><col style="width:24%"><col style="width:12%"><col style="width:28%"><col style="width:10%"></colgroup>
+      <thead><tr>
+        <th>Brand Name</th>
+        <th>Supplier</th>
+        <th style="text-align:center">Products</th>
+        <th>Notes</th>
+        <th style="text-align:right">Actions</th>
+      </tr></thead>
+      <tbody id="br-tbody">
+        ${S.brands.map(b=>{
+          const pCnt=productsByBrand[b.name]||0;
+          return `<tr data-brand="${esc(b.name.toLowerCase())}" data-supplier="${esc((b.supplierName||'').toLowerCase())}">
+            <td style="font-weight:600">${esc(b.name)}</td>
+            <td>
+              ${b.supplierName
+                ? `<span style="background:#eff6ff;color:#2563eb;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600">${esc(b.supplierName)}</span>`
+                : '<span style="color:var(--muted)">—</span>'}
+            </td>
+            <td style="text-align:center;font-weight:600;color:${pCnt>0?'inherit':'var(--muted)'}">${pCnt||'0'}</td>
+            <td style="color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.notes||'')}">${b.notes?esc(b.notes):'—'}</td>
+            <td style="text-align:right;white-space:nowrap">
+              <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openBrandModal('${esc(b.id)}')">✏️ Edit</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>`;
+
+  filterBrands(); // apply any pending search
+}
+
+function filterBrands(){
+  const q=(document.getElementById('br-search')?.value||'').toLowerCase().trim();
+  const rows=document.querySelectorAll('#br-tbody tr');
+  let shown=0;
+  rows.forEach(row=>{
+    const match=!q||(row.dataset.brand||'').includes(q)||(row.dataset.supplier||'').includes(q);
+    row.style.display=match?'':'none';
+    if(match) shown++;
+  });
+  const cnt=document.getElementById('br-count');
+  if(cnt) cnt.textContent=q?`${shown} of ${rows.length} brands`:`${rows.length} brands`;
+}
+
+function openBrandModal(id=''){
+  const b=id?S.brands.find(x=>x.id===id):null;
+  setText('brandModalTitle', b?`Edit — ${b.name}`:'Add New Brand');
+  setVal('br-id', id||'');
+  setVal('br-name', b?.name||'');
+  setVal('br-notes', b?.notes||'');
+  // Populate supplier dropdown
+  const supSel=document.getElementById('br-supplier');
+  if(supSel){
+    supSel.innerHTML='<option value="">— Select Supplier —</option>'
+      +S.suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+    supSel.value=b?.supplierName||'';
+  }
+  openModal('brandModal');
+}
+
+async function saveBrand(){
+  const name=val('br-name').trim();
+  if(!name){ showToast('Brand name is required','warning'); return; }
+  const supName=val('br-supplier');
+  if(!supName){ showToast('Please select a supplier','warning'); return; }
+  const id=val('br-id');
+  const existing=S.brands.find(b=>b.name===name&&b.id!==id);
+  if(existing){ showToast(`Brand "${name}" already exists`,'warning'); return; }
+  showLoader(true);
+  try{
+    if(id){
+      const b=S.brands.find(x=>x.id===id);
+      if(b){ await whUpdate(`${WH_SHEETS.BRANDS}!A${b.row}:D${b.row}`,[[id, name, supName, val('br-notes').trim()]]); }
+    } else {
+      const newId=genId('BRD');
+      await whAppend(WH_SHEETS.BRANDS,[[newId, name, supName, val('br-notes').trim()]]);
+    }
+    showToast(id?'Brand updated':'Brand added','success');
+    closeModal('brandModal');
+    await loadBrands();
+    renderBrands();
+  }catch(e){ showToast('Error: '+e.message,'error'); }
+  finally{ showLoader(false); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PRODUCT MODAL — cascading supplier → brand filter
+// ──────────────────────────────────────────────────────────────────────────────
+
+function onPdSupplierChange(){
+  const supName=val('pd-supplier');
+  const brandSel=document.getElementById('pd-brand');
+  if(!brandSel) return;
+  const cur=brandSel.value;
+  const filtered=supName?S.brands.filter(b=>b.supplierName===supName):S.brands;
+  brandSel.innerHTML='<option value="">— Select Brand —</option>'
+    +filtered.map(b=>`<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
+  if(cur&&filtered.some(b=>b.name===cur)) brandSel.value=cur;
 }
 
 async function toggleProductArchive(row, currentStatus){
