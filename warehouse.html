@@ -562,6 +562,22 @@ tr:hover td{background:rgba(0,0,0,.012)}
   </div>
 </div>
 
+<!-- ══ DELETE CONFIRMATION MODAL ═════════════════════════════════════════════ -->
+<div class="mo" id="deleteConfirmModal">
+  <div class="modal" style="max-width:520px">
+    <div class="mh" style="background:#fef2f2;border-bottom:1px solid #fecaca">
+      <h3 id="del-modal-title" style="color:#dc2626">🗑️ Confirm Delete</h3>
+      <button class="mc-x" onclick="closeModal('deleteConfirmModal')">✕</button>
+    </div>
+    <div class="mb" id="del-modal-body"></div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('deleteConfirmModal')">Cancel</button>
+      <span id="del-modal-only-cancel" style="display:none;font-size:12px;color:var(--muted);align-self:center">Resolve the issues above before deleting.</span>
+      <button id="del-modal-confirm" class="btn" style="background:#dc2626;color:#fff;border:none">🗑️ Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ BRAND MODAL ══════════════════════════════════════════════════════════ -->
 <div class="mo" id="brandModal">
   <div class="modal" style="max-width:480px">
@@ -725,6 +741,20 @@ async function whGet(range){ const d=await api(`${WHB()}/values/${encodeURICompo
 async function whAppend(sh,vals){ return api(`${WHB()}/values/${encodeURIComponent(sh)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{method:'POST',body:JSON.stringify({values:vals})}); }
 async function whUpdate(range,vals){ return api(`${WHB()}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:'PUT',body:JSON.stringify({values:vals})}); }
 async function whBatchUpdate(reqs){ return api(`${WHB()}:batchUpdate`,{method:'POST',body:JSON.stringify({requests:reqs})}); }
+
+// Get the numeric sheetId for a sheet by name (needed for deleteDimension)
+async function whGetSheetId(sheetName){
+  const meta=await api(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.WH_SHEET_ID}?fields=sheets.properties`);
+  const sheet=meta.sheets?.find(s=>s.properties?.title===sheetName);
+  if(!sheet) throw new Error(`Sheet "${sheetName}" not found`);
+  return sheet.properties.sheetId;
+}
+// Permanently delete a row from a sheet (rowNum is 1-based, as stored in .row property)
+async function whDeleteRow(sheetName, rowNum){
+  const sheetId=await whGetSheetId(sheetName);
+  await whBatchUpdate([{deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:rowNum-1,endIndex:rowNum}}}]);
+}
+
 async function crmGet(range){ const d=await api(`${CRMB()}/values/${encodeURIComponent(range)}`); return d.values||[]; }
 
 // ══════════════════════════════════════════
@@ -1470,7 +1500,8 @@ function renderWarehouses(){
                 ${lastMov?`<br>Last activity: ${fmtDate(lastMov.date||lastMov.createdAt)}`:''}
               </div>
             </div>
-            <button class="btn bo" style="font-size:11px;padding:5px 12px" onclick="openWarehouseModal('${esc(w.id)}')">Edit</button>
+            <button class="btn bo" style="font-size:11px;padding:5px 12px" onclick="openWarehouseModal('${esc(w.id)}')">✏️ Edit</button>
+            <button class="btn" style="font-size:11px;padding:5px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;margin-left:6px" onclick="deleteWarehouse('${esc(w.id)}')" title="Delete warehouse">🗑️</button>
           </div>`;
         }).join('')}
       </div></div>`;
@@ -2671,7 +2702,8 @@ function renderProducts(){
           <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.notes||'')}">${p.notes?esc(p.notes):'—'}</td>
           <td style="text-align:center;white-space:nowrap">
             <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openProductModal(${p.row})">✏️ Edit</button>
-            <button class="btn" style="font-size:11px;padding:4px 10px;${isArch?'background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0':'background:#fee2e2;color:#dc2626;border:1px solid #fecaca'}" onclick="toggleProductArchive(${p.row},'${esc(p.status)}')">${isArch?'✅ Activate':'⏸️ Archive'}</button>
+            <button class="btn" style="font-size:11px;padding:4px 10px;${isArch?'background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0':'background:#fff7ed;color:#d97706;border:1px solid #fed7aa'}" onclick="toggleProductArchive(${p.row},'${esc(p.status)}')">${isArch?'✅ Activate':'⏸️ Archive'}</button>
+            <button class="btn" style="font-size:11px;padding:4px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;margin-left:2px" onclick="deleteProduct(${p.row})" title="Delete permanently">🗑️</button>
           </td>
         </tr>`;
       }).join('')}
@@ -2851,6 +2883,7 @@ function renderSuppliers(){
       <td style="text-align:center;font-weight:600;color:${pCnt>0?'inherit':'var(--muted)'}">${pCnt||'0'}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openSupplierModal('${esc(s.id)}')">✏️ Edit</button>
+        <button class="btn" style="font-size:11px;padding:4px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;margin-left:4px" onclick="deleteSupplier('${esc(s.id)}')">🗑️</button>
       </td>
     </tr>`;
   });
@@ -2945,6 +2978,7 @@ function renderBrands(){
             <td style="color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.notes||'')}">${b.notes?esc(b.notes):'—'}</td>
             <td style="text-align:right;white-space:nowrap">
               <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openBrandModal('${esc(b.id)}')">✏️ Edit</button>
+              <button class="btn" style="font-size:11px;padding:4px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;margin-left:4px" onclick="deleteBrand('${esc(b.id)}')">🗑️</button>
             </td>
           </tr>`;
         }).join('')}
@@ -3021,6 +3055,173 @@ function onPdSupplierChange(){
   brandSel.innerHTML='<option value="">— Select Brand —</option>'
     +filtered.map(b=>`<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
   if(cur&&filtered.some(b=>b.name===cur)) brandSel.value=cur;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// DELETE — generic modal + per-entity handlers
+// ──────────────────────────────────────────────────────────────────────────────
+
+function showDeleteModal({title, bodyHtml, blocked=false, onConfirm}){
+  setText('del-modal-title', '🗑️ '+title);
+  document.getElementById('del-modal-body').innerHTML=bodyHtml;
+  const confirmBtn=document.getElementById('del-modal-confirm');
+  const onlyCancel=document.getElementById('del-modal-only-cancel');
+  confirmBtn.style.display=blocked?'none':'';
+  onlyCancel.style.display=blocked?'':'none';
+  confirmBtn.onclick=()=>{ closeModal('deleteConfirmModal'); onConfirm&&onConfirm(); };
+  openModal('deleteConfirmModal');
+}
+
+function _impactBox(items){ // helper to build orange warning box
+  return`<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:12px;margin:10px 0">
+    <div style="font-weight:600;color:#92400e;margin-bottom:6px">⚠️ Impact</div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:2">${items.map(i=>`<li>${i}</li>`).join('')}</ul>
+  </div>`;
+}
+
+// ── DELETE SUPPLIER ───────────────────────────────────────────────────────────
+function deleteSupplier(id){
+  const s=S.suppliers.find(x=>x.id===id);
+  if(!s) return;
+  const lBrands=S.brands.filter(b=>b.supplierName===s.name);
+  const lProds=S.allProducts.filter(p=>p.supplierName===s.name);
+  const lMovs=S.stockMovements.filter(m=>m.supplierName===s.name);
+
+  const items=[];
+  if(lBrands.length)  items.push(`<strong>${lBrands.length} brand(s)</strong> will lose their supplier link (${lBrands.slice(0,3).map(b=>`"${esc(b.name)}"`).join(', ')}${lBrands.length>3?'…':''}) — <a href="#" onclick="navigate('brands');closeModal('deleteConfirmModal');return false" style="color:var(--primary)">Manage Brands →</a>`);
+  if(lProds.length)   items.push(`<strong>${lProds.length} product(s)</strong> will lose their supplier reference — <a href="#" onclick="navigate('products');closeModal('deleteConfirmModal');return false" style="color:var(--primary)">Manage Products →</a>`);
+  if(lMovs.length)    items.push(`<strong>${lMovs.length} movement record(s)</strong> reference this supplier (history is preserved, not deleted)`);
+
+  let bodyHtml=`<p style="margin:0 0 8px">Delete supplier <strong>"${esc(s.name)}"</strong> permanently from the spreadsheet?</p>`;
+  if(items.length) bodyHtml+=_impactBox(items);
+  bodyHtml+=`<p style="font-size:12px;color:var(--muted);margin:8px 0 0">Linked brands and products will not be deleted — their supplier field will simply show no match in the dropdown until reassigned.</p>`;
+
+  showDeleteModal({
+    title:`Delete Supplier: ${s.name}`,
+    bodyHtml,
+    onConfirm:async()=>{
+      showLoader(true);
+      try{
+        await whDeleteRow(WH_SHEETS.SUPPLIERS, s.row);
+        showToast(`Supplier "${s.name}" deleted`,'success');
+        await Promise.all([loadSuppliers(), loadBrands()]);
+        renderSuppliers();
+      }catch(e){ showToast('Delete failed: '+e.message,'error'); }
+      finally{ showLoader(false); }
+    }
+  });
+}
+
+// ── DELETE BRAND ──────────────────────────────────────────────────────────────
+function deleteBrand(id){
+  const b=S.brands.find(x=>x.id===id);
+  if(!b) return;
+  const lProds=S.allProducts.filter(p=>p.brand===b.name);
+
+  const items=[];
+  if(lProds.length) items.push(`<strong>${lProds.length} product(s)</strong> reference this brand (${lProds.slice(0,3).map(p=>`"${esc(p.name)}"`).join(', ')}${lProds.length>3?'…':''}) — their brand field will still show "${esc(b.name)}" but won't appear in the Brand dropdown — <a href="#" onclick="navigate('products');closeModal('deleteConfirmModal');return false" style="color:var(--primary)">Manage Products →</a>`);
+
+  let bodyHtml=`<p style="margin:0 0 8px">Delete brand <strong>"${esc(b.name)}"</strong> (Supplier: ${esc(b.supplierName||'—')}) permanently?</p>`;
+  if(items.length) bodyHtml+=_impactBox(items);
+  bodyHtml+=`<p style="font-size:12px;color:var(--muted);margin:8px 0 0">Products are not deleted. Their brand name is stored as text, so it remains readable in reports and logs.</p>`;
+
+  showDeleteModal({
+    title:`Delete Brand: ${b.name}`,
+    bodyHtml,
+    onConfirm:async()=>{
+      showLoader(true);
+      try{
+        await whDeleteRow(WH_SHEETS.BRANDS, b.row);
+        showToast(`Brand "${b.name}" deleted`,'success');
+        await loadBrands();
+        renderBrands();
+      }catch(e){ showToast('Delete failed: '+e.message,'error'); }
+      finally{ showLoader(false); }
+    }
+  });
+}
+
+// ── DELETE PRODUCT ────────────────────────────────────────────────────────────
+function deleteProduct(row){
+  const p=S.allProducts.find(x=>x.row===row);
+  if(!p) return;
+
+  // Check active stock
+  const stockRows=S.stock.filter(s=>s.productCode===p.code&&s.quantity>0);
+  const totalStock=stockRows.reduce((a,s)=>a+s.quantity,0);
+  const blocked=totalStock>0;
+
+  // Movement history
+  const movCount=S.stockMovements.filter(m=>m.productCode===p.code).length;
+
+  const items=[];
+  if(blocked) items.push(`<strong style="color:#dc2626">🚫 ${totalStock} unit(s) currently in stock</strong> — you must transfer or clear all stock before deleting`);
+  if(movCount) items.push(`<strong>${movCount} movement record(s)</strong> reference this product (history preserved, not deleted)`);
+
+  let bodyHtml=`<p style="margin:0 0 8px">Delete product <strong>"${esc(p.name)}"</strong> (Code: ${esc(p.code)}) permanently from the product catalogue?</p>`;
+  if(items.length) bodyHtml+=_impactBox(items);
+  if(!blocked&&ARCHIVED_STATUSES.has(p.status)){
+    bodyHtml+=`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin:8px 0;font-size:12px">💡 <strong>Tip:</strong> This product is already archived. Hard deleting removes it from the product list entirely and cannot be undone.</div>`;
+  } else if(!blocked){
+    bodyHtml+=`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin:8px 0;font-size:12px">💡 <strong>Tip:</strong> Consider <strong>archiving</strong> (⏸️) instead — the product stays in reports and movement history but is hidden from stock operations.</div>`;
+  }
+  bodyHtml+=`<p style="font-size:12px;color:var(--muted);margin:8px 0 0">This removes the row from the <em>product_info</em> sheet. Stock records and movement history are NOT deleted.</p>`;
+
+  showDeleteModal({
+    title:`Delete Product: ${p.name}`,
+    bodyHtml,
+    blocked,
+    onConfirm:async()=>{
+      showLoader(true);
+      try{
+        await whDeleteRow(WH_SHEETS.PRODUCTS, p.row);
+        // Also remove from ProductSettings if exists
+        const cfg=S.minQtyMap[p.code];
+        if(cfg?.row) await whDeleteRow(WH_SHEETS.PROD_SETTINGS, cfg.row).catch(()=>{});
+        showToast(`Product "${p.name}" deleted`,'success');
+        await loadWhProducts();
+        renderProducts();
+      }catch(e){ showToast('Delete failed: '+e.message,'error'); }
+      finally{ showLoader(false); }
+    }
+  });
+}
+
+// ── DELETE WAREHOUSE ──────────────────────────────────────────────────────────
+function deleteWarehouse(id){
+  const w=S.warehouses.find(x=>x.id===id);
+  if(!w) return;
+
+  const activeStock=S.stock.filter(s=>s.warehouseId===id&&s.quantity>0);
+  const totalQty=activeStock.reduce((a,s)=>a+s.quantity,0);
+  const skuCount=new Set(activeStock.map(s=>s.productCode)).size;
+  const blocked=totalQty>0;
+  const movCount=S.stockMovements.filter(m=>m.fromWh===id||m.toWh===id).length;
+
+  const items=[];
+  if(blocked) items.push(`<strong style="color:#dc2626">🚫 ${totalQty} unit(s) across ${skuCount} SKU(s) currently in stock</strong> — transfer or receive all items out of this warehouse first`);
+  if(movCount) items.push(`<strong>${movCount} movement record(s)</strong> reference this warehouse (history preserved, not deleted — movement log may show the raw warehouse ID instead of name)`);
+
+  let bodyHtml=`<p style="margin:0 0 8px">Delete warehouse <strong>"${esc(w.name)}"</strong> (${esc(w.type)})?</p>`;
+  if(items.length) bodyHtml+=_impactBox(items);
+  bodyHtml+=`<p style="font-size:12px;color:var(--muted);margin:8px 0 0">The warehouse row is removed from the <em>Warehouses</em> sheet. Existing stock and movement records are not deleted.</p>`;
+
+  showDeleteModal({
+    title:`Delete Warehouse: ${w.name}`,
+    bodyHtml,
+    blocked,
+    onConfirm:async()=>{
+      showLoader(true);
+      try{
+        // Soft-delete: mark IsActive=FALSE so movement history still resolves
+        await whUpdate(`${WH_SHEETS.WAREHOUSES}!A${w.row}:F${w.row}`,[[w.id,w.name,w.type,'FALSE',w.notes,w.createdAt]]);
+        showToast(`Warehouse "${w.name}" removed`,'success');
+        await loadWarehouses();
+        renderWarehouses();
+      }catch(e){ showToast('Delete failed: '+e.message,'error'); }
+      finally{ showLoader(false); }
+    }
+  });
 }
 
 async function toggleProductArchive(row, currentStatus){
