@@ -1264,7 +1264,7 @@ function renderOverview(){
   // BBE lot counts
   const bbeCounts={Normal:0,Warning:0,Critical:0,Expired:0};
   S.stockLots.filter(l=>l.baseQty>0).forEach(l=>{
-    const st=l.bbeDate?getBBEStatus(l.bbeDate):'Normal';
+    const st=l.bbeDate?getBBEStatus(l.bbeDate,l.lotDate):'Normal';
     if(bbeCounts[st]!==undefined) bbeCounts[st]++;
   });
   const bbeAlert=bbeCounts.Critical+bbeCounts.Expired;
@@ -1394,7 +1394,7 @@ function renderOverview(){
 }
 
 function showBbeLots(filterStatus){
-  const lots=S.stockLots.filter(l=>l.baseQty>0&&(l.bbeDate?getBBEStatus(l.bbeDate):getBBEStatus(''))===(filterStatus||getBBEStatus('')));
+  const lots=S.stockLots.filter(l=>l.baseQty>0&&(l.bbeDate?getBBEStatus(l.bbeDate,l.lotDate):getBBEStatus(''))===(filterStatus||getBBEStatus('')));
   // Build and show detail in a modal-style overlay inside the overview content area
   const el=document.getElementById('overview-content');
   if(!el) return;
@@ -1420,7 +1420,7 @@ function showBbeLots(filterStatus){
     </tr></thead>
     <tbody>
     ${lots.sort((a,b)=>a.bbeDate.localeCompare(b.bbeDate)).map(l=>{
-      const st=l.bbeDate?getBBEStatus(l.bbeDate):'Normal';
+      const st=l.bbeDate?getBBEStatus(l.bbeDate,l.lotDate):'Normal';
       return`<tr>
         <td><div style="font-weight:600">${esc(getProdName(l.productCode))}</div>
             <div style="font-size:10px;color:var(--muted)">${esc(l.productCode)}</div></td>
@@ -1645,7 +1645,7 @@ function renderLog(){
     <tbody>
       ${movs.map(m=>{
         const tc=typeColors[m.type]||'#6b7280';
-        const bbeStatusVal=m.bbeStatus||(m.bbeDate?getBBEStatus(m.bbeDate):'');
+        const bbeStatusVal=m.bbeStatus||(m.bbeDate?getBBEStatus(m.bbeDate,m.lotDate):'');
         const unitLabel=m.unit&&m.baseUnit&&m.unit!==m.baseUnit
           ?`${m.quantity} ${esc(m.unit)} = ${m.baseQty} ${esc(m.baseUnit)}`
           :`${m.quantity} ${esc(m.unit||m.baseUnit||'')}`;
@@ -2053,17 +2053,34 @@ function normDate(v){
   return s;
 }
 
-function getBBEStatus(bbeDateStr){
+function getBBEStatus(bbeDateStr, lotDateStr=''){
   if(!bbeDateStr) return 'Unknown';
   try{
     const iso=normDate(bbeDateStr);
     if(!iso) return 'Unknown';
-    const bbe=new Date(iso); const now=new Date();
-    now.setHours(0,0,0,0);
+    const bbe=new Date(iso);
+    const now=new Date(); now.setHours(0,0,0,0);
     const daysLeft=Math.floor((bbe-now)/86400000);
     if(daysLeft<0) return 'Expired';
-    if(daysLeft<=90) return 'Critical';
-    if(daysLeft<=180) return 'Warning';
+    // Percentage-based: compare days consumed vs total shelf life
+    // Normal <50% | Warning 50-75% | Critical >75%
+    if(lotDateStr){
+      const isoL=normDate(lotDateStr);
+      if(isoL){
+        const lot=new Date(isoL);
+        const totalDays=Math.floor((bbe-lot)/86400000);
+        if(totalDays>0){
+          const consumed=Math.floor((now-lot)/86400000);
+          const pct=Math.max(0,consumed)/totalDays;
+          if(pct>=0.75) return 'Critical';
+          if(pct>=0.50) return 'Warning';
+          return 'Normal';
+        }
+      }
+    }
+    // Fallback when no lot date: absolute thresholds
+    if(daysLeft<=30) return 'Critical';
+    if(daysLeft<=90) return 'Warning';
     return 'Normal';
   }catch{ return 'Unknown'; }
 }
@@ -2093,7 +2110,7 @@ function populateLotSelector(warehouseId, productCode){
     if(info) info.innerHTML='<span style="color:#d97706">⚠️ No lot records for this product. Stock was received before lot tracking was set up — you can still save this delivery without a lot date.</span>';
   } else {
     sel.innerHTML='<option value="">— Select Lot —</option>'+lots.map(l=>{
-      const bbe=l.bbeDate?` | BBE: ${l.bbeDate} [${getBBEStatus(l.bbeDate)}]`:'';
+      const bbe=l.bbeDate?` | BBE: ${l.bbeDate} [${getBBEStatus(l.bbeDate,l.lotDate)}]`:'';
       const nameTag=l.lotName?`[${l.lotName}] `:'';
       return `<option value="${esc(l.lotDate)}">${nameTag}Fill: ${l.lotDate}${bbe} — ${l.baseQty} ${l.baseUnit||'units'}</option>`;
     }).join('');
@@ -2356,7 +2373,7 @@ async function saveMovement(){
   let bbeDate='', bbeStatus='';
   if(lotDate&&shelfMonths>0){
     bbeDate=addMonths(lotDate,shelfMonths);
-    bbeStatus=getBBEStatus(bbeDate);
+    bbeStatus=getBBEStatus(bbeDate,lotDate);
   }
 
   const shopVal=val('mv-shop')||'';
@@ -2564,7 +2581,7 @@ function onBatchProductChange(sel){
       const lots=getAvailableLots(whId,prodCode);
       if(lots.length){
         lotSel.innerHTML='<option value="">— Select Lot —</option>'+lots.map(l=>{
-          const st=l.bbeDate?getBBEStatus(l.bbeDate):'';
+          const st=l.bbeDate?getBBEStatus(l.bbeDate,l.lotDate):'';
           return `<option value="${esc(l.lotDate)}">${l.lotDate} — ${l.baseQty}${l.baseUnit?' '+l.baseUnit:''}${l.bbeDate?' | BBE:'+l.bbeDate+(st?' ['+st+']':''):''}`;
         }).join('');
       } else {
@@ -2610,7 +2627,7 @@ function onBatchLotChange(sel){
   if(bbeEl){
     const lot=lotDate?S.stockLots.find(l=>l.warehouseId===whId&&l.productCode===prodCode&&l.lotDate===lotDate):null;
     if(lot&&lot.bbeDate){
-      const st=getBBEStatus(lot.bbeDate);
+      const st=getBBEStatus(lot.bbeDate,lot.lotDate);
       bbeEl.innerHTML=bbeBadge(st)+'<div style="font-size:9px;color:var(--muted);margin-top:2px">'+lot.bbeDate+'</div>';
     } else { bbeEl.innerHTML='—'; }
   }
@@ -2699,7 +2716,7 @@ async function saveBatchDelivery(){
     // BBE from lot
     const lot=lotDate?S.stockLots.find(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.lotDate===lotDate):null;
     const bbeDate=lot?.bbeDate||'';
-    const bbeStatus=bbeDate?getBBEStatus(bbeDate):'';
+    const bbeStatus=bbeDate?getBBEStatus(bbeDate,lotDate):'';
 
     rowData.push({prodCode,lotDate,unitVal,qty,baseQty,baseUnit,fifoWarning,fifoReason,bbeDate,bbeStatus,lot});
   }
