@@ -630,6 +630,7 @@ const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
   warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], suppliers:[], brands:[], minQtyMap:{},
   clients:[], // from CRM sheet for delivery linking
+  movementsLoadError:'', // set by loadStockMovements on API failure
   page:'overview', rptTab:'category',
 };
 
@@ -840,6 +841,13 @@ function clearLogFilters(){
   ['log-type','log-wh','log-q','log-from','log-to','log-batch'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
+  renderLog();
+}
+
+async function reloadMovementsAndRender(){
+  const el=document.getElementById('log-content');
+  if(el) el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">⏳ Loading movements from sheet…</div>';
+  await loadStockMovements();
   renderLog();
 }
 
@@ -1054,12 +1062,15 @@ async function loadWarehouses(){
 async function loadWhProducts(){
   try{
     const rows = await whGet(`${WH_SHEETS.PRODUCTS}!A:N`);
-    S.allProducts = rows.slice(1).map((r,i)=>({
+    const rawProds = rows.slice(1).map((r,i)=>({
       row:i+2, status:r[0]||'', code:r[1]||'', brand:r[2]||'',
       name:r[3]||'', style:r[4]||'', size:r[5]||'', abv:r[6]||'',
       type:r[7]||'', pack:r[8]||'', weight:r[9]||'', kegType:r[10]||'',
       shelfLife:r[11]||'', notes:r[12]||'', supplierName:r[13]||'',
     })).filter(p=>p.code);
+    // Deduplicate by product code — keep first occurrence (lowest row number)
+    const seenCodes=new Set();
+    S.allProducts=rawProds.filter(p=>{ if(seenCodes.has(p.code)) return false; seenCodes.add(p.code); return true; });
     const ARCHIVED=new Set(['Inactive','Discontinued']);
     S.whProducts = S.allProducts.filter(p=>!ARCHIVED.has(p.status));
     // merge minQty — done after loadProdSettings if already available
@@ -1078,30 +1089,45 @@ async function loadStock(){
 }
 
 async function loadStockMovements(){
+  S.movementsLoadError='';
   try{
-    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:Z`);
-    // Detect whether row 0 is a header row or actual data.
-    // This handles the edge case where the sheet was created without a header
-    // (ensureWarehouseSheets will repair it on next app load, but in the meantime
-    //  we still want to show existing data rather than silently hiding it).
-    const firstCell = rows?.[0]?.[0]||'';
+    // Use open-ended range — works regardless of how many columns exist in the sheet
+    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A1:ZZ`);
+    if(!rows||!rows.length){ S.stockMovements=[]; return; }
+    // Detect header row: first cell of first row should be 'MovementID'
+    const firstCell = (rows[0]?.[0]||'').toString().trim();
     const isHeaderRow = firstCell === 'MovementID';
-    const dataRows = rows.slice(isHeaderRow ? 1 : 0);
-    const rowOffset = isHeaderRow ? 2 : 1;
-    S.stockMovements = dataRows.map((r,i)=>({
-      row:i+rowOffset, id:r[0]||'', type:r[1]||'', date:normDate(r[2])||r[2]||'',
-      fromWh:r[3]||'', toWh:r[4]||'', productCode:r[5]||'',
-      productName:r[6]||'', brand:r[7]||'', unit:r[8]||'',
-      quantity:parseFloat(r[9])||0, clientCode:r[10]||'', shopName:r[11]||'',
-      reference:r[12]||'', notes:r[13]||'', createdBy:r[14]||'', createdAt:r[15]||'',
-      lotDate:normDate(r[16])||r[16]||'', baseQty:parseFloat(r[17])||0, baseUnit:r[18]||'',
-      fifoWarning:r[19]==='TRUE', fifoOverrideReason:r[20]||'',
-      bbeDate:normDate(r[21])||r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'',
-      supplierName:r[24]||'', lotName:r[25]||'',
-    })).filter(m=>m.id||m.type); // accept rows with type even if ID missing (manual entries)
+    const dataRows = isHeaderRow ? rows.slice(1) : rows;
+    const rowOffset  = isHeaderRow ? 2 : 1;
+    S.stockMovements = dataRows.map((r,i)=>{
+      try{
+        return {
+          row:i+rowOffset, id:(r[0]||'').toString().trim(), type:(r[1]||'').toString().trim(),
+          date: normDate(r[2]) || (r[2]||'').toString().trim(),
+          fromWh:(r[3]||'').toString().trim(), toWh:(r[4]||'').toString().trim(),
+          productCode:(r[5]||'').toString().trim(),
+          productName:(r[6]||'').toString().trim(), brand:(r[7]||'').toString().trim(),
+          unit:(r[8]||'').toString().trim(),
+          quantity:parseFloat(r[9])||0, clientCode:(r[10]||'').toString().trim(),
+          shopName:(r[11]||'').toString().trim(),
+          reference:(r[12]||'').toString().trim(), notes:(r[13]||'').toString().trim(),
+          createdBy:(r[14]||'').toString().trim(), createdAt:(r[15]||'').toString().trim(),
+          lotDate: normDate(r[16]) || (r[16]||'').toString().trim(),
+          baseQty:parseFloat(r[17])||0, baseUnit:(r[18]||'').toString().trim(),
+          fifoWarning:r[19]==='TRUE', fifoOverrideReason:(r[20]||'').toString().trim(),
+          bbeDate: normDate(r[21]) || (r[21]||'').toString().trim(),
+          bbeStatus:(r[22]||'').toString().trim(), batchId:(r[23]||'').toString().trim(),
+          supplierName:(r[24]||'').toString().trim(), lotName:(r[25]||'').toString().trim(),
+        };
+      }catch(rowErr){
+        console.warn('Skipped malformed movement row',i+rowOffset,rowErr);
+        return null;
+      }
+    }).filter(m=>m&&(m.id||m.type)); // drop nulls and fully-empty rows
+    console.log(`[Movements] Loaded ${S.stockMovements.length} record(s) from ${dataRows.length} data row(s)`);
   }catch(e){
-    console.error('loadStockMovements failed:',e.message);
-    showToast('⚠️ Could not load movement log: '+e.message,'warning');
+    S.movementsLoadError = e.message||'Unknown error';
+    console.error('[Movements] Load failed:', S.movementsLoadError);
     S.stockMovements=[];
   }
 }
@@ -1184,7 +1210,13 @@ function navigate(page){
   if(pg) pg.classList.add('active');
   const nv=document.getElementById('nav-'+page);
   if(nv) nv.classList.add('active');
-  renderCurrentPage();
+  // Always reload movement data fresh when entering the log page
+  if(page==='log'){
+    renderLog(); // show immediately (may be stale/empty)
+    loadStockMovements().then(()=>renderLog()); // then update with fresh data
+  } else {
+    renderCurrentPage();
+  }
   window.scrollTo(0,0);
 }
 
@@ -1567,13 +1599,24 @@ function renderLog(){
   });
 
   if(!movs.length){
-    if(hasLogFilter){
+    if(S.movementsLoadError){
+      h+=`<div class="empty">
+        <div class="ei">⚠️</div>
+        <h3 style="color:#dc2626">Could not load movement data</h3>
+        <p style="color:#dc2626;font-size:13px;margin-bottom:8px">${esc(S.movementsLoadError)}</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px">This usually means the sheet name doesn't match, the token expired, or the Google Sheet has a permission issue.</p>
+        <button class="btn bp" onclick="reloadMovementsAndRender()">↻ Retry loading movements</button>
+      </div>`;
+    } else if(hasLogFilter){
       h+=`<div class="empty"><div class="ei">🔍</div><h3>No movements match your filters</h3>
         <p style="margin-bottom:12px">Your current filters are hiding all records.</p>
         ${batchF?`<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Batch filter "<strong>${esc(batchRaw)}</strong>" is active — use this only after saving a Batch Delivery.</p>`:''}
         <button class="btn bp" onclick="clearLogFilters()">✕ Clear all filters — show everything</button></div>`;
     } else {
-      h+='<div class="empty"><div class="ei">📋</div><h3>No movements found</h3><p>Use "+ Log Movement" or "🚚 Batch Delivery" to record your first stock movement</p></div>';
+      h+=`<div class="empty"><div class="ei">📋</div><h3>No movements found</h3>
+        <p>Use "+ Log Movement" or "🚚 Batch Delivery" to record your first stock movement</p>
+        <button class="btn bo" style="margin-top:12px;font-size:12px" onclick="reloadMovementsAndRender()">↻ Reload from sheet</button>
+      </div>`;
     }
     el.innerHTML=h; return;
   }
@@ -2130,7 +2173,7 @@ function onMvTypeChange(){
   document.getElementById('mv-to-row').style.display=showTo?'':'none';
   document.getElementById('mv-supplier-row').style.display=isReceive?'':'none';
   document.getElementById('mv-brand-row').style.display=(isReceive&&S.brands.length>0)?'':'none';
-  document.getElementById('mv-shop-row').style.display=t==='Delivery'?'':'none';
+  document.getElementById('mv-shop-row').style.display='none'; // shop link removed per user request
   document.getElementById('mv-adj-row').style.display=t==='Adjustment'?'':'none';
   document.getElementById('mv-lotdate-row').style.display=showLotDate?'':'none';
   document.getElementById('mv-lotname-row').style.display=showLotDate?'':'none';
@@ -2145,6 +2188,15 @@ function onMvTypeChange(){
 
 function onMvFromChange(){
   const t=val('mv-type');
+  // Re-filter product list whenever "from" warehouse changes (for outbound types)
+  const outboundTypes=['Delivery','Transfer','Returned to brand','Damage','Adjustment'];
+  if(outboundTypes.includes(t)){
+    // Reset product selection since the warehouse changed
+    setVal('mv-product','');
+    const unitSel=document.getElementById('mv-unit'); if(unitSel) unitSel.innerHTML='<option value="">— Select Unit —</option>';
+    const lotSel=document.getElementById('mv-lot');   if(lotSel)  lotSel.innerHTML='<option value="">— Select Lot —</option>';
+    filterMvProducts();
+  }
   const showLotSel=['Delivery','Transfer','Returned to brand','Damage'].includes(t);
   if(showLotSel){
     const fromId=val('mv-from'); const prodCode=val('mv-product');
@@ -2171,13 +2223,25 @@ function filterMvProducts(){
   const q=(document.getElementById('mv-product-search')?.value||'').toLowerCase();
   const supFilter=val('mv-supplier');
   const brandFilter=val('mv-brand');
+  const t=val('mv-type');
+  const fromWh=val('mv-from');
   const sel=document.getElementById('mv-product');
   if(!sel) return;
   let list=S.whProducts;
+  // For outbound types: show only products that have stock in the selected warehouse
+  const outboundTypes=['Delivery','Transfer','Returned to brand','Damage','Adjustment'];
+  if(fromWh && outboundTypes.includes(t)){
+    const inStock=new Set(S.stock.filter(s=>s.warehouseId===fromWh&&s.quantity>0).map(s=>s.productCode));
+    list=list.filter(p=>inStock.has(p.code));
+  }
   if(supFilter) list=list.filter(p=>(p.supplierName||'')=== supFilter);
   if(brandFilter) list=list.filter(p=>(p.brand||'')=== brandFilter);
   if(q) list=list.filter(p=>`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase().includes(q));
-  sel.innerHTML='<option value="">— Select Product —</option>'+list.slice(0,100).map(p=>`<option value="${esc(p.code)}">${esc(p.brand)} · ${esc(p.name)} · ${esc(p.size)} ${esc(p.type)}</option>`).join('');
+  // Deduplicate by product code (sheet may have duplicate rows)
+  const seen=new Set();
+  list=list.filter(p=>{ if(seen.has(p.code)) return false; seen.add(p.code); return true; });
+  const hint=fromWh&&outboundTypes.includes(t)?` (${list.length} with stock)`:'';
+  sel.innerHTML=`<option value="">— Select Product${hint} —</option>`+list.slice(0,100).map(p=>`<option value="${esc(p.code)}">${esc(p.brand)} · ${esc(p.name)} · ${esc(p.size)} ${esc(p.type)}</option>`).join('');
 }
 
 function onMvProductChange(){
