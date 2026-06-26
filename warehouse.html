@@ -253,7 +253,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <button class="tab" onclick="rptTab('supplier',this)">🏢 By Supplier</button>
         <button class="tab" onclick="rptTab('external',this)">🔗 External Warehouses</button>
         <button class="tab" onclick="rptTab('slow',this)">🐢 Slow Moving</button>
-        <button class="tab" onclick="rptTab('defect',this)">💔 Defects</button>
+        <button class="tab" onclick="rptTab('defect',this)">↩️ Returns</button>
         <button class="tab" onclick="rptTab('aging',this)">⏱️ Stock Aging</button>
       </div>
       <div id="rpt-content"></div>
@@ -320,9 +320,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
           <option value="Transfer">🔄 Transfer Between Locations</option>
           <option value="Delivery">📤 Delivery to Shop</option>
           <option value="Return">↩️ Return to Stock</option>
-          <option value="Damage">💔 Damage</option>
-          <option value="Expired">⏰ Expired</option>
-          <option value="Loss">❌ Loss / Shortage</option>
+          <option value="Returned to brand">↩️ Returned to Brand</option>
           <option value="Adjustment">🔧 Manual Adjustment</option>
         </select></div>
       <!-- Warehouses -->
@@ -331,7 +329,12 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <!-- Supplier (Receive only) -->
       <div id="mv-supplier-row" style="display:none">
         <label class="fl">Supplier *</label>
-        <select class="fi" id="mv-supplier"><option value="">— Select Supplier —</option></select>
+        <select class="fi" id="mv-supplier" onchange="onMvSupplierChange()"><option value="">— Select Supplier —</option></select>
+      </div>
+      <!-- Brand filter (Receive only — auto-filters when supplier selected) -->
+      <div id="mv-brand-row" style="display:none">
+        <label class="fl">Filter by Brand <span style="font-size:11px;color:var(--muted)">(optional — filters product list)</span></label>
+        <select class="fi" id="mv-brand" onchange="filterMvProducts()"><option value="">— All Brands —</option></select>
       </div>
       <!-- Product search -->
       <div>
@@ -341,10 +344,15 @@ tr:hover td{background:rgba(0,0,0,.012)}
       </div>
       <!-- Lot Date (Receive only) -->
       <div id="mv-lotdate-row" style="display:none">
-        <label class="fl">Packing Lot Date * <span style="font-size:11px;color:var(--muted)">(YYYY-MM-DD)</span></label>
+        <label class="fl">Filling Date * <span style="font-size:11px;color:var(--muted)">(date the product was filled / packaged)</span></label>
         <input class="fi" type="date" id="mv-lotdate" onchange="onLotDateChange()">
       </div>
-      <!-- Lot selector (Delivery / Transfer / Damage / Expired / Loss) -->
+      <!-- Lot Name field (Receive only) -->
+      <div id="mv-lotname-row" style="display:none">
+        <label class="fl">Lot Name / Reference <span style="font-size:11px;color:var(--muted)">(e.g. LOT-2024-001, optional)</span></label>
+        <input class="fi" id="mv-lotname" placeholder="Label to identify this lot, e.g. LOT-A1, Batch-Jan24...">
+      </div>
+      <!-- Lot selector (Delivery / Transfer / Returned to brand) -->
       <div id="mv-lot-row" style="display:none">
         <label class="fl">Select Lot *</label>
         <select class="fi" id="mv-lot" onchange="onLotSelectChange()"><option value="">— Select Lot —</option></select>
@@ -772,11 +780,11 @@ async function ensureWarehouseSheets(){
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
       {title:WH_SHEETS.PRODUCTS,   h:[['Status','ProductCode','Brand','ProductName','Style','Size','ABV','ContainerType','PackSize','Weight','KegType','ShelfLifeMonths','Notes','SupplierName']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
-      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID','SupplierName']]},
+      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID','SupplierName','LotName']]},
       {title:WH_SHEETS.SUPPLIERS,    h:[['SupplierID','SupplierName','Notes']]},
       {title:WH_SHEETS.BRANDS,       h:[['BrandID','BrandName','SupplierName','Notes']]},
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
-      {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated']]},
+      {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated','LotName']]},
     ];
 
     // Create any missing sheets and capture their new sheetIds
@@ -927,7 +935,7 @@ function updateEmImpact(){
   const oldBase=m.baseQty||m.quantity||0;
   const delta=newBase-oldBase;   // positive = more stock out than before
 
-  const isDebit=['Delivery','Transfer','Damage','Expired','Loss'].includes(m.type);
+  const isDebit=['Delivery','Transfer','Returned to brand','Damage','Expired','Loss'].includes(m.type);
   const isCredit=['Receive','Return'].includes(m.type);
 
   let stockMsg='';
@@ -967,7 +975,7 @@ async function saveEditMovement(){
   const oldBase=m.baseQty||m.quantity||0;
   const delta=newBase-oldBase;
 
-  const isDebit=['Delivery','Transfer','Damage','Expired','Loss'].includes(m.type);
+  const isDebit=['Delivery','Transfer','Returned to brand','Damage','Expired','Loss'].includes(m.type);
   const isCredit=['Receive','Return'].includes(m.type);
 
   showLoader(true);
@@ -1071,7 +1079,7 @@ async function loadStock(){
 
 async function loadStockMovements(){
   try{
-    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:Y`);
+    const rows = await whGet(`${WH_SHEETS.MOVEMENTS}!A:Z`);
     // Detect whether row 0 is a header row or actual data.
     // This handles the edge case where the sheet was created without a header
     // (ensureWarehouseSheets will repair it on next app load, but in the meantime
@@ -1081,15 +1089,16 @@ async function loadStockMovements(){
     const dataRows = rows.slice(isHeaderRow ? 1 : 0);
     const rowOffset = isHeaderRow ? 2 : 1;
     S.stockMovements = dataRows.map((r,i)=>({
-      row:i+rowOffset, id:r[0]||'', type:r[1]||'', date:r[2]||'',
+      row:i+rowOffset, id:r[0]||'', type:r[1]||'', date:normDate(r[2])||r[2]||'',
       fromWh:r[3]||'', toWh:r[4]||'', productCode:r[5]||'',
       productName:r[6]||'', brand:r[7]||'', unit:r[8]||'',
       quantity:parseFloat(r[9])||0, clientCode:r[10]||'', shopName:r[11]||'',
       reference:r[12]||'', notes:r[13]||'', createdBy:r[14]||'', createdAt:r[15]||'',
-      lotDate:r[16]||'', baseQty:parseFloat(r[17])||0, baseUnit:r[18]||'',
+      lotDate:normDate(r[16])||r[16]||'', baseQty:parseFloat(r[17])||0, baseUnit:r[18]||'',
       fifoWarning:r[19]==='TRUE', fifoOverrideReason:r[20]||'',
-      bbeDate:r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'', supplierName:r[24]||'',
-    })).filter(m=>m.id);
+      bbeDate:normDate(r[21])||r[21]||'', bbeStatus:r[22]||'', batchId:r[23]||'',
+      supplierName:r[24]||'', lotName:r[25]||'',
+    })).filter(m=>m.id||m.type); // accept rows with type even if ID missing (manual entries)
   }catch(e){
     console.error('loadStockMovements failed:',e.message);
     showToast('⚠️ Could not load movement log: '+e.message,'warning');
@@ -1130,11 +1139,12 @@ async function saveProdSettings(code, minQty, baseUnit, caseUnitName, unitsPerCa
 
 async function loadStockLots(){
   try{
-    const rows=await whGet(`${WH_SHEETS.STOCK_LOT}!A:H`);
+    const rows=await whGet(`${WH_SHEETS.STOCK_LOT}!A:I`);
     S.stockLots=rows.slice(1).map((r,i)=>({
       row:i+2, id:r[0]||'', warehouseId:r[1]||'', productCode:r[2]||'',
-      lotDate:r[3]||'', bbeDate:r[4]||'', baseQty:parseFloat(r[5])||0,
-      baseUnit:r[6]||'', lastUpdated:r[7]||'',
+      lotDate:normDate(r[3])||r[3]||'', bbeDate:normDate(r[4])||r[4]||'',
+      baseQty:parseFloat(r[5])||0,
+      baseUnit:r[6]||'', lastUpdated:r[7]||'', lotName:r[8]||'',
     })).filter(l=>l.warehouseId&&l.productCode&&l.lotDate);
   }catch(e){ S.stockLots=[]; }
 }
@@ -1517,7 +1527,7 @@ function renderLog(){
   const el=document.getElementById('log-content');
   if(!el) return;
   const _f=_saveFocus();
-  const typeColors={Receive:'#10b981',Transfer:'#3b82f6',Delivery:'#f59e0b',Return:'#8b5cf6',Damage:'#ef4444',Expired:'#f97316',Loss:'#dc2626',Adjustment:'#6b7280'};
+  const typeColors={Receive:'#10b981',Transfer:'#3b82f6',Delivery:'#f59e0b',Return:'#8b5cf6','Returned to brand':'#f97316',Damage:'#ef4444',Expired:'#f97316',Loss:'#dc2626',Adjustment:'#6b7280'};
   const getWhName=id=>S.warehouses.find(w=>w.id===id)?.name||id||'—';
 
   // Read all filter values FIRST (before rebuilding DOM)
@@ -1533,7 +1543,7 @@ function renderLog(){
   let h=`<div class="fb" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">
     <select class="fsel" id="log-type" onchange="renderLog()">
       <option value="">— All Types —</option>
-      ${['Receive','Transfer','Delivery','Return','Damage','Expired','Loss','Adjustment'].map(t=>`<option${typeF===t?' selected':''}>${t}</option>`).join('')}
+      ${['Receive','Transfer','Delivery','Return','Returned to brand','Damage','Expired','Loss','Adjustment'].map(t=>`<option${typeF===t?' selected':''}>${t}</option>`).join('')}
     </select>
     <select class="fsel" id="log-wh" onchange="renderLog()">
       <option value="">— All Locations —</option>
@@ -1734,12 +1744,13 @@ function renderRptSlow(el){
 }
 
 function renderRptDefect(el){
-  const movs=S.stockMovements.filter(m=>['Damage','Expired','Loss'].includes(m.type));
-  if(!movs.length){ el.innerHTML='<div class="empty"><div class="ei">✅</div><h3>No defects recorded</h3><p>Damage, expired, and loss movements appear here</p></div>'; return; }
+  const movs=S.stockMovements.filter(m=>['Returned to brand','Damage','Expired','Loss'].includes(m.type));
+  if(!movs.length){ el.innerHTML='<div class="empty"><div class="ei">✅</div><h3>No returns recorded</h3><p>"Returned to Brand" movements appear here</p></div>'; return; }
   const byProd={};
   movs.forEach(m=>{
-    if(!byProd[m.productCode]) byProd[m.productCode]={name:m.productName||m.productCode,brand:m.brand,code:m.productCode,Damage:0,Expired:0,Loss:0,total:0};
-    byProd[m.productCode][m.type]+=m.quantity;
+    if(!byProd[m.productCode]) byProd[m.productCode]={name:m.productName||m.productCode,brand:m.brand,code:m.productCode,'Returned to brand':0,Damage:0,Expired:0,Loss:0,total:0};
+    const t2=m.type==='Damage'?'Returned to brand':m.type;
+    byProd[m.productCode][t2]=(byProd[m.productCode][t2]||0)+m.quantity;
     byProd[m.productCode].total+=m.quantity;
   });
   const prods=Object.values(byProd).sort((a,b)=>b.total-a.total);
@@ -1748,18 +1759,14 @@ function renderRptDefect(el){
   <div class="tbl-wrap"><table>
     <thead><tr>
       <th>Product</th>
-      <th style="text-align:center;color:#ef4444">💔 Damaged</th>
-      <th style="text-align:center;color:#f97316">⏰ Expired</th>
-      <th style="text-align:center;color:#8b5cf6">❌ Lost</th>
+      <th style="text-align:center;color:#f97316">↩️ Returned to Brand</th>
       <th style="text-align:center">Total</th>
     </tr></thead>
     <tbody>${prods.map((p,i)=>`
       <tr style="${i%2?'background:rgba(0,0,0,.015)':''}">
         <td><div style="font-weight:600">${esc(p.name)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.brand)} · ${esc(p.code)}</div></td>
-        <td style="text-align:center;font-weight:${p.Damage?'700':'400'};color:${p.Damage?'#ef4444':'#cbd5e1'}">${p.Damage||0}</td>
-        <td style="text-align:center;font-weight:${p.Expired?'700':'400'};color:${p.Expired?'#f97316':'#cbd5e1'}">${p.Expired||0}</td>
-        <td style="text-align:center;font-weight:${p.Loss?'700':'400'};color:${p.Loss?'#8b5cf6':'#cbd5e1'}">${p.Loss||0}</td>
-        <td style="text-align:center;font-weight:700;color:#ef4444">${p.total}</td>
+        <td style="text-align:center;font-weight:${p['Returned to brand']?'700':'400'};color:${p['Returned to brand']?'#f97316':'#cbd5e1'}">${p['Returned to brand']||0}</td>
+        <td style="text-align:center;font-weight:700;color:#f97316">${p.total}</td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -1968,10 +1975,36 @@ function addMonths(dateStr, months){
   }catch{ return ''; }
 }
 
+// Normalise any date value from Google Sheets to ISO "YYYY-MM-DD"
+// Handles: ISO strings, US "M/D/YYYY", EU/Thai "D/M/YYYY", Google serial numbers
+function normDate(v){
+  if(!v&&v!==0) return '';
+  // Google Sheets serial date (e.g. 45306 = 2024-01-15)
+  if(typeof v==='number'||(typeof v==='string'&&/^\d{5,}$/.test(v.trim()))){
+    const n=typeof v==='number'?v:parseInt(v);
+    if(n>40000&&n<99999) return new Date(Math.round((n-25569)*86400000)).toISOString().split('T')[0];
+  }
+  const s=String(v).trim();
+  if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10); // ISO already
+  const parts=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(parts){
+    const a=parseInt(parts[1]),b=parseInt(parts[2]),yr=parts[3];
+    if(a>12) return `${yr}-${String(b).padStart(2,'0')}-${String(a).padStart(2,'0')}`; // EU day-first
+    return `${yr}-${String(a).padStart(2,'0')}-${String(b).padStart(2,'0')}`; // US month-first
+  }
+  const d=new Date(s);
+  if(!isNaN(d)) return d.toISOString().split('T')[0];
+  return s;
+}
+
 function getBBEStatus(bbeDateStr){
   if(!bbeDateStr) return 'Unknown';
   try{
-    const bbe=new Date(bbeDateStr); const now=new Date();
+    const iso=normDate(bbeDateStr);
+    if(!iso) return 'Unknown';
+    const bbe=new Date(iso); const now=new Date();
+    now.setHours(0,0,0,0);
     const daysLeft=Math.floor((bbe-now)/86400000);
     if(daysLeft<0) return 'Expired';
     if(daysLeft<=90) return 'Critical';
@@ -2006,7 +2039,8 @@ function populateLotSelector(warehouseId, productCode){
   } else {
     sel.innerHTML='<option value="">— Select Lot —</option>'+lots.map(l=>{
       const bbe=l.bbeDate?` | BBE: ${l.bbeDate} [${getBBEStatus(l.bbeDate)}]`:'';
-      return `<option value="${esc(l.lotDate)}">${l.lotDate}${bbe} — ${l.baseQty} ${l.baseUnit||'units'}</option>`;
+      const nameTag=l.lotName?`[${l.lotName}] `:'';
+      return `<option value="${esc(l.lotDate)}">${nameTag}Fill: ${l.lotDate}${bbe} — ${l.baseQty} ${l.baseUnit||'units'}</option>`;
     }).join('');
     if(info) info.textContent=`${lots.length} lot(s) available. Oldest lot shown first (FIFO).`;
   }
@@ -2065,7 +2099,7 @@ function updateBasePreview(){
 function openMovementModal(){
   setVal('mv-type',''); setVal('mv-product',''); setVal('mv-product-search','');
   setVal('mv-qty',''); setVal('mv-reference',''); setVal('mv-notes','');
-  setVal('mv-adj-dir','+'); setVal('mv-lotdate',''); setVal('mv-fifo-reason','');
+  setVal('mv-adj-dir','+'); setVal('mv-lotdate',''); setVal('mv-lotname',''); setVal('mv-fifo-reason','');
   setVal('mv-date',new Date().toISOString().split('T')[0]);
   const whOpts='<option value="">— Select Location —</option>'+S.warehouses.map(w=>`<option value="${esc(w.id)}">${esc(w.name)} (${w.type})</option>`).join('');
   const fromSel=document.getElementById('mv-from'); if(fromSel) fromSel.innerHTML=whOpts;
@@ -2076,6 +2110,8 @@ function openMovementModal(){
   const lotSel=document.getElementById('mv-lot'); if(lotSel) lotSel.innerHTML='<option value="">— Select Lot —</option>';
   const supSel=document.getElementById('mv-supplier');
   if(supSel) supSel.innerHTML='<option value="">— Select Supplier —</option>'+S.suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+  const brandSel=document.getElementById('mv-brand');
+  if(brandSel) brandSel.innerHTML='<option value="">— All Brands —</option>'+S.brands.map(b=>`<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
   const fifoPanel=document.getElementById('mv-fifo-panel'); if(fifoPanel) fifoPanel.style.display='none';
   const bPreview=document.getElementById('mv-base-preview'); if(bPreview) bPreview.style.display='none';
   filterMvProducts();
@@ -2085,19 +2121,22 @@ function openMovementModal(){
 
 function onMvTypeChange(){
   const t=val('mv-type');
-  const showFrom=['Transfer','Delivery','Damage','Expired','Loss','Adjustment'].includes(t);
+  const showFrom=['Transfer','Delivery','Returned to brand','Damage','Adjustment'].includes(t);
   const showTo=['Receive','Transfer','Return'].includes(t);
   const showLotDate=['Receive','Return'].includes(t);
-  const showLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(t);
+  const showLotSel=['Delivery','Transfer','Returned to brand','Damage'].includes(t);
+  const isReceive=(t==='Receive');
   document.getElementById('mv-from-row').style.display=showFrom?'':'none';
   document.getElementById('mv-to-row').style.display=showTo?'':'none';
-  document.getElementById('mv-supplier-row').style.display=t==='Receive'?'':'none';
+  document.getElementById('mv-supplier-row').style.display=isReceive?'':'none';
+  document.getElementById('mv-brand-row').style.display=(isReceive&&S.brands.length>0)?'':'none';
   document.getElementById('mv-shop-row').style.display=t==='Delivery'?'':'none';
   document.getElementById('mv-adj-row').style.display=t==='Adjustment'?'':'none';
   document.getElementById('mv-lotdate-row').style.display=showLotDate?'':'none';
+  document.getElementById('mv-lotname-row').style.display=showLotDate?'':'none';
   document.getElementById('mv-lot-row').style.display=showLotSel?'':'none';
   const fifoPanel=document.getElementById('mv-fifo-panel'); if(fifoPanel) fifoPanel.style.display='none';
-  // Re-trigger lot selector if warehouse + product already selected
+  if(!isReceive){ setVal('mv-supplier',''); setVal('mv-brand',''); filterMvProducts(); }
   if(showLotSel){
     const fromId=val('mv-from'); const prodCode=val('mv-product');
     if(fromId&&prodCode) populateLotSelector(fromId,prodCode);
@@ -2106,18 +2145,38 @@ function onMvTypeChange(){
 
 function onMvFromChange(){
   const t=val('mv-type');
-  const showLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(t);
+  const showLotSel=['Delivery','Transfer','Returned to brand','Damage'].includes(t);
   if(showLotSel){
     const fromId=val('mv-from'); const prodCode=val('mv-product');
     if(fromId&&prodCode) populateLotSelector(fromId,prodCode);
   }
 }
 
+// Called when supplier changes in Receive movement modal
+function onMvSupplierChange(){
+  const supName=val('mv-supplier');
+  const brandSel=document.getElementById('mv-brand');
+  const brandRow=document.getElementById('mv-brand-row');
+  if(brandSel){
+    const filtered=supName?S.brands.filter(b=>b.supplierName===supName):S.brands;
+    brandSel.innerHTML='<option value="">— All Brands —</option>'+filtered.map(b=>`<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
+    if(brandRow) brandRow.style.display=filtered.length>0?'':'none';
+  }
+  // Reset product selection when supplier changes
+  const prodSel=document.getElementById('mv-product'); if(prodSel) prodSel.value='';
+  filterMvProducts();
+}
+
 function filterMvProducts(){
   const q=(document.getElementById('mv-product-search')?.value||'').toLowerCase();
+  const supFilter=val('mv-supplier');
+  const brandFilter=val('mv-brand');
   const sel=document.getElementById('mv-product');
   if(!sel) return;
-  const list=q?S.whProducts.filter(p=>`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase().includes(q)):S.whProducts;
+  let list=S.whProducts;
+  if(supFilter) list=list.filter(p=>(p.supplierName||'')=== supFilter);
+  if(brandFilter) list=list.filter(p=>(p.brand||'')=== brandFilter);
+  if(q) list=list.filter(p=>`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase().includes(q));
   sel.innerHTML='<option value="">— Select Product —</option>'+list.slice(0,100).map(p=>`<option value="${esc(p.code)}">${esc(p.brand)} · ${esc(p.name)} · ${esc(p.size)} ${esc(p.type)}</option>`).join('');
 }
 
@@ -2148,7 +2207,7 @@ function onMvProductChange(){
   updateBasePreview();
   // Refresh lot selector if warehouse already chosen
   const t=val('mv-type');
-  if(['Delivery','Transfer','Damage','Expired','Loss'].includes(t)){
+  if(['Delivery','Transfer','Returned to brand','Damage'].includes(t)){
     const fromId=val('mv-from');
     if(fromId&&prodCode) populateLotSelector(fromId,prodCode);
   }
@@ -2177,10 +2236,10 @@ async function saveMovement(){
   if(!date){ showToast('Select a date','warning'); return; }
 
   const fromWhId=val('mv-from'), toWhId=val('mv-to');
-  const needsFrom=['Transfer','Delivery','Damage','Expired','Loss','Adjustment'].includes(type);
+  const needsFrom=['Transfer','Delivery','Returned to brand','Damage','Adjustment'].includes(type);
   const needsTo=['Receive','Transfer','Return'].includes(type);
   const needsLotDate=['Receive','Return'].includes(type);
-  const needsLotSel=['Delivery','Transfer','Damage','Expired','Loss'].includes(type);
+  const needsLotSel=['Delivery','Transfer','Returned to brand','Damage'].includes(type);
 
   if(needsFrom&&!fromWhId){ showToast('Select a "From" location','warning'); return; }
   if(needsTo&&!toWhId){ showToast('Select a "To" location','warning'); return; }
@@ -2188,14 +2247,14 @@ async function saveMovement(){
   let lotDate='', lotRow=null;
   if(needsLotDate){
     lotDate=val('mv-lotdate');
-    if(!lotDate){ showToast('Enter the packing lot date','warning'); return; }
+    if(!lotDate){ showToast('Enter the filling date for this lot','warning'); return; }
   }
   if(needsLotSel){
     lotDate=val('mv-lot');
     // Only require lot selection if lots actually exist for this product/warehouse.
     // If no lots exist (stock received before lot tracking), allow delivery without a lot date.
     const hasLotsForItem=S.stockLots.some(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.baseQty>0);
-    if(!lotDate&&hasLotsForItem){ showToast('Select a lot — use oldest lot first (FIFO)','warning'); return; }
+    if(!lotDate&&hasLotsForItem){ showToast('Select a lot (oldest first — FIFO)','warning'); return; }
     // Find the lot entry (may be null if no lots tracked yet)
     lotRow=lotDate?S.stockLots.find(l=>l.warehouseId===fromWhId&&l.productCode===prodCode&&l.lotDate===lotDate):null;
   }
@@ -2229,11 +2288,12 @@ async function saveMovement(){
   const id=genId('MV');
   const now=new Date().toISOString();
 
-  // Supplier (Receive only)
+  // Supplier & lot name (Receive only)
   const supplierName=type==='Receive'?val('mv-supplier').trim():'';
+  const lotName=type==='Receive'?(val('mv-lotname')||'').trim():'';
   if(type==='Receive'&&S.suppliers.length>0&&!supplierName){ showToast('Select a supplier for this receive','warning'); return; }
 
-  // StockMovements row (A-Y, 25 columns)
+  // StockMovements row (A-Z, 26 columns)
   const mvRow=[
     id, type, date, fromWhId, toWhId,
     prodCode, prod?.name||'', prod?.brand||'',
@@ -2243,7 +2303,7 @@ async function saveMovement(){
     lotDate, baseQty, baseUnit,
     fifoWarning?'TRUE':'FALSE', fifoReason,
     bbeDate, bbeStatus, '',
-    supplierName,
+    supplierName, lotName,
   ];
 
   showLoader(true);
@@ -2261,14 +2321,14 @@ async function saveMovement(){
 
     // Lot balance
     if(needsLotDate&&toWhId&&lotDate){
-      // Receive / Return: add to lot balance in toWhId
-      await applyLotStock(toWhId,prodCode,lotDate,bbeDate,baseQty,baseUnit,true);
+      // Receive / Return: add to lot balance in toWhId; carry lot name
+      await applyLotStock(toWhId,prodCode,lotDate,bbeDate,baseQty,baseUnit,true,lotName);
     } else if(needsLotSel&&fromWhId&&lotDate){
       // Deduct from lot in fromWhId
       await applyLotStock(fromWhId,prodCode,lotDate,lotRow?.bbeDate||bbeDate,-baseQty,baseUnit,false);
       // Transfer: also credit to toWhId (same lot)
       if(type==='Transfer'&&toWhId){
-        await applyLotStock(toWhId,prodCode,lotDate,lotRow?.bbeDate||bbeDate,baseQty,baseUnit,true);
+        await applyLotStock(toWhId,prodCode,lotDate,lotRow?.bbeDate||bbeDate,baseQty,baseUnit,true,lotRow?.lotName||'');
       }
     }
 
@@ -2291,15 +2351,17 @@ async function applyWhStock(warehouseId,productCode,delta){
   }
 }
 
-async function applyLotStock(warehouseId,productCode,lotDate,bbeDate,delta,baseUnit,allowCreate){
+async function applyLotStock(warehouseId,productCode,lotDate,bbeDate,delta,baseUnit,allowCreate,lotName=''){
   const now=new Date().toISOString();
   const lotId=`${warehouseId}|${productCode}|${lotDate}`;
   const existing=S.stockLots.find(l=>l.warehouseId===warehouseId&&l.productCode===productCode&&l.lotDate===lotDate);
   if(existing){
     const newQty=Math.max(0,existing.baseQty+delta);
-    await whUpdate(`${WH_SHEETS.STOCK_LOT}!F${existing.row}:H${existing.row}`,[[newQty,baseUnit||existing.baseUnit,now]]);
+    // Update qty/unit/timestamp; also update lot name if provided and not yet set
+    const updLotName=lotName||existing.lotName||'';
+    await whUpdate(`${WH_SHEETS.STOCK_LOT}!F${existing.row}:I${existing.row}`,[[newQty,baseUnit||existing.baseUnit,now,updLotName]]);
   } else if(allowCreate&&delta>0){
-    await whAppend(WH_SHEETS.STOCK_LOT,[[lotId,warehouseId,productCode,lotDate,bbeDate||'',delta,baseUnit||'',now]]);
+    await whAppend(WH_SHEETS.STOCK_LOT,[[lotId,warehouseId,productCode,lotDate,bbeDate||'',delta,baseUnit||'',now,lotName||'']]);
   }
 }
 
