@@ -1091,7 +1091,7 @@ async function loadStock(){
 async function loadStockMovements(){
   S.movementsLoadError='';
   try{
-    const range=`${WH_SHEETS.MOVEMENTS}!A1:ZZ`;
+    const range=`${WH_SHEETS.MOVEMENTS}!A:Z`;
     console.log('[Movements] Loading range:', range, '| Sheet ID:', CONFIG.WH_SHEET_ID);
     const rows = await whGet(range);
     console.log('[Movements] Raw row count from API:', rows?.length||0);
@@ -2408,11 +2408,17 @@ async function saveMovement(){
       }
     }
 
+    // ── Verify the write actually landed in the sheet ──────────────────────
+    try{
+      const verify=await whGet(`${WH_SHEETS.MOVEMENTS}!A:A`);
+      console.log('[SaveMovement] Rows in StockMovements after save:', verify.length, '| Last A-col value:', verify[verify.length-1]);
+    }catch(ve){ console.warn('[SaveMovement] Verify read failed:', ve.message); }
+    // ────────────────────────────────────────────────────────────────────────
     showToast('Movement saved ✅','success');
     closeModal('movementModal');
     await Promise.all([loadStock(),loadStockMovements(),loadStockLots()]);
     clearLogFilters();
-    navigate('log'); // go straight to log so user can confirm the entry
+    navigate('log');
   }catch(e){ showToast('Error: '+e.message,'error'); }
   finally{ showLoader(false); }
 }
