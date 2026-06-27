@@ -2803,15 +2803,18 @@ function renderProducts(){
   const _f=_saveFocus();
   const all=S.allProducts;
 
-  // Read current filter values before re-render
-  const qRaw=document.getElementById('pr-q')?.value||'';
-  const q=qRaw.toLowerCase();
-  const brandF=document.getElementById('pr-brand')?.value||'';
-  const supplierF=document.getElementById('pr-supplier')?.value||S._pendingSupplierFilter||'';
-  const typeF=document.getElementById('pr-type')?.value||'';
-  const statusF=document.getElementById('pr-status')?.value||'';
-  const archiveF=document.getElementById('pr-archive')?.value||'active';
-  S._pendingSupplierFilter=''; // clear one-shot supplier filter after reading
+  // If navToProducts* set a one-shot nav filter, use it exclusively (ignore stale DOM state).
+  // Otherwise read live DOM values so user filter interactions work normally.
+  const navF=S.prodNavFilter||null;
+  S.prodNavFilter=null; // consume immediately — only applies to this single render
+
+  const qRaw   = navF ? '' : (document.getElementById('pr-q')?.value||'');
+  const q      = qRaw.toLowerCase();
+  const brandF    = navF ? (navF.brand||'')    : (document.getElementById('pr-brand')?.value||'');
+  const supplierF = navF ? (navF.supplier||'') : (document.getElementById('pr-supplier')?.value||'');
+  const typeF     = navF ? '' : (document.getElementById('pr-type')?.value||'');
+  const statusF   = navF ? '' : (document.getElementById('pr-status')?.value||'');
+  const archiveF  = navF ? 'active' : (document.getElementById('pr-archive')?.value||'active');
 
   const brands=[...new Set(all.map(p=>p.brand).filter(Boolean))].sort();
   const suppliers=[...new Set(all.map(p=>p.supplierName).filter(Boolean))].sort();
@@ -2930,6 +2933,7 @@ function getSizeValue(){
 }
 
 function clearProductFilters(){
+  S.prodNavFilter=null;
   ['pr-q','pr-brand','pr-supplier','pr-type','pr-status'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
@@ -2938,17 +2942,14 @@ function clearProductFilters(){
 }
 
 function navToProductsByBrand(brandName){
+  // Set nav filter BEFORE navigate() so the very first renderProducts() call picks it up
+  S.prodNavFilter={brand:brandName};
   navigate('products');
-  setTimeout(()=>{
-    const sel=document.getElementById('pr-brand');
-    if(sel){ sel.value=brandName; renderProducts(); }
-  },60);
 }
 
 function navToProductsBySupplier(supplierName){
-  S._pendingSupplierFilter=supplierName;
+  S.prodNavFilter={supplier:supplierName};
   navigate('products');
-  setTimeout(()=>renderProducts(),60);
 }
 
 // ── Product CRUD ─────────────────────────────────────────────────────────
