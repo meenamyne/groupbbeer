@@ -3758,6 +3758,20 @@ function validateAndAllocateUploadRows(){
     }
   });
 
+  // Pre-pass: always compute availableQty for every row, even ones with errors
+  // so the UI can still show how much stock exists for a given warehouse+product
+  S.uploadDeliveryRows.forEach(row=>{
+    if(row.warehouseId&&row.productCode){
+      row.availableQty=S.stockLots.filter(l=>l.warehouseId===row.warehouseId&&l.productCode===row.productCode&&l.baseQty>0)
+                                   .reduce((s,l)=>s+l.baseQty,0);
+      // If baseUnit is still empty (product has no Prod_Settings), fill it from stock lots or product type+size
+      if(!row.baseUnit){
+        const lotUnit=S.stockLots.find(l=>l.productCode===row.productCode&&l.baseUnit)?.baseUnit||'';
+        row.baseUnit=lotUnit||getMvUnitConversion(row.productCode,row.unitVal||'').baseUnit||'';
+      }
+    }
+  });
+
   // Cumulative FIFO allocation pass — group by warehouse+product
   const groups={};
   S.uploadDeliveryRows.forEach((row,idx)=>{
@@ -3826,12 +3840,17 @@ function renderUploadDeliveryReview(el){
       :row.lotAllocations.map(a=>`<div style="font-size:11px;margin-bottom:2px"><strong>${esc(a.lotDate)}</strong>${a.lotName?` <span style="color:var(--muted)">(${esc(a.lotName)})</span>`:''}: ${a.baseQty}<br><span style="color:var(--muted)">BBE: ${esc(a.bbeDate||'N/A')} · ${esc(a.bbeStatus)}</span></div>`).join('');
 
     const cfg=S.minQtyMap[row.productCode]||{};
-    // Build unit options: always show a placeholder + all valid units for this product
+    // If product has no Prod_Settings, fall back to baseUnit from stock lots or product type+size
+    const fallbackBase=!cfg.baseUnit&&row.productCode
+      ?(S.stockLots.find(l=>l.productCode===row.productCode&&l.baseUnit)?.baseUnit||getMvUnitConversion(row.productCode,'').baseUnit||'')
+      :'';
+    const effectiveBase=cfg.baseUnit||fallbackBase;
+    // Build unit options: placeholder + all valid units for this product
     let unitOpts=`<option value="">— unit —</option>`;
-    if(cfg.baseUnit) unitOpts+=`<option value="${esc(cfg.baseUnit)}"${row.unitVal===cfg.baseUnit?' selected':''}>${esc(cfg.baseUnit)}</option>`;
+    if(effectiveBase) unitOpts+=`<option value="${esc(effectiveBase)}"${row.unitVal===effectiveBase?' selected':''}>${esc(effectiveBase)}</option>`;
     if(cfg.caseUnitName) unitOpts+=`<option value="${esc(cfg.caseUnitName)}"${row.unitVal===cfg.caseUnitName?' selected':''}>${esc(cfg.caseUnitName)}</option>`;
-    // Fallback: if unitVal doesn't match any configured option, show it as a custom option
-    if(row.unitVal&&row.unitVal!==cfg.baseUnit&&row.unitVal!==cfg.caseUnitName){
+    // If unitVal is something else entirely (e.g. typed manually), keep it as an option
+    if(row.unitVal&&row.unitVal!==effectiveBase&&row.unitVal!==cfg.caseUnitName){
       unitOpts+=`<option value="${esc(row.unitVal)}" selected>${esc(row.unitVal)}</option>`;
     }
 
@@ -3846,7 +3865,7 @@ function renderUploadDeliveryReview(el){
       <td style="padding:8px 6px"><select style="${inps};width:95px" onchange="updateUploadDeliveryRow(${idx},'unitVal',this.value)">${unitOpts}</select></td>
       <td style="padding:8px 6px"><input type="number" value="${row.inputQty}" min="0.001" step="any" style="${inps};width:75px${isErr&&row.availableQty>0?';border-color:#dc2626':''}" onchange="updateUploadDeliveryRow(${idx},'inputQty',this.value)"></td>
       <td style="padding:8px 6px;font-size:12px;white-space:nowrap">${row.baseQty} ${esc(row.baseUnit)}</td>
-      <td style="padding:8px 6px;font-size:12px;white-space:nowrap;${availStyle}">${row.availableQty>0?row.availableQty+' '+esc(row.baseUnit):row.availableQty===0&&row.productCode?'<span style="color:#dc2626">None</span>':'—'}</td>
+      <td style="padding:8px 6px;font-size:12px;white-space:nowrap;${availStyle}">${row.availableQty>0?row.availableQty+' '+esc(effectiveBase||row.baseUnit):row.availableQty===0&&row.productCode&&row.warehouseId?'<span style="color:#dc2626">No stock</span>':row.productCode?'<span style="color:var(--muted)">—</span>':'—'}</td>
       <td style="padding:8px 6px;min-width:150px">${lotHtml}</td>
       <td style="padding:8px 6px"><input type="text" value="${esc(row.reference)}" placeholder="optional" style="${inps};width:100px" onchange="updateUploadDeliveryRow(${idx},'reference',this.value)"></td>
       <td style="padding:8px 6px"><input type="text" value="${esc(row.notes)}" placeholder="optional" style="${inps};width:100px" onchange="updateUploadDeliveryRow(${idx},'notes',this.value)"></td>
@@ -3904,9 +3923,14 @@ function updateUploadDeliveryRow(idx, field, value){
     row.productName=prod?.name||''; row.brand=prod?.brand||''; row.supplierName=prod?.supplierName||'';
     // Auto-select base unit if current unit is blank or no longer valid for this product
     const cfgNew=S.minQtyMap[value]||{};
-    const validUnits=[cfgNew.baseUnit,cfgNew.caseUnitName].filter(Boolean);
+    // Fall back to stock lot unit or product type+size if no Prod_Settings configured
+    const fallbackBaseNew=!cfgNew.baseUnit&&value
+      ?(S.stockLots.find(l=>l.productCode===value&&l.baseUnit)?.baseUnit||getMvUnitConversion(value,'').baseUnit||'')
+      :'';
+    const effectiveBaseNew=cfgNew.baseUnit||fallbackBaseNew;
+    const validUnits=[effectiveBaseNew,cfgNew.caseUnitName].filter(Boolean);
     if(!row.unitVal||(!validUnits.includes(row.unitVal)&&validUnits.length>0)){
-      row.unitVal=cfgNew.baseUnit||row.unitVal||'';
+      row.unitVal=effectiveBaseNew||row.unitVal||'';
     }
     const {multiplier,baseUnit}=getMvUnitConversion(value,row.unitVal);
     row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
