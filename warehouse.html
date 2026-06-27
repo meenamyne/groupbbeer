@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Warehouse Management</title>
 <script src="https://accounts.google.com/gsi/client" async defer onload="onGsiLoaded()"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --primary:#2d5a47;--primary-light:#3d7a5f;--success:#10b981;
@@ -181,6 +182,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
     <div class="log-btn-wrap">
       <button onclick="openMovementModal()">+ Log Movement</button>
       <button onclick="openBatchDeliveryModal()" style="margin-top:6px;background:#f59e0b">🚚 Batch Delivery</button>
+      <button onclick="navigate('uploadDelivery')" style="margin-top:6px;background:#0ea5e9">📤 Upload Delivery</button>
     </div>
     <nav>
       <div class="snl">Inventory</div>
@@ -284,6 +286,11 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <div class="pa"><button class="btn bp" onclick="openSupplierModal()">+ Add Supplier</button></div>
       </div>
       <div id="suppliers-content"></div>
+    </div>
+
+    <!-- UPLOAD DELIVERY -->
+    <div class="page" id="page-uploadDelivery">
+      <div id="uploadDelivery-content"></div>
     </div>
 
   </div><!-- /main-content -->
@@ -627,6 +634,7 @@ const S = {
   warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], suppliers:[], brands:[], minQtyMap:{},
   // clients removed — shop/client linking not used in warehouse module
   movementsLoadError:'', // set by loadStockMovements on API failure
+  uploadDeliveryRows:[], uploadDeliveryBatchId:'', uploadValidationErrors:[],
   page:'overview', rptTab:'category',
 };
 
@@ -1102,8 +1110,14 @@ async function loadStockMovements(){
     console.log('[Movements] First cell:', JSON.stringify(firstCell), '| isHeaderRow:', isHeaderRow);
     const dataRows=isHeaderRow?rows.slice(1):rows;
     const rowOffset=isHeaderRow?2:1;
+    // Detect old 26-column format: ClientCode at index 10
+    const headerRow=isHeaderRow?rows[0]:null;
+    const oldFormat=headerRow&&(headerRow[10]||'').toString().trim()==='ClientCode';
+    if(oldFormat) console.log('[Movements] Detected old 26-column format — mapping ClientCode/ShopName columns');
     S.stockMovements=dataRows.map((r,i)=>{
       try{
+        // Old format skips r[10] (ClientCode) and r[11] (ShopName), shifting all later columns by +2
+        const o=oldFormat?2:0; // column offset for old format
         return{
           row:i+rowOffset, id:(r[0]||'').toString().trim(), type:(r[1]||'').toString().trim(),
           date:normDate(r[2])||(r[2]||'').toString().trim(),
@@ -1112,14 +1126,14 @@ async function loadStockMovements(){
           productName:(r[6]||'').toString().trim(), brand:(r[7]||'').toString().trim(),
           unit:(r[8]||'').toString().trim(),
           quantity:parseFloat(r[9])||0,
-          reference:(r[10]||'').toString().trim(), notes:(r[11]||'').toString().trim(),
-          createdBy:(r[12]||'').toString().trim(), createdAt:(r[13]||'').toString().trim(),
-          lotDate:normDate(r[14])||(r[14]||'').toString().trim(),
-          baseQty:parseFloat(r[15])||0, baseUnit:(r[16]||'').toString().trim(),
-          fifoWarning:r[17]==='TRUE', fifoOverrideReason:(r[18]||'').toString().trim(),
-          bbeDate:normDate(r[19])||(r[19]||'').toString().trim(),
-          bbeStatus:(r[20]||'').toString().trim(), batchId:(r[21]||'').toString().trim(),
-          supplierName:(r[22]||'').toString().trim(), lotName:(r[23]||'').toString().trim(),
+          reference:(r[10+o]||'').toString().trim(), notes:(r[11+o]||'').toString().trim(),
+          createdBy:(r[12+o]||'').toString().trim(), createdAt:(r[13+o]||'').toString().trim(),
+          lotDate:normDate(r[14+o])||(r[14+o]||'').toString().trim(),
+          baseQty:parseFloat(r[15+o])||0, baseUnit:(r[16+o]||'').toString().trim(),
+          fifoWarning:r[17+o]==='TRUE', fifoOverrideReason:(r[18+o]||'').toString().trim(),
+          bbeDate:normDate(r[19+o])||(r[19+o]||'').toString().trim(),
+          bbeStatus:(r[20+o]||'').toString().trim(), batchId:(r[21+o]||'').toString().trim(),
+          supplierName:(r[22+o]||'').toString().trim(), lotName:(r[23+o]||'').toString().trim(),
         };
       }catch(rowErr){
         console.warn('[Movements] Skipped malformed row',i+rowOffset,rowErr);
@@ -1228,6 +1242,7 @@ function renderCurrentPage(){
   else if(p==='products') renderProducts();
   else if(p==='brands') renderBrands();
   else if(p==='suppliers') renderSuppliers();
+  else if(p==='uploadDelivery') renderUploadDeliveryPage();
 }
 
 // ══════════════════════════════════════════
@@ -3521,6 +3536,490 @@ function closeModal(id){
 document.querySelectorAll('.mo').forEach(mo=>{
   mo.addEventListener('click',e=>{ if(e.target===mo) closeModal(mo.id); });
 });
+
+// ══════════════════════════════════════════
+// UPLOAD DELIVERY
+// ══════════════════════════════════════════
+
+function renderUploadDeliveryPage(){
+  const el=document.getElementById('uploadDelivery-content');
+  if(!el) return;
+  if(S.uploadDeliveryRows.length===0) renderUploadDeliveryForm(el);
+  else renderUploadDeliveryReview(el);
+}
+
+function renderUploadDeliveryForm(el){
+  el.innerHTML=`
+    <div class="ph">
+      <div class="pt"><h1>📤 Upload Delivery</h1><p>Upload an Excel file to import multiple delivery records at once</p></div>
+    </div>
+    <div style="max-width:640px;margin:24px auto;padding:0 16px">
+      <div class="card" style="padding:24px;margin-bottom:20px">
+        <h3 style="margin:0 0 8px;font-size:15px;color:var(--text)">Step 1 — Download Template</h3>
+        <p style="margin:0 0 16px;color:var(--muted);font-size:13px">Download the Excel template pre-filled with your warehouse and product master data, then fill in the <strong>Delivery_Upload</strong> sheet.</p>
+        <button class="btn bp" onclick="downloadDeliveryTemplate()">📥 Download Excel Template</button>
+      </div>
+      <div class="card" style="padding:24px">
+        <h3 style="margin:0 0 8px;font-size:15px;color:var(--text)">Step 2 — Upload Completed File</h3>
+        <p style="margin:0 0 16px;color:var(--muted);font-size:13px">Upload the filled Excel file. The system will validate each row and auto-assign lots using FIFO.</p>
+        <label style="display:block;border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:border-color 0.2s"
+               id="upload-drop-zone"
+               ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+               ondragleave="this.style.borderColor='var(--border)'"
+               ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleDeliveryFileUpload({target:{files:event.dataTransfer.files}})">
+          <div style="font-size:36px;margin-bottom:8px">📂</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Click to browse or drag &amp; drop</div>
+          <div style="font-size:12px;color:var(--muted)">.xlsx files only</div>
+          <input type="file" accept=".xlsx" style="display:none" onchange="handleDeliveryFileUpload(event)" id="upload-file-input">
+        </label>
+        <div id="upload-status" style="margin-top:12px;display:none"></div>
+      </div>
+    </div>`;
+}
+
+function downloadDeliveryTemplate(){
+  if(typeof XLSX==='undefined'){ alert('SheetJS library not loaded. Check your internet connection.'); return; }
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Delivery_Upload (headers only)
+  const ws1=XLSX.utils.aoa_to_sheet([['MovementDate','FromWarehouseID','FromWarehouseName','ProductCode','ProductName','MovementUnit','Quantity','Reference','Notes']]);
+  ws1['!cols']=[{wch:14},{wch:18},{wch:22},{wch:14},{wch:24},{wch:14},{wch:10},{wch:16},{wch:24}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Delivery_Upload');
+
+  // Sheet 2: Master_Data
+  const md=[];
+  md.push(['UPLOAD INSTRUCTIONS']);
+  md.push(['']);
+  [
+    '1. Fill in data only in the Delivery_Upload sheet.',
+    '2. Do not rename, delete, or reorder the column headers.',
+    '3. MovementDate must use format YYYY-MM-DD, for example '+new Date().toISOString().slice(0,10)+'.',
+    '4. Use FromWarehouseID from the Warehouse Master section below.',
+    '5. Use ProductCode from the Product Master section below.',
+    '6. MovementUnit must match the allowed unit for each product (see Product Master).',
+    '7. Quantity must be a number greater than 0.',
+    '8. Do not fill in lot information. The system will assign the oldest available lot automatically using FIFO.',
+    '9. If the requested quantity is more than available stock, the row will be highlighted in red during review.',
+    '10. Reference and Notes are optional.',
+    '11. Do not add ClientCode or ShopName. These fields are not used in the warehouse module.',
+  ].forEach(t=>md.push([t]));
+  md.push(['']);
+  md.push(['REQUIRED FORMAT']);
+  md.push(['']);
+  md.push(['Field Name','Required?','Format / Rule','Example']);
+  [
+    ['MovementDate','Yes','YYYY-MM-DD',new Date().toISOString().slice(0,10)],
+    ['FromWarehouseID','Yes*','Must exist in Warehouse Master','WH001'],
+    ['FromWarehouseName','Yes*','Can be used if WarehouseID is blank','Main Cold Room'],
+    ['ProductCode','Yes','Must exist in Product Master','BEER001'],
+    ['ProductName','No','For readability only','Lager 330ml'],
+    ['MovementUnit','Yes','Must match product unit','Can / Case / Bottle / Keg'],
+    ['Quantity','Yes','Number greater than 0','24'],
+    ['Reference','No','Free text','DN-2026-001'],
+    ['Notes','No','Free text','Weekly delivery'],
+    ['','* Either FromWarehouseID or FromWarehouseName required. ID preferred.','',''],
+  ].forEach(r=>md.push(r));
+  md.push(['']);
+  md.push(['WAREHOUSE MASTER']);
+  md.push(['']);
+  md.push(['WarehouseID','WarehouseName','WarehouseType']);
+  const activeWh=S.warehouses.filter(w=>w.isActive!==false&&w.isActive!=='FALSE');
+  (activeWh.length?activeWh:[{id:'(none)',name:'',type:''}]).forEach(w=>md.push([w.id,w.name,w.type||'']));
+  md.push(['']);
+  md.push(['PRODUCT MASTER']);
+  md.push(['']);
+  md.push(['ProductCode','ProductName','Brand','SupplierName','BaseUnit','CaseUnitName','UnitsPerCase']);
+  const activeProds=S.whProducts.filter(p=>p.status!=='Inactive'&&p.status!=='Discontinued');
+  (activeProds.length?activeProds:[]).forEach(p=>{
+    const cfg=S.minQtyMap[p.code]||{};
+    md.push([p.code,p.name,p.brand||'',p.supplierName||'',cfg.baseUnit||'',cfg.caseUnitName||'',cfg.unitsPerCase||'']);
+  });
+  md.push(['']);
+  md.push(['CURRENT STOCK BY WAREHOUSE']);
+  md.push(['']);
+  md.push(['WarehouseID','WarehouseName','ProductCode','ProductName','AvailableBaseQty','BaseUnit','OldestLotDate','OldestLotName','BBEDate','BBEStatus']);
+  const stockRows=[];
+  S.stockLots.filter(l=>l.baseQty>0).forEach(l=>{
+    const wh=S.warehouses.find(w=>w.id===l.warehouseId);
+    const prod=S.whProducts.find(p=>p.code===l.productCode);
+    const cfg=S.minQtyMap[l.productCode]||{};
+    stockRows.push([l.warehouseId,wh?.name||'',l.productCode,prod?.name||'',l.baseQty,cfg.baseUnit||l.baseUnit||'',l.lotDate,l.lotName||'',l.bbeDate||'',getBBEStatus(l.bbeDate,l.lotDate)]);
+  });
+  stockRows.sort((a,b)=>(a[0]+a[2]+a[6]).localeCompare(b[0]+b[2]+b[6]));
+  (stockRows.length?stockRows:[['(no stock)','','','','','','','','','']]).forEach(r=>md.push(r));
+  const ws2=XLSX.utils.aoa_to_sheet(md);
+  ws2['!cols']=[{wch:28},{wch:12},{wch:32},{wch:28},{wch:14},{wch:24},{wch:18},{wch:20},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Master_Data');
+  XLSX.writeFile(wb,'Delivery_Upload_Template.xlsx');
+}
+
+async function handleDeliveryFileUpload(event){
+  const file=event.target?.files?.[0];
+  if(!file) return;
+  if(!file.name.toLowerCase().endsWith('.xlsx')){ showUploadStatus('error','Please upload an .xlsx file (Excel format).'); return; }
+  if(typeof XLSX==='undefined'){ showUploadStatus('error','SheetJS library not loaded. Check your internet connection.'); return; }
+  showUploadStatus('info','⏳ Reading file…');
+  try{
+    const rawRows=await parseDeliveryUploadWorkbook(file);
+    if(!rawRows.length){ showUploadStatus('error','The Delivery_Upload sheet is empty. Please fill in at least one row.'); return; }
+    showUploadStatus('info',`⏳ Validating ${rawRows.length} row(s)…`);
+    S.uploadDeliveryRows=normalizeUploadRows(rawRows);
+    S.uploadDeliveryBatchId='';
+    S.uploadValidationErrors=[];
+    validateAndAllocateUploadRows();
+    renderUploadDeliveryPage();
+  } catch(err){ showUploadStatus('error','Error reading file: '+(err.message||String(err))); }
+}
+
+function showUploadStatus(type, msg){
+  const el=document.getElementById('upload-status');
+  if(!el) return;
+  el.style.display='block';
+  const bg=type==='error'?'#fef2f2':type==='success'?'#f0fdf4':'#f0f9ff';
+  const color=type==='error'?'var(--danger)':type==='success'?'var(--success)':'#0284c7';
+  el.innerHTML=`<div style="padding:10px 14px;border-radius:6px;background:${bg};color:${color};font-size:13px;border:1px solid ${color}">${msg}</div>`;
+}
+
+async function parseDeliveryUploadWorkbook(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const sheetName=wb.SheetNames.find(n=>n==='Delivery_Upload')||wb.SheetNames[0];
+        if(!sheetName){ reject(new Error('Sheet "Delivery_Upload" not found in uploaded file.')); return; }
+        resolve(XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:''}));
+      } catch(err){ reject(err); }
+    };
+    reader.onerror=()=>reject(new Error('Failed to read file.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function normalizeUploadRows(rawRows){
+  return rawRows.map((r,i)=>{
+    const rawDate=String(r['MovementDate']||'').trim();
+    const movementDate=normDate(rawDate)||rawDate;
+    const whIdRaw=String(r['FromWarehouseID']||'').trim();
+    const whNameRaw=String(r['FromWarehouseName']||'').trim();
+    let wh=null;
+    if(whIdRaw) wh=S.warehouses.find(w=>w.id===whIdRaw);
+    if(!wh&&whNameRaw) wh=S.warehouses.find(w=>w.name===whNameRaw);
+    const productCode=String(r['ProductCode']||'').trim();
+    const prod=S.whProducts.find(p=>p.code===productCode);
+    const unitVal=String(r['MovementUnit']||'').trim();
+    const inputQty=parseFloat(r['Quantity'])||0;
+    const {multiplier,baseUnit}=getMvUnitConversion(productCode,unitVal);
+    return {
+      rowNo:i+1,
+      movementDate,
+      warehouseId:wh?.id||whIdRaw||'',
+      warehouseName:wh?.name||whNameRaw||'',
+      productCode,
+      productName:prod?.name||String(r['ProductName']||'').trim(),
+      brand:prod?.brand||'',
+      supplierName:prod?.supplierName||'',
+      unitVal,
+      inputQty,
+      baseQty:Math.round(inputQty*multiplier*1000)/1000,
+      baseUnit,
+      availableQty:0,
+      reference:String(r['Reference']||'').trim(),
+      notes:String(r['Notes']||'').trim(),
+      status:'pending',
+      errors:[],
+      warnings:[],
+      lotAllocations:[],
+    };
+  });
+}
+
+function validateAndAllocateUploadRows(){
+  if(!S.uploadDeliveryRows?.length) return;
+  S.uploadDeliveryRows.forEach(row=>{
+    row.errors=[]; row.warnings=[]; row.lotAllocations=[];
+    if(!row.movementDate) row.errors.push('MovementDate is required.');
+    else if(!/^\d{4}-\d{2}-\d{2}$/.test(row.movementDate)) row.errors.push('MovementDate must be YYYY-MM-DD format.');
+    if(!row.warehouseId){
+      row.errors.push(row.warehouseName?`Warehouse "${row.warehouseName}" not found.`:'FromWarehouseID or FromWarehouseName is required.');
+    } else if(!S.warehouses.find(w=>w.id===row.warehouseId)){
+      row.errors.push(`Warehouse ID "${row.warehouseId}" not found in Warehouse Master.`);
+    }
+    const prod=S.whProducts.find(p=>p.code===row.productCode);
+    if(!row.productCode) row.errors.push('ProductCode is required.');
+    else if(!prod) row.errors.push(`Product "${row.productCode}" not found in Product Master.`);
+    if(!row.unitVal) row.errors.push('MovementUnit is required.');
+    if(!(row.inputQty>0)) row.errors.push('Quantity must be greater than 0.');
+    // Recalculate base when fields are valid
+    if(row.productCode&&row.unitVal&&row.inputQty>0){
+      const {multiplier,baseUnit}=getMvUnitConversion(row.productCode,row.unitVal);
+      row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000;
+      row.baseUnit=baseUnit;
+    }
+  });
+
+  // Cumulative FIFO allocation pass — group by warehouse+product
+  const groups={};
+  S.uploadDeliveryRows.forEach((row,idx)=>{
+    if(row.errors.length) return;
+    const key=`${row.warehouseId}|${row.productCode}`;
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(idx);
+  });
+
+  Object.keys(groups).forEach(key=>{
+    const [whId,prodCode]=key.split('|');
+    const availLots=S.stockLots.filter(l=>l.warehouseId===whId&&l.productCode===prodCode&&l.baseQty>0)
+                     .sort((a,b)=>a.lotDate.localeCompare(b.lotDate));
+    const totalAvail=availLots.reduce((s,l)=>s+l.baseQty,0);
+    const lotsPool=availLots.map(l=>({...l})); // mutable copy
+    groups[key].forEach(ridx=>{
+      const row=S.uploadDeliveryRows[ridx];
+      row.availableQty=totalAvail;
+      const allocs=[];
+      let needed=row.baseQty;
+      for(const lot of lotsPool){
+        if(needed<=0.0001) break;
+        if(lot.baseQty<=0.0001) continue;
+        const take=Math.min(lot.baseQty,needed);
+        const inputRatio=row.inputQty>0&&row.baseQty>0?row.inputQty/row.baseQty:1;
+        allocs.push({
+          lotDate:lot.lotDate, lotName:lot.lotName||'',
+          bbeDate:lot.bbeDate||'', bbeStatus:getBBEStatus(lot.bbeDate,lot.lotDate),
+          baseQty:Math.round(take*1000)/1000,
+          inputQty:Math.round(take*inputRatio*1000)/1000,
+        });
+        lot.baseQty-=take;
+        needed-=take;
+      }
+      row.lotAllocations=allocs;
+      if(needed>0.001) row.errors.push(`Insufficient stock: requested ${row.baseQty} ${row.baseUnit}, only ${totalAvail} available in ${whId}.`);
+      else if(allocs.length>1) row.warnings.push(`Quantity split across ${allocs.length} lots using FIFO.`);
+      if(totalAvail===0) row.errors.push(`No stock available for product ${prodCode} in warehouse ${whId}.`);
+    });
+  });
+
+  S.uploadDeliveryRows.forEach(row=>{
+    row.status=row.errors.length?'error':row.warnings.length?'warning':'ok';
+  });
+}
+
+function renderUploadDeliveryReview(el){
+  const rows=S.uploadDeliveryRows;
+  const hasErrors=rows.some(r=>r.status==='error');
+  const okCount=rows.filter(r=>r.status==='ok').length;
+  const warnCount=rows.filter(r=>r.status==='warning').length;
+  const errCount=rows.filter(r=>r.status==='error').length;
+
+  const whOpts=S.warehouses.filter(w=>w.isActive!==false&&w.isActive!=='FALSE').map(w=>`<option value="${esc(w.id)}">${esc(w.id)} – ${esc(w.name)}</option>`).join('');
+  const prodOpts=S.whProducts.filter(p=>p.status!=='Inactive'&&p.status!=='Discontinued').map(p=>`<option value="${esc(p.code)}">${esc(p.code)} – ${esc(p.name)}</option>`).join('');
+
+  const rowsHtml=rows.map((row,idx)=>{
+    const isErr=row.status==='error', isWarn=row.status==='warning';
+    const rowBg=isErr?'#fef2f2':isWarn?'#fffbeb':'';
+    const badge=isErr?`<span style="background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600">❌ Error</span>`
+               :isWarn?`<span style="background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600">⚠️ Warn</span>`
+               :`<span style="background:#dcfce7;color:#166534;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600">✅ OK</span>`;
+    const msgs=[...row.errors.map(e=>`<div style="font-size:11px;color:#dc2626;margin-top:2px">⛔ ${esc(e)}</div>`),...row.warnings.map(w=>`<div style="font-size:11px;color:#92400e;margin-top:2px">⚠️ ${esc(w)}</div>`)].join('');
+
+    const lotHtml=row.lotAllocations.length===0?`<span style="color:var(--muted);font-size:11px">—</span>`
+      :row.lotAllocations.map(a=>`<div style="font-size:11px;margin-bottom:2px"><strong>${esc(a.lotDate)}</strong>${a.lotName?` <span style="color:var(--muted)">(${esc(a.lotName)})</span>`:''}: ${a.baseQty}<br><span style="color:var(--muted)">BBE: ${esc(a.bbeDate||'N/A')} · ${esc(a.bbeStatus)}</span></div>`).join('');
+
+    const cfg=S.minQtyMap[row.productCode]||{};
+    let unitOpts=`<option value="${esc(row.unitVal)}" selected>${esc(row.unitVal)||'—'}</option>`;
+    if(cfg.baseUnit&&cfg.baseUnit!==row.unitVal) unitOpts+=`<option value="${esc(cfg.baseUnit)}">${esc(cfg.baseUnit)}</option>`;
+    if(cfg.caseUnitName&&cfg.caseUnitName!==row.unitVal) unitOpts+=`<option value="${esc(cfg.caseUnitName)}">${esc(cfg.caseUnitName)}</option>`;
+
+    const availStyle=isErr&&row.availableQty>=0?'color:#dc2626;font-weight:600':'';
+    const inps='border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px';
+
+    return `<tr style="background:${rowBg};vertical-align:top">
+      <td style="padding:8px 6px;white-space:nowrap">${badge}${msgs?`<div style="margin-top:3px">${msgs}</div>`:''}</td>
+      <td style="padding:8px 6px"><input type="date" value="${esc(row.movementDate)}" style="${inps};width:130px" onchange="updateUploadDeliveryRow(${idx},'movementDate',this.value)"></td>
+      <td style="padding:8px 6px"><select style="${inps};width:150px" onchange="updateUploadDeliveryRow(${idx},'warehouseId',this.value)"><option value="">— select —</option>${whOpts.replace(`value="${esc(row.warehouseId)}"`,`value="${esc(row.warehouseId)}" selected`)}</select></td>
+      <td style="padding:8px 6px"><select style="${inps};width:160px" onchange="updateUploadDeliveryRow(${idx},'productCode',this.value)"><option value="">— select —</option>${prodOpts.replace(`value="${esc(row.productCode)}"`,`value="${esc(row.productCode)}" selected`)}</select>${row.productName?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(row.productName)}</div>`:''}</td>
+      <td style="padding:8px 6px"><select style="${inps};width:95px" onchange="updateUploadDeliveryRow(${idx},'unitVal',this.value)">${unitOpts}</select></td>
+      <td style="padding:8px 6px"><input type="number" value="${row.inputQty}" min="0.001" step="any" style="${inps};width:75px${isErr&&row.availableQty>0?';border-color:#dc2626':''}" onchange="updateUploadDeliveryRow(${idx},'inputQty',this.value)"></td>
+      <td style="padding:8px 6px;font-size:12px;white-space:nowrap">${row.baseQty} ${esc(row.baseUnit)}</td>
+      <td style="padding:8px 6px;font-size:12px;white-space:nowrap;${availStyle}">${row.availableQty>0?row.availableQty+' '+esc(row.baseUnit):row.availableQty===0&&row.productCode?'<span style="color:#dc2626">None</span>':'—'}</td>
+      <td style="padding:8px 6px;min-width:150px">${lotHtml}</td>
+      <td style="padding:8px 6px"><input type="text" value="${esc(row.reference)}" placeholder="optional" style="${inps};width:100px" onchange="updateUploadDeliveryRow(${idx},'reference',this.value)"></td>
+      <td style="padding:8px 6px"><input type="text" value="${esc(row.notes)}" placeholder="optional" style="${inps};width:100px" onchange="updateUploadDeliveryRow(${idx},'notes',this.value)"></td>
+      <td style="padding:8px 6px"><button onclick="deleteUploadDeliveryRow(${idx})" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px" title="Delete row">🗑</button></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div class="ph">
+      <div class="pt"><h1>📤 Upload Delivery — Review</h1><p>Review and edit rows before submitting</p></div>
+      <div class="pa" style="gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="downloadUploadErrorReport()" style="background:#f1f5f9;color:var(--text);border:1px solid var(--border)">📥 Error Report</button>
+        <button class="btn" onclick="addUploadDeliveryRow()" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd">+ Add Row</button>
+        <button class="btn" onclick="S.uploadDeliveryRows=[];S.uploadDeliveryBatchId='';renderUploadDeliveryPage()" style="background:#f1f5f9;color:var(--text);border:1px solid var(--border)">↩ Start Over</button>
+        <button class="btn bp" onclick="submitUploadDelivery()" id="upload-submit-btn" ${hasErrors?'disabled title="Fix all errors before submitting"':''} style="${hasErrors?'opacity:0.45;cursor:not-allowed':''}">✅ Submit (${okCount+warnCount})</button>
+      </div>
+    </div>
+    <div style="padding:0 24px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span style="padding:3px 12px;border-radius:20px;font-size:12px;background:#dcfce7;color:#166534">✅ OK: ${okCount}</span>
+      ${warnCount?`<span style="padding:3px 12px;border-radius:20px;font-size:12px;background:#fef3c7;color:#92400e">⚠️ Warning: ${warnCount}</span>`:''}
+      ${errCount?`<span style="padding:3px 12px;border-radius:20px;font-size:12px;background:#fee2e2;color:#dc2626">❌ Error: ${errCount}</span>`:''}
+      ${hasErrors?`<span style="font-size:12px;color:#dc2626">Fix all errors before submitting.</span>`:''}
+    </div>
+    <div style="overflow-x:auto;padding:0 24px 32px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg);border-bottom:2px solid var(--border)">
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Status</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Date</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Warehouse</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Product</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Unit</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Input Qty</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Base Qty</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Available</th>
+          <th style="padding:8px 6px;text-align:left;min-width:160px">Lot Allocation (FIFO)</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Reference</th>
+          <th style="padding:8px 6px;text-align:left;white-space:nowrap">Notes</th>
+          <th style="padding:8px 6px"></th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+}
+
+function updateUploadDeliveryRow(idx, field, value){
+  const row=S.uploadDeliveryRows?.[idx];
+  if(!row) return;
+  if(field==='movementDate') row.movementDate=normDate(value)||value;
+  else if(field==='warehouseId'){
+    row.warehouseId=value;
+    row.warehouseName=S.warehouses.find(w=>w.id===value)?.name||value;
+  } else if(field==='productCode'){
+    row.productCode=value;
+    const prod=S.whProducts.find(p=>p.code===value);
+    row.productName=prod?.name||''; row.brand=prod?.brand||''; row.supplierName=prod?.supplierName||'';
+    const {multiplier,baseUnit}=getMvUnitConversion(value,row.unitVal);
+    row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
+  } else if(field==='unitVal'){
+    row.unitVal=value;
+    const {multiplier,baseUnit}=getMvUnitConversion(row.productCode,value);
+    row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
+  } else if(field==='inputQty'){
+    row.inputQty=parseFloat(value)||0;
+    const {multiplier,baseUnit}=getMvUnitConversion(row.productCode,row.unitVal);
+    row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
+  } else if(field==='reference') row.reference=value;
+  else if(field==='notes') row.notes=value;
+  validateAndAllocateUploadRows();
+  const el=document.getElementById('uploadDelivery-content');
+  if(el) renderUploadDeliveryReview(el);
+}
+
+function addUploadDeliveryRow(){
+  S.uploadDeliveryRows.push({
+    rowNo:S.uploadDeliveryRows.length+1,
+    movementDate:new Date().toISOString().slice(0,10),
+    warehouseId:'',warehouseName:'',productCode:'',productName:'',
+    brand:'',supplierName:'',unitVal:'',inputQty:0,baseQty:0,baseUnit:'',
+    availableQty:0,reference:'',notes:'',
+    status:'error',errors:['Fill in all required fields.'],warnings:[],lotAllocations:[],
+  });
+  validateAndAllocateUploadRows();
+  const el=document.getElementById('uploadDelivery-content');
+  if(el) renderUploadDeliveryReview(el);
+}
+
+function deleteUploadDeliveryRow(idx){
+  S.uploadDeliveryRows.splice(idx,1);
+  if(!S.uploadDeliveryRows.length){
+    S.uploadDeliveryBatchId=''; S.uploadValidationErrors=[];
+    const el=document.getElementById('uploadDelivery-content');
+    if(el) renderUploadDeliveryForm(el);
+    return;
+  }
+  validateAndAllocateUploadRows();
+  const el=document.getElementById('uploadDelivery-content');
+  if(el) renderUploadDeliveryReview(el);
+}
+
+async function submitUploadDelivery(){
+  validateAndAllocateUploadRows();
+  if(S.uploadDeliveryRows.some(r=>r.status==='error')){ alert('Fix all errors before submitting.'); return; }
+  const btn=document.getElementById('upload-submit-btn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Submitting…'; }
+  const batchId=genBatchId();
+  const now=new Date().toISOString();
+  const createdBy=S.user?.name||S.user?.email||'';
+  const allMvRows=[];
+  let uploadedRows=0, splitRows=0;
+  for(const row of S.uploadDeliveryRows){
+    if(row.status==='error') continue;
+    uploadedRows++;
+    if(row.lotAllocations.length>1) splitRows++;
+    for(const alloc of row.lotAllocations){
+      allMvRows.push([
+        genId('MV'),'Delivery',row.movementDate,
+        row.warehouseId,'',
+        row.productCode,row.productName||'',row.brand||'',
+        row.unitVal,alloc.inputQty,
+        row.reference||'',row.notes||'',
+        createdBy,now,
+        alloc.lotDate||'',alloc.baseQty,row.baseUnit||'',
+        'FALSE','',
+        alloc.bbeDate||'',alloc.bbeStatus||'',
+        batchId,
+        row.supplierName||'',alloc.lotName||'',
+      ]);
+    }
+  }
+  if(!allMvRows.length){ alert('No valid rows to submit.'); if(btn){btn.disabled=false;btn.textContent='✅ Submit';} return; }
+  try{
+    await whAppend(WH_SHEETS.MOVEMENTS,allMvRows);
+    for(const row of S.uploadDeliveryRows){
+      if(row.status==='error') continue;
+      for(const alloc of row.lotAllocations){
+        await applyWhStock(row.warehouseId,row.productCode,-alloc.baseQty);
+        await applyLotStock(row.warehouseId,row.productCode,alloc.lotDate,alloc.bbeDate,-alloc.baseQty,row.baseUnit,false,alloc.lotName);
+      }
+    }
+    await Promise.all([loadStock(),loadStockMovements(),loadStockLots()]);
+    const summary={uploadedRows,movementRows:allMvRows.length,splitRows,batchId};
+    S.uploadDeliveryRows=[]; S.uploadDeliveryBatchId='';
+    // Navigate to Movement Log filtered by new batch
+    S.page='log';
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+    const pg=document.getElementById('page-log'); if(pg) pg.classList.add('active');
+    const nv=document.getElementById('nav-log'); if(nv) nv.classList.add('active');
+    const batchEl=document.getElementById('log-batch'); if(batchEl) batchEl.value=batchId;
+    renderLog();
+    window.scrollTo(0,0);
+    setTimeout(()=>{
+      const logContent=document.getElementById('log-content');
+      if(!logContent) return;
+      const banner=document.createElement('div');
+      banner.style.cssText='background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 20px;margin-bottom:16px;font-size:13px;color:#166534';
+      banner.innerHTML=`<strong>✅ Upload completed!</strong><br>Batch ID: <code style="background:#dcfce7;padding:1px 6px;border-radius:4px">${esc(batchId)}</code> &nbsp;|&nbsp; Uploaded rows: ${summary.uploadedRows} &nbsp;|&nbsp; Movement records created: ${summary.movementRows} &nbsp;|&nbsp; Rows split by lot: ${summary.splitRows}`;
+      logContent.parentElement?.insertBefore(banner,logContent);
+    },300);
+  } catch(err){
+    alert('Error submitting: '+(err.message||String(err)));
+    if(btn){ btn.disabled=false; btn.textContent='✅ Submit'; }
+  }
+}
+
+function downloadUploadErrorReport(){
+  if(typeof XLSX==='undefined'){ alert('SheetJS not loaded.'); return; }
+  const wb=XLSX.utils.book_new();
+  const headers=['Row #','Status','Errors / Warnings','Movement Date','Warehouse ID','Warehouse Name','Product Code','Product Name','Unit','Input Qty','Base Qty','Available Stock','Lot Allocation','Reference','Notes'];
+  const data=[headers,...S.uploadDeliveryRows.map(row=>{
+    const issues=[...row.errors.map(e=>'ERROR: '+e),...row.warnings.map(w=>'WARNING: '+w)].join('\n');
+    return [row.rowNo,row.status.toUpperCase(),issues,row.movementDate,row.warehouseId,row.warehouseName,row.productCode,row.productName,row.unitVal,row.inputQty,row.baseQty,row.availableQty,row.lotAllocations.map(a=>`${a.lotDate}(${a.baseQty})`).join(', '),row.reference,row.notes];
+  })];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=headers.map((_,i)=>({wch:i===2?45:16}));
+  XLSX.utils.book_append_sheet(wb,ws,'Upload_Review');
+  XLSX.writeFile(wb,'Delivery_Upload_Error_Report.xlsx');
+}
 </script>
 </body>
 </html>
