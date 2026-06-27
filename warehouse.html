@@ -385,11 +385,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
         <label class="fl">Adjustment Direction</label>
         <select class="fi" id="mv-adj-dir"><option value="+">+ Add to stock</option><option value="-">− Remove from stock</option></select>
       </div>
-      <!-- Shop link -->
-      <div id="mv-shop-row" style="display:none">
-        <label class="fl">Linked Shop (optional)</label>
-        <select class="fi" id="mv-shop"><option value="">— No shop link —</option></select>
-      </div>
+      <!-- Shop link removed — client/shop linking not used in warehouse module -->
       <!-- Date / Ref / Notes -->
       <div><label class="fl">Date *</label><input class="fi" type="date" id="mv-date"></div>
       <div><label class="fl">Reference</label><input class="fi" id="mv-reference" placeholder="Invoice #, transfer ref, delivery slip..."></div>
@@ -618,7 +614,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
 const CONFIG = {
   CLIENT_ID: '1066590378446-q0dna2gq5e3fg87fmvp9gqmv78uomcdq.apps.googleusercontent.com',
   WH_SHEET_ID: '1YGS41EMJNh7vWQDchpAg0tZY85EAlmXXfMpvIrAAD5o',
-  CRM_SHEET_ID: '1SGroGib4uKMZig7_fGDTYkHHXv-G4Dk23HxKi4ywD-U', // for client list in Delivery
+  // CRM_SHEET_ID removed — client/shop linking not used in warehouse module
 };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance', SUPPLIERS:'Suppliers', BRANDS:'Brands' };
@@ -629,7 +625,7 @@ const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Sto
 const S = {
   user:null, token:null, tokenExp:null, tokenClient:null,
   warehouses:[], whProducts:[], allProducts:[], stock:[], stockMovements:[], stockLots:[], suppliers:[], brands:[], minQtyMap:{},
-  clients:[], // from CRM sheet for delivery linking
+  // clients removed — shop/client linking not used in warehouse module
   movementsLoadError:'', // set by loadStockMovements on API failure
   page:'overview', rptTab:'category',
 };
@@ -738,7 +734,7 @@ async function onSignedIn(){
 // API HELPERS
 // ══════════════════════════════════════════
 const WHB  = () => `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.WH_SHEET_ID}`;
-const CRMB = () => `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.CRM_SHEET_ID}`;
+// CRMB removed — CRM sheet not used in warehouse module
 
 async function api(url, opts={}){
   if(Date.now() > (S.tokenExp||0)){ showToast('Session expired — please sign in again','warning'); signOut(); throw new Error('expired'); }
@@ -764,7 +760,7 @@ async function whDeleteRow(sheetName, rowNum){
   await whBatchUpdate([{deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:rowNum-1,endIndex:rowNum}}}]);
 }
 
-async function crmGet(range){ const d=await api(`${CRMB()}/values/${encodeURIComponent(range)}`); return d.values||[]; }
+// crmGet removed — CRM sheet access not used in warehouse module
 
 // ══════════════════════════════════════════
 // SHEET SETUP
@@ -781,7 +777,7 @@ async function ensureWarehouseSheets(){
       {title:WH_SHEETS.WAREHOUSES, h:[['WarehouseID','Name','Type','IsActive','Notes','CreatedAt']]},
       {title:WH_SHEETS.PRODUCTS,   h:[['Status','ProductCode','Brand','ProductName','Style','Size','ABV','ContainerType','PackSize','Weight','KegType','ShelfLifeMonths','Notes','SupplierName']]},
       {title:WH_SHEETS.STOCK,      h:[['StockID','WarehouseID','ProductCode','Quantity','LastUpdated']]},
-      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','ClientCode','ShopName','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID','SupplierName','LotName']]},
+      {title:WH_SHEETS.MOVEMENTS,  h:[['MovementID','Type','Date','FromWarehouseID','ToWarehouseID','ProductCode','ProductName','Brand','MovementUnit','InputQty','Reference','Notes','CreatedBy','CreatedAt','LotDate','BaseQty','BaseUnit','FIFOWarning','FIFOOverrideReason','BBEDate','BBEStatus','BatchID','SupplierName','LotName']]},
       {title:WH_SHEETS.SUPPLIERS,    h:[['SupplierID','SupplierName','Notes']]},
       {title:WH_SHEETS.BRANDS,       h:[['BrandID','BrandName','SupplierName','Notes']]},
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
@@ -830,7 +826,7 @@ async function loadAllData(){
   try{
     await ensureWarehouseSheets();
     await Promise.all([
-      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadClients(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands(),
+      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands(),
     ]);
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
@@ -988,18 +984,18 @@ async function saveEditMovement(){
 
   showLoader(true);
   try{
-    // Update StockMovements row (A:Y = 25 columns)
+    // Update StockMovements row — 24 columns (A:X)
     const updatedRow=[
       m.id,m.type,m.date,m.fromWh||'',m.toWh||'',
       m.productCode,m.productName||'',m.brand||'',
-      newUnit,newQty,m.clientCode||'',m.shopName||'',
+      newUnit,newQty,
       newRef,newNotes,m.createdBy||'',m.createdAt||'',
       m.lotDate||'',newBase,newBU||m.baseUnit||'',
       m.fifoWarning?'TRUE':'FALSE',m.fifoOverrideReason||'',
       m.bbeDate||'',m.bbeStatus||'',m.batchId||'',
-      m.supplierName||''
+      m.supplierName||'',m.lotName||''
     ];
-    await whUpdate(`${WH_SHEETS.MOVEMENTS}!A${m.row}:Y${m.row}`,[updatedRow]);
+    await whUpdate(`${WH_SHEETS.MOVEMENTS}!A${m.row}:X${m.row}`,[updatedRow]);
 
     if(delta!==0){
       // Stock aggregate correction
@@ -1115,16 +1111,15 @@ async function loadStockMovements(){
           productCode:(r[5]||'').toString().trim(),
           productName:(r[6]||'').toString().trim(), brand:(r[7]||'').toString().trim(),
           unit:(r[8]||'').toString().trim(),
-          quantity:parseFloat(r[9])||0, clientCode:(r[10]||'').toString().trim(),
-          shopName:(r[11]||'').toString().trim(),
-          reference:(r[12]||'').toString().trim(), notes:(r[13]||'').toString().trim(),
-          createdBy:(r[14]||'').toString().trim(), createdAt:(r[15]||'').toString().trim(),
-          lotDate:normDate(r[16])||(r[16]||'').toString().trim(),
-          baseQty:parseFloat(r[17])||0, baseUnit:(r[18]||'').toString().trim(),
-          fifoWarning:r[19]==='TRUE', fifoOverrideReason:(r[20]||'').toString().trim(),
-          bbeDate:normDate(r[21])||(r[21]||'').toString().trim(),
-          bbeStatus:(r[22]||'').toString().trim(), batchId:(r[23]||'').toString().trim(),
-          supplierName:(r[24]||'').toString().trim(), lotName:(r[25]||'').toString().trim(),
+          quantity:parseFloat(r[9])||0,
+          reference:(r[10]||'').toString().trim(), notes:(r[11]||'').toString().trim(),
+          createdBy:(r[12]||'').toString().trim(), createdAt:(r[13]||'').toString().trim(),
+          lotDate:normDate(r[14])||(r[14]||'').toString().trim(),
+          baseQty:parseFloat(r[15])||0, baseUnit:(r[16]||'').toString().trim(),
+          fifoWarning:r[17]==='TRUE', fifoOverrideReason:(r[18]||'').toString().trim(),
+          bbeDate:normDate(r[19])||(r[19]||'').toString().trim(),
+          bbeStatus:(r[20]||'').toString().trim(), batchId:(r[21]||'').toString().trim(),
+          supplierName:(r[22]||'').toString().trim(), lotName:(r[23]||'').toString().trim(),
         };
       }catch(rowErr){
         console.warn('[Movements] Skipped malformed row',i+rowOffset,rowErr);
@@ -1141,12 +1136,7 @@ async function loadStockMovements(){
   }
 }
 
-async function loadClients(){
-  try{
-    const rows = await crmGet('Clients!A:D');
-    S.clients = rows.slice(1).map(r=>({code:r[0]||'',shop:r[1]||''})).filter(c=>c.code&&c.shop);
-  }catch(e){ S.clients=[]; }
-}
+// loadClients() removed — client/shop linking not needed in warehouse module
 
 async function loadProdSettings(){
   try{
@@ -2205,8 +2195,7 @@ function openMovementModal(){
   const whOpts='<option value="">— Select Location —</option>'+S.warehouses.map(w=>`<option value="${esc(w.id)}">${esc(w.name)} (${w.type})</option>`).join('');
   const fromSel=document.getElementById('mv-from'); if(fromSel) fromSel.innerHTML=whOpts;
   const toSel=document.getElementById('mv-to');   if(toSel)   toSel.innerHTML=whOpts;
-  const shopSel=document.getElementById('mv-shop');
-  if(shopSel) shopSel.innerHTML='<option value="">— No shop link —</option>'+S.clients.map(c=>`<option value="${esc(c.code)}|${esc(c.shop)}">${esc(c.shop)} (${esc(c.code)})</option>`).join('');
+  // mv-shop removed — client/shop linking not used in warehouse module
   const unitSel=document.getElementById('mv-unit'); if(unitSel) unitSel.innerHTML='<option value="">— Select Unit —</option>';
   const lotSel=document.getElementById('mv-lot'); if(lotSel) lotSel.innerHTML='<option value="">— Select Lot —</option>';
   const supSel=document.getElementById('mv-supplier');
@@ -2231,7 +2220,7 @@ function onMvTypeChange(){
   document.getElementById('mv-to-row').style.display=showTo?'':'none';
   document.getElementById('mv-supplier-row').style.display=isReceive?'':'none';
   document.getElementById('mv-brand-row').style.display=(isReceive&&S.brands.length>0)?'':'none';
-  document.getElementById('mv-shop-row').style.display='none'; // shop link removed per user request
+  // mv-shop-row removed
   document.getElementById('mv-adj-row').style.display=t==='Adjustment'?'':'none';
   document.getElementById('mv-lotdate-row').style.display=showLotDate?'':'none';
   document.getElementById('mv-lotname-row').style.display=showLotDate?'':'none';
@@ -2405,8 +2394,6 @@ async function saveMovement(){
     bbeStatus=getBBEStatus(bbeDate,lotDate);
   }
 
-  const shopVal=val('mv-shop')||'';
-  const [clientCode='',shopName='']=(shopVal||'').split('|');
   const id=genId('MV');
   const now=new Date().toISOString();
 
@@ -2415,11 +2402,15 @@ async function saveMovement(){
   const lotName=type==='Receive'?(val('mv-lotname')||'').trim():'';
   if(type==='Receive'&&S.suppliers.length>0&&!supplierName){ showToast('Select a supplier for this receive','warning'); return; }
 
-  // StockMovements row (A-Z, 26 columns)
+  // StockMovements row — 24 columns (A:X)
+  // Col: A=MovementID B=Type C=Date D=FromWhID E=ToWhID F=ProductCode G=ProductName H=Brand
+  //      I=MovementUnit J=InputQty K=Reference L=Notes M=CreatedBy N=CreatedAt O=LotDate
+  //      P=BaseQty Q=BaseUnit R=FIFOWarning S=FIFOOverrideReason T=BBEDate U=BBEStatus
+  //      V=BatchID W=SupplierName X=LotName
   const mvRow=[
     id, type, date, fromWhId, toWhId,
     prodCode, prod?.name||'', prod?.brand||'',
-    movementUnit, qty, clientCode, shopName,
+    movementUnit, qty,
     val('mv-reference'), val('mv-notes'),
     S.user?.name||S.user?.email||'', now,
     lotDate, baseQty, baseUnit,
@@ -2760,15 +2751,16 @@ async function saveBatchDelivery(){
     for(const rd of rowData){
       const prod=S.whProducts.find(p=>p.code===rd.prodCode);
       const mvId=genId('MV');
+      // 24-column StockMovements row (A:X) — no ClientCode or ShopName
       const mvRow=[
         mvId,'Delivery',date,fromWhId,'',
         rd.prodCode,prod?.name||'',prod?.brand||'',
-        rd.unitVal,rd.qty,'','',
+        rd.unitVal,rd.qty,
         reference,notes,createdBy,now,
         rd.lotDate,rd.baseQty,rd.baseUnit,
         rd.fifoWarning?'TRUE':'FALSE',rd.fifoReason,
         rd.bbeDate,rd.bbeStatus,batchId,
-        '','', // SupplierName (col Y), LotName (col Z) — keeps all rows at 26 cols
+        '','', // SupplierName (col W), LotName (col X)
       ];
       await whAppend(WH_SHEETS.MOVEMENTS,[mvRow]);
     }
