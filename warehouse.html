@@ -2807,19 +2807,28 @@ function renderProducts(){
   const qRaw=document.getElementById('pr-q')?.value||'';
   const q=qRaw.toLowerCase();
   const brandF=document.getElementById('pr-brand')?.value||'';
+  const supplierF=document.getElementById('pr-supplier')?.value||S._pendingSupplierFilter||'';
   const typeF=document.getElementById('pr-type')?.value||'';
   const statusF=document.getElementById('pr-status')?.value||'';
   const archiveF=document.getElementById('pr-archive')?.value||'active';
+  S._pendingSupplierFilter=''; // clear one-shot supplier filter after reading
 
   const brands=[...new Set(all.map(p=>p.brand).filter(Boolean))].sort();
+  const suppliers=[...new Set(all.map(p=>p.supplierName).filter(Boolean))].sort();
   const types=[...new Set(all.map(p=>p.type).filter(Boolean))].sort();
   const statuses=['Available','Seasonal','Pre-order','Limited','Promotional','Inactive','Discontinued'];
 
+  const hasFilter=!!(q||brandF||supplierF||typeF||statusF||archiveF!=='active');
+
   let h=`<div class="fb" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">
-    <input class="si" type="text" id="pr-q" placeholder="Search product..." oninput="renderProducts()" style="max-width:200px" value="${esc(qRaw)}">
+    <input class="si" type="text" id="pr-q" placeholder="Search product..." oninput="renderProducts()" style="max-width:180px" value="${esc(qRaw)}">
     <select class="fsel" id="pr-brand" onchange="renderProducts()">
       <option value="">— All Brands —</option>
       ${brands.map(b=>`<option${brandF===b?' selected':''}>${esc(b)}</option>`).join('')}
+    </select>
+    <select class="fsel" id="pr-supplier" onchange="renderProducts()">
+      <option value="">— All Suppliers —</option>
+      ${suppliers.map(s=>`<option value="${esc(s)}"${supplierF===s?' selected':''}>${esc(s)}</option>`).join('')}
     </select>
     <select class="fsel" id="pr-type" onchange="renderProducts()">
       <option value="">— All Types —</option>
@@ -2834,12 +2843,14 @@ function renderProducts(){
       <option value="all"${archiveF==='all'?' selected':''}>Show all (incl. archived)</option>
       <option value="archived"${archiveF==='archived'?' selected':''}>Archived only</option>
     </select>
+    ${hasFilter?`<button class="btn bo" style="font-size:12px;padding:5px 12px;color:#dc2626;border-color:#fecaca" onclick="clearProductFilters()">✕ Clear</button>`:''}
   </div>`;
 
   const filtered=all.filter(p=>{
     if(archiveF==='active'&&ARCHIVED_STATUSES.has(p.status)) return false;
     if(archiveF==='archived'&&!ARCHIVED_STATUSES.has(p.status)) return false;
     if(brandF&&p.brand!==brandF) return false;
+    if(supplierF&&p.supplierName!==supplierF) return false;
     if(typeF&&p.type!==typeF) return false;
     if(statusF&&p.status!==statusF) return false;
     if(q&&!`${p.name} ${p.code} ${p.brand} ${p.style}`.toLowerCase().includes(q)) return false;
@@ -2916,6 +2927,28 @@ function getSizeValue(){
   const newInput=document.getElementById('pd-size-new');
   if(newInput && newInput.style.display!=='none') return newInput.value.trim();
   return sel?.value||'';
+}
+
+function clearProductFilters(){
+  ['pr-q','pr-brand','pr-supplier','pr-type','pr-status'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const arc=document.getElementById('pr-archive'); if(arc) arc.value='active';
+  renderProducts();
+}
+
+function navToProductsByBrand(brandName){
+  navigate('products');
+  setTimeout(()=>{
+    const sel=document.getElementById('pr-brand');
+    if(sel){ sel.value=brandName; renderProducts(); }
+  },60);
+}
+
+function navToProductsBySupplier(supplierName){
+  S._pendingSupplierFilter=supplierName;
+  navigate('products');
+  setTimeout(()=>renderProducts(),60);
 }
 
 // ── Product CRUD ─────────────────────────────────────────────────────────
@@ -3041,7 +3074,7 @@ function renderSuppliers(){
     if(b.supplierName) brandsBySupplier[b.supplierName]=(brandsBySupplier[b.supplierName]||0)+1;
   });
   const productsBySupplier={};
-  S.allProducts.filter(p=>p.supplierName).forEach(p=>{
+  S.allProducts.filter(p=>p.supplierName&&!ARCHIVED_STATUSES.has(p.status)).forEach(p=>{
     productsBySupplier[p.supplierName]=(productsBySupplier[p.supplierName]||0)+1;
   });
 
@@ -3065,7 +3098,11 @@ function renderSuppliers(){
           ? `<button onclick="navToBrandsFiltered('${esc(s.name)}')" style="background:none;border:none;cursor:pointer;font-weight:700;color:var(--primary);text-decoration:underline;font-size:13px">${bCnt}</button>`
           : `<span style="color:var(--muted)">0</span>`}
       </td>
-      <td style="text-align:center;font-weight:600;color:${pCnt>0?'inherit':'var(--muted)'}">${pCnt||'0'}</td>
+      <td style="text-align:center">
+        ${pCnt>0
+          ? `<button onclick="navToProductsBySupplier('${esc(s.name)}')" style="background:none;border:none;cursor:pointer;font-weight:700;color:var(--primary);text-decoration:underline;font-size:13px">${pCnt}</button>`
+          : `<span style="color:var(--muted)">0</span>`}
+      </td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openSupplierModal('${esc(s.id)}')">✏️ Edit</button>
         <button class="btn" style="font-size:11px;padding:4px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;margin-left:4px" onclick="deleteSupplier('${esc(s.id)}')">🗑️</button>
@@ -3129,9 +3166,9 @@ function renderBrands(){
     return;
   }
 
-  // Count products per brand
+  // Count ACTIVE products per brand (exclude Inactive/Discontinued)
   const productsByBrand={};
-  S.allProducts.filter(p=>p.brand).forEach(p=>{
+  S.allProducts.filter(p=>p.brand&&!ARCHIVED_STATUSES.has(p.status)).forEach(p=>{
     productsByBrand[p.brand]=(productsByBrand[p.brand]||0)+1;
   });
 
@@ -3159,7 +3196,11 @@ function renderBrands(){
                 ? `<span style="background:#eff6ff;color:#2563eb;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600">${esc(b.supplierName)}</span>`
                 : '<span style="color:var(--muted)">—</span>'}
             </td>
-            <td style="text-align:center;font-weight:600;color:${pCnt>0?'inherit':'var(--muted)'}">${pCnt||'0'}</td>
+            <td style="text-align:center">
+              ${pCnt>0
+                ? `<button onclick="navToProductsByBrand('${esc(b.name)}')" style="background:none;border:none;cursor:pointer;font-weight:700;color:var(--primary);text-decoration:underline;font-size:13px">${pCnt}</button>`
+                : `<span style="color:var(--muted)">0</span>`}
+            </td>
             <td style="color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.notes||'')}">${b.notes?esc(b.notes):'—'}</td>
             <td style="text-align:right;white-space:nowrap">
               <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openBrandModal('${esc(b.id)}')">✏️ Edit</button>
