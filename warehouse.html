@@ -1384,12 +1384,28 @@ function renderOverview(){
         const safeId=p.code.replace(/[^a-zA-Z0-9]/g,'_');
         const qtys=dispWh.map(w=>smap[p.code]?.[w.id]||0);
         const tot=qtys.reduce((a,b)=>a+b,0);
-        const rowStyle=tot===0?'background:#fff5f5':'';
-        // Lot rows for this product — filter to only displayed warehouses (or all if no filter)
+
+        // Lot rows for this product — filter to only displayed warehouses
         const prodLots=S.stockLots
           .filter(l=>l.productCode===p.code&&l.baseQty>0&&(wF?l.warehouseId===wF:true))
           .sort((a,b)=>a.warehouseId.localeCompare(b.warehouseId)||a.lotDate.localeCompare(b.lotDate));
         const hasLots=prodLots.length>0;
+
+        // Compute lot sums per warehouse — used to detect mismatches
+        const lotSumByWh={};
+        prodLots.forEach(l=>{ lotSumByWh[l.warehouseId]=(lotSumByWh[l.warehouseId]||0)+l.baseQty; });
+        const lotTot=Object.values(lotSumByWh).reduce((a,b)=>a+b,0);
+
+        // Per-warehouse mismatch flags (only flag if lots exist for that warehouse)
+        const whMismatch=dispWh.map(w=>{
+          const stk=smap[p.code]?.[w.id]||0;
+          const lst=lotSumByWh[w.id]||0;
+          return hasLots&&(lotSumByWh[w.id]!==undefined)&&Math.abs(stk-lst)>0.001;
+        });
+        const anyMismatch=whMismatch.some(Boolean);
+        const rowStyle=tot===0?'background:#fff5f5':anyMismatch?'background:#fffbeb':'';
+
+        // Lot detail rows
         const lotRowsHtml=prodLots.length===0
           ?`<tr><td colspan="7" style="padding:6px 10px;color:var(--muted);font-style:italic;font-size:11px">No lot data</td></tr>`
           :prodLots.map(l=>{
@@ -1406,17 +1422,50 @@ function renderOverview(){
               <td style="padding:5px 10px;color:var(--muted)">${esc(l.baseUnit||'')}</td>
             </tr>`;
           }).join('');
+
+        // Mismatch summary footer — shown at the bottom of the lot table per-warehouse
+        const mismatchFooter=anyMismatch?(() => {
+          const lines=dispWh.filter((_,i)=>whMismatch[i]).map(w=>{
+            const stk=smap[p.code]?.[w.id]||0;
+            const lst=lotSumByWh[w.id]||0;
+            return `${esc(w.name)}: Stock sheet = <strong>${stk}</strong>, Lot total = <strong>${lst}</strong> (diff: ${stk-lst>0?'+':''}${stk-lst})`;
+          });
+          return `<tr style="border-top:2px solid #f59e0b;background:#fffbeb">
+            <td colspan="7" style="padding:8px 10px;font-size:11px;color:#92400e">
+              ⚠️ <strong>Stock mismatch detected.</strong> The Stock sheet total does not match the sum of lots for:<br>
+              ${lines.join('<br>')}
+              <br><span style="color:var(--muted)">Fix: update the Stock sheet or Stock_Lot_Balance sheet in Google Sheets to make them consistent, then click Refresh.</span>
+            </td>
+          </tr>`;
+        })():'';
+
+        // Warehouse cells — show ⚠️ when mismatch, show lot-sum in tooltip
+        const whCells=dispWh.map((w,i)=>{
+          const q=qtys[i];
+          const lst=lotSumByWh[w.id];
+          const mismatch=whMismatch[i];
+          const cell=q>0?q:'—';
+          const color=q===0?'#cbd5e1':'#16a34a';
+          if(mismatch){
+            return`<td style="text-align:center;font-weight:700;color:#d97706;position:relative" title="Stock sheet: ${q} | Lot total: ${lst||0} — mismatch!">${cell} <span style="font-size:10px">⚠️</span></td>`;
+          }
+          return`<td style="text-align:center;font-weight:${q>0?'700':'400'};color:${color}">${cell}</td>`;
+        }).join('');
+
         return`<tr style="${rowStyle};cursor:${hasLots?'pointer':'default'}" onclick="${hasLots?`toggleOvLots('${safeId}')`:''}" title="${hasLots?'Click to view lots':''}">
           <td>
             <div style="display:flex;align-items:center;gap:6px">
-              <span id="ov-chev-${safeId}" style="font-size:10px;color:var(--muted);flex-shrink:0;transition:transform 0.15s">${hasLots?'▶':'·'}</span>
-              <div><div style="font-weight:600;color:var(--primary)">${esc(p.name)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.code)}</div></div>
+              <span id="ov-chev-${safeId}" style="font-size:10px;color:var(--muted);flex-shrink:0">${hasLots?'▶':'·'}</span>
+              <div>
+                <div style="font-weight:600;color:var(--primary)">${esc(p.name)}${anyMismatch?` <span style="font-size:10px;color:#d97706" title="Stock sheet total does not match lot total">⚠️</span>`:''}</div>
+                <div style="font-size:10px;color:var(--muted)">${esc(p.code)}</div>
+              </div>
             </div>
           </td>
           <td style="color:var(--muted);font-size:12px">${esc(p.brand)}</td>
           <td style="font-size:12px;color:var(--muted)">${esc(p.size)}<br><span style="color:var(--primary);font-size:10px">${esc(p.type)}</span></td>
-          ${qtys.map(q=>`<td style="text-align:center;font-weight:${q>0?'700':'400'};color:${q===0?'#cbd5e1':'#16a34a'}">${q>0?q:'—'}</td>`).join('')}
-          <td style="text-align:center;font-weight:700;font-size:14px;background:#f0fdf4;color:${tot===0?'#ef4444':'#16a34a'}">${tot}</td>
+          ${whCells}
+          <td style="text-align:center;font-weight:700;font-size:14px;background:#f0fdf4;color:${tot===0?'#ef4444':anyMismatch?'#d97706':'#16a34a'}">${tot}${anyMismatch?` <span style="font-size:10px" title="Lot total: ${lotTot}">⚠️</span>`:''}</td>
         </tr>
         ${hasLots?`<tr id="ov-lots-${safeId}" style="display:none">
           <td colspan="${colSpan}" style="padding:0 12px 10px 30px;background:#f8fafc">
@@ -1430,7 +1479,7 @@ function renderOverview(){
                 <th style="text-align:right;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Qty</th>
                 <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Unit</th>
               </tr></thead>
-              <tbody>${lotRowsHtml}</tbody>
+              <tbody>${lotRowsHtml}${mismatchFooter}</tbody>
             </table>
           </td>
         </tr>`:''}`;
@@ -2829,7 +2878,7 @@ async function saveBatchDelivery(){
         rd.lotDate,rd.baseQty,rd.baseUnit,
         rd.fifoWarning?'TRUE':'FALSE',rd.fifoReason,
         rd.bbeDate,rd.bbeStatus,batchId,
-        '','', // SupplierName (col W), LotName (col X)
+        prod?.supplierName||'', rd.lot?.lotName||'', // SupplierName (col W), LotName (col X)
       ];
       await whAppend(WH_SHEETS.MOVEMENTS,[mvRow]);
     }
@@ -3802,7 +3851,20 @@ function validateAndAllocateUploadRows(){
     const prod=S.whProducts.find(p=>p.code===row.productCode);
     if(!row.productCode) row.errors.push('ProductCode is required.');
     else if(!prod) row.errors.push(`Product "${row.productCode}" not found in Product Master.`);
-    if(!row.unitVal) row.errors.push('MovementUnit is required.');
+    if(!row.unitVal){
+      row.errors.push('MovementUnit is required.');
+    } else if(row.productCode){
+      // Strict unit validation — must be a known unit for this product
+      const cfgV=S.minQtyMap[row.productCode]||{};
+      const fallbackV=!cfgV.baseUnit
+        ?(S.stockLots.find(l=>l.productCode===row.productCode&&l.baseUnit)?.baseUnit||getMvUnitConversion(row.productCode,'').baseUnit||'')
+        :'';
+      const effectiveBaseV=cfgV.baseUnit||fallbackV;
+      const validUnits=[effectiveBaseV,cfgV.caseUnitName].filter(Boolean);
+      if(validUnits.length>0&&!validUnits.includes(row.unitVal)){
+        row.errors.push(`Invalid unit "${row.unitVal}". Valid options: ${validUnits.join(', ')}.`);
+      }
+    }
     if(!(row.inputQty>0)) row.errors.push('Quantity must be greater than 0.');
     // Recalculate base when fields are valid
     if(row.productCode&&row.unitVal&&row.inputQty>0){
@@ -4063,12 +4125,29 @@ async function submitUploadDelivery(){
   if(!allMvRows.length){ alert('No valid rows to submit.'); if(btn){btn.disabled=false;btn.textContent='✅ Submit';} return; }
   try{
     await whAppend(WH_SHEETS.MOVEMENTS,allMvRows);
+    // Aggregate all deductions per warehouse+product BEFORE calling applyWhStock.
+    // This prevents stale S.stock reads when the same product+warehouse appears
+    // multiple times (split lots or duplicate upload rows).
+    const stockDelta={}; // `${whId}|${prodCode}` → total base qty to deduct
+    const lotDelta={};   // `${whId}|${prodCode}|${lotDate}` → lot deduction record
     for(const row of S.uploadDeliveryRows){
       if(row.status==='error') continue;
       for(const alloc of row.lotAllocations){
-        await applyWhStock(row.warehouseId,row.productCode,-alloc.baseQty);
-        await applyLotStock(row.warehouseId,row.productCode,alloc.lotDate,alloc.bbeDate,-alloc.baseQty,row.baseUnit,false,alloc.lotName);
+        const sk=`${row.warehouseId}|${row.productCode}`;
+        stockDelta[sk]=(stockDelta[sk]||0)+alloc.baseQty;
+        const lk=`${row.warehouseId}|${row.productCode}|${alloc.lotDate}`;
+        if(!lotDelta[lk]) lotDelta[lk]={warehouseId:row.warehouseId,productCode:row.productCode,lotDate:alloc.lotDate,bbeDate:alloc.bbeDate,baseQty:0,baseUnit:row.baseUnit,lotName:alloc.lotName};
+        lotDelta[lk].baseQty+=alloc.baseQty;
       }
+    }
+    // Apply once per warehouse+product (no stale reads)
+    for(const [key,totalDeduct] of Object.entries(stockDelta)){
+      const [whId,prodCode]=key.split('|');
+      await applyWhStock(whId,prodCode,-totalDeduct);
+    }
+    // Apply once per lot
+    for(const l of Object.values(lotDelta)){
+      await applyLotStock(l.warehouseId,l.productCode,l.lotDate,l.bbeDate,-l.baseQty,l.baseUnit,false,l.lotName);
     }
     await Promise.all([loadStock(),loadStockMovements(),loadStockLots()]);
     const summary={uploadedRows,movementRows:allMvRows.length,splitRows,batchId};
