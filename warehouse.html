@@ -3826,9 +3826,14 @@ function renderUploadDeliveryReview(el){
       :row.lotAllocations.map(a=>`<div style="font-size:11px;margin-bottom:2px"><strong>${esc(a.lotDate)}</strong>${a.lotName?` <span style="color:var(--muted)">(${esc(a.lotName)})</span>`:''}: ${a.baseQty}<br><span style="color:var(--muted)">BBE: ${esc(a.bbeDate||'N/A')} · ${esc(a.bbeStatus)}</span></div>`).join('');
 
     const cfg=S.minQtyMap[row.productCode]||{};
-    let unitOpts=`<option value="${esc(row.unitVal)}" selected>${esc(row.unitVal)||'—'}</option>`;
-    if(cfg.baseUnit&&cfg.baseUnit!==row.unitVal) unitOpts+=`<option value="${esc(cfg.baseUnit)}">${esc(cfg.baseUnit)}</option>`;
-    if(cfg.caseUnitName&&cfg.caseUnitName!==row.unitVal) unitOpts+=`<option value="${esc(cfg.caseUnitName)}">${esc(cfg.caseUnitName)}</option>`;
+    // Build unit options: always show a placeholder + all valid units for this product
+    let unitOpts=`<option value="">— unit —</option>`;
+    if(cfg.baseUnit) unitOpts+=`<option value="${esc(cfg.baseUnit)}"${row.unitVal===cfg.baseUnit?' selected':''}>${esc(cfg.baseUnit)}</option>`;
+    if(cfg.caseUnitName) unitOpts+=`<option value="${esc(cfg.caseUnitName)}"${row.unitVal===cfg.caseUnitName?' selected':''}>${esc(cfg.caseUnitName)}</option>`;
+    // Fallback: if unitVal doesn't match any configured option, show it as a custom option
+    if(row.unitVal&&row.unitVal!==cfg.baseUnit&&row.unitVal!==cfg.caseUnitName){
+      unitOpts+=`<option value="${esc(row.unitVal)}" selected>${esc(row.unitVal)}</option>`;
+    }
 
     const availStyle=isErr&&row.availableQty>=0?'color:#dc2626;font-weight:600':'';
     const inps='border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px';
@@ -3897,6 +3902,12 @@ function updateUploadDeliveryRow(idx, field, value){
     row.productCode=value;
     const prod=S.whProducts.find(p=>p.code===value);
     row.productName=prod?.name||''; row.brand=prod?.brand||''; row.supplierName=prod?.supplierName||'';
+    // Auto-select base unit if current unit is blank or no longer valid for this product
+    const cfgNew=S.minQtyMap[value]||{};
+    const validUnits=[cfgNew.baseUnit,cfgNew.caseUnitName].filter(Boolean);
+    if(!row.unitVal||(!validUnits.includes(row.unitVal)&&validUnits.length>0)){
+      row.unitVal=cfgNew.baseUnit||row.unitVal||'';
+    }
     const {multiplier,baseUnit}=getMvUnitConversion(value,row.unitVal);
     row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
   } else if(field==='unitVal'){
