@@ -1368,10 +1368,12 @@ function renderOverview(){
     el.innerHTML=h; return;
   }
 
+  const bbeColors={Normal:'#16a34a',Warning:'#d97706',Critical:'#dc2626',Expired:'#6b7280',Unknown:'#94a3b8'};
+  const colSpan=3+dispWh.length+1; // product+brand+size + wh cols + total
   h+=`<div class="tbl-wrap">
   <table>
     <thead><tr>
-      <th style="min-width:170px">Product</th>
+      <th style="min-width:190px">Product</th>
       <th>Brand</th>
       <th>Size / Type</th>
       ${dispWh.map(w=>`<th style="text-align:center">${esc(w.name)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${w.type}</span></th>`).join('')}
@@ -1379,23 +1381,75 @@ function renderOverview(){
     </tr></thead>
     <tbody>
       ${filtProds.map(p=>{
+        const safeId=p.code.replace(/[^a-zA-Z0-9]/g,'_');
         const qtys=dispWh.map(w=>smap[p.code]?.[w.id]||0);
         const tot=qtys.reduce((a,b)=>a+b,0);
         const rowStyle=tot===0?'background:#fff5f5':'';
-        return`<tr style="${rowStyle}">
-          <td><div style="font-weight:600;color:var(--primary)">${esc(p.name)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.code)}</div></td>
+        // Lot rows for this product — filter to only displayed warehouses (or all if no filter)
+        const prodLots=S.stockLots
+          .filter(l=>l.productCode===p.code&&l.baseQty>0&&(wF?l.warehouseId===wF:true))
+          .sort((a,b)=>a.warehouseId.localeCompare(b.warehouseId)||a.lotDate.localeCompare(b.lotDate));
+        const hasLots=prodLots.length>0;
+        const lotRowsHtml=prodLots.length===0
+          ?`<tr><td colspan="7" style="padding:6px 10px;color:var(--muted);font-style:italic;font-size:11px">No lot data</td></tr>`
+          :prodLots.map(l=>{
+            const wh=S.warehouses.find(w=>w.id===l.warehouseId);
+            const bbeSt=getBBEStatus(l.bbeDate,l.lotDate);
+            const bc=bbeColors[bbeSt]||'#94a3b8';
+            return`<tr style="border-top:1px solid #f1f5f9">
+              <td style="padding:5px 10px;font-weight:500;color:var(--text)">${esc(l.lotName||'—')}</td>
+              <td style="padding:5px 10px;color:var(--muted)">${esc(l.lotDate||'—')}</td>
+              <td style="padding:5px 10px;color:var(--muted)">${esc(l.bbeDate||'—')}</td>
+              <td style="padding:5px 10px"><span style="background:${bc}22;color:${bc};padding:2px 7px;border-radius:8px;font-size:10px;font-weight:600">${bbeSt}</span></td>
+              <td style="padding:5px 10px;color:var(--muted)">${esc(wh?.name||l.warehouseId)}</td>
+              <td style="padding:5px 10px;text-align:right;font-weight:700;color:#16a34a">${l.baseQty}</td>
+              <td style="padding:5px 10px;color:var(--muted)">${esc(l.baseUnit||'')}</td>
+            </tr>`;
+          }).join('');
+        return`<tr style="${rowStyle};cursor:${hasLots?'pointer':'default'}" onclick="${hasLots?`toggleOvLots('${safeId}')`:''}" title="${hasLots?'Click to view lots':''}">
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="ov-chev-${safeId}" style="font-size:10px;color:var(--muted);flex-shrink:0;transition:transform 0.15s">${hasLots?'▶':'·'}</span>
+              <div><div style="font-weight:600;color:var(--primary)">${esc(p.name)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.code)}</div></div>
+            </div>
+          </td>
           <td style="color:var(--muted);font-size:12px">${esc(p.brand)}</td>
           <td style="font-size:12px;color:var(--muted)">${esc(p.size)}<br><span style="color:var(--primary);font-size:10px">${esc(p.type)}</span></td>
           ${qtys.map(q=>`<td style="text-align:center;font-weight:${q>0?'700':'400'};color:${q===0?'#cbd5e1':'#16a34a'}">${q>0?q:'—'}</td>`).join('')}
           <td style="text-align:center;font-weight:700;font-size:14px;background:#f0fdf4;color:${tot===0?'#ef4444':'#16a34a'}">${tot}</td>
-        </tr>`;
+        </tr>
+        ${hasLots?`<tr id="ov-lots-${safeId}" style="display:none">
+          <td colspan="${colSpan}" style="padding:0 12px 10px 30px;background:#f8fafc">
+            <table style="width:100%;font-size:11px;border-collapse:collapse;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+              <thead><tr style="background:var(--bg)">
+                <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Lot Name</th>
+                <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Lot Date</th>
+                <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">BBE Date</th>
+                <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">BBE Status</th>
+                <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Warehouse</th>
+                <th style="text-align:right;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Qty</th>
+                <th style="text-align:left;padding:5px 10px;color:var(--muted);font-weight:600;white-space:nowrap">Unit</th>
+              </tr></thead>
+              <tbody>${lotRowsHtml}</tbody>
+            </table>
+          </td>
+        </tr>`:''}`;
       }).join('')}
     </tbody>
   </table></div>
-  <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${filtProds.length} of ${prods.length} product(s)</div>`;
+  <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">${filtProds.length} of ${prods.length} product(s) — click a product row to expand lot details</div>`;
 
   el.innerHTML=h;
   _restoreFocus(_f);
+}
+
+function toggleOvLots(safeId){
+  const row=document.getElementById('ov-lots-'+safeId);
+  const chev=document.getElementById('ov-chev-'+safeId);
+  if(!row) return;
+  const open=row.style.display!=='none';
+  row.style.display=open?'none':'table-row';
+  if(chev) chev.textContent=open?'▶':'▼';
 }
 
 function showBbeLots(filterStatus){
