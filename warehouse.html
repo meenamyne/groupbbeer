@@ -3708,7 +3708,7 @@ function normalizeUploadRows(rawRows){
     const productCode=String(r['ProductCode']||'').trim();
     const prod=S.whProducts.find(p=>p.code===productCode);
     const unitVal=String(r['MovementUnit']||'').trim();
-    const inputQty=parseFloat(r['Quantity'])||0;
+    const inputQty=Math.max(0,Math.round(parseFloat(r['Quantity'])||0));
     const {multiplier,baseUnit}=getMvUnitConversion(productCode,unitVal);
     return {
       rowNo:i+1,
@@ -3863,7 +3863,7 @@ function renderUploadDeliveryReview(el){
       <td style="padding:8px 6px"><select style="${inps};width:150px" onchange="updateUploadDeliveryRow(${idx},'warehouseId',this.value)"><option value="">— select —</option>${whOpts.replace(`value="${esc(row.warehouseId)}"`,`value="${esc(row.warehouseId)}" selected`)}</select></td>
       <td style="padding:8px 6px"><select style="${inps};width:160px" onchange="updateUploadDeliveryRow(${idx},'productCode',this.value)"><option value="">— select —</option>${prodOpts.replace(`value="${esc(row.productCode)}"`,`value="${esc(row.productCode)}" selected`)}</select>${row.productName?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(row.productName)}</div>`:''}</td>
       <td style="padding:8px 6px"><select style="${inps};width:95px" onchange="updateUploadDeliveryRow(${idx},'unitVal',this.value)">${unitOpts}</select></td>
-      <td style="padding:8px 6px"><input type="number" value="${row.inputQty}" min="0.001" step="any" style="${inps};width:75px${isErr&&row.availableQty>0?';border-color:#dc2626':''}" onchange="updateUploadDeliveryRow(${idx},'inputQty',this.value)"></td>
+      <td style="padding:8px 6px"><input type="number" value="${row.inputQty}" min="1" step="1" style="${inps};width:75px${isErr&&row.availableQty>0?';border-color:#dc2626':''}" onchange="updateUploadDeliveryRow(${idx},'inputQty',this.value)"></td>
       <td style="padding:8px 6px;font-size:12px;white-space:nowrap">${row.baseQty} ${esc(row.baseUnit)}</td>
       <td style="padding:8px 6px;font-size:12px;white-space:nowrap;${availStyle}">${row.availableQty>0?row.availableQty+' '+esc(effectiveBase||row.baseUnit):row.availableQty===0&&row.productCode&&row.warehouseId?'<span style="color:#dc2626">No stock</span>':row.productCode?'<span style="color:var(--muted)">—</span>':'—'}</td>
       <td style="padding:8px 6px;min-width:150px">${lotHtml}</td>
@@ -3939,7 +3939,7 @@ function updateUploadDeliveryRow(idx, field, value){
     const {multiplier,baseUnit}=getMvUnitConversion(row.productCode,value);
     row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
   } else if(field==='inputQty'){
-    row.inputQty=parseFloat(value)||0;
+    row.inputQty=Math.max(0,Math.round(parseFloat(value)||0));
     const {multiplier,baseUnit}=getMvUnitConversion(row.productCode,row.unitVal);
     row.baseQty=Math.round(row.inputQty*multiplier*1000)/1000; row.baseUnit=baseUnit;
   } else if(field==='reference') row.reference=value;
