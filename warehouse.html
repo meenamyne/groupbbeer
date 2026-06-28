@@ -641,7 +641,7 @@ const S = {
   movementsLoadError:'', // set by loadStockMovements on API failure
   uploadDeliveryRows:[], uploadDeliveryBatchId:'', uploadValidationErrors:[],
   bbeAdjustments:[],
-  bbeAdjFilter:{warehouseId:'',query:'',brand:'',bbeStatus:'',eligibleOnly:true},
+  bbeAdjFilter:{warehouseId:'',query:'',brand:'',bbeStatus:'',urgency:'',sortBy:'bbeUrgency'},
   page:'overview', rptTab:'category',
 };
 
@@ -1421,8 +1421,9 @@ function renderOverview(){
             const wh=S.warehouses.find(w=>w.id===l.warehouseId);
             const bbeSt=getBBEStatus(l.bbeDate,l.lotDate);
             const bc=bbeColors[bbeSt]||'#94a3b8';
-            return`<tr style="border-top:1px solid #f1f5f9">
-              <td style="padding:5px 10px;font-weight:500;color:var(--text)">${esc(l.lotName||'—')}</td>
+            const lotWasAdj=S.bbeAdjustments.some(a=>a.productCode===l.productCode&&a.warehouseId===l.warehouseId&&(a.newLotDate===l.lotDate||a.oldLotDate===l.lotDate));
+            return`<tr style="border-top:1px solid #f1f5f9${lotWasAdj?';background:#f0f9ff':''}">
+              <td style="padding:5px 10px;font-weight:500;color:var(--text)">${esc(l.lotName||'—')}${lotWasAdj?` <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:6px" title="This lot was involved in a BBE filling date adjustment">🗓️</span>`:''}</td>
               <td style="padding:5px 10px;color:var(--muted)">${esc(l.lotDate||'—')}</td>
               <td style="padding:5px 10px;color:var(--muted)">${esc(l.bbeDate||'—')}</td>
               <td style="padding:5px 10px"><span style="background:${bc}22;color:${bc};padding:2px 7px;border-radius:8px;font-size:10px;font-weight:600">${bbeSt}</span></td>
@@ -1461,12 +1462,13 @@ function renderOverview(){
           return`<td style="text-align:center;font-weight:${q>0?'700':'400'};color:${color}">${cell}</td>`;
         }).join('');
 
+        const hasBBEAdj=S.bbeAdjustments.some(a=>a.productCode===p.code);
         return`<tr style="${rowStyle};cursor:${hasLots?'pointer':'default'}" onclick="${hasLots?`toggleOvLots('${safeId}')`:''}" title="${hasLots?'Click to view lots':''}">
           <td>
             <div style="display:flex;align-items:center;gap:6px">
               <span id="ov-chev-${safeId}" style="font-size:10px;color:var(--muted);flex-shrink:0">${hasLots?'▶':'·'}</span>
               <div>
-                <div style="font-weight:600;color:var(--primary)">${esc(p.name)}${anyMismatch?` <span style="font-size:10px;color:#d97706" title="Stock sheet total does not match lot total">⚠️</span>`:''}</div>
+                <div style="font-weight:600;color:var(--primary)">${esc(p.name)}${anyMismatch?` <span style="font-size:10px;color:#d97706" title="Stock sheet total does not match lot total">⚠️</span>`:''}${hasBBEAdj?` <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();navigate('bbeAdjustment')" title="Filling date was adjusted — click to view BBE Adjustment">🗓️ Adj</span>`:''}</div>
                 <div style="font-size:10px;color:var(--muted)">${esc(p.code)}</div>
               </div>
             </div>
@@ -1709,7 +1711,7 @@ function renderLog(){
   const el=document.getElementById('log-content');
   if(!el) return;
   const _f=_saveFocus();
-  const typeColors={Receive:'#10b981',Transfer:'#3b82f6',Delivery:'#f59e0b',Return:'#8b5cf6','Returned to brand':'#f97316',Damage:'#ef4444',Expired:'#f97316',Loss:'#dc2626',Adjustment:'#6b7280'};
+  const typeColors={Receive:'#10b981',Transfer:'#3b82f6',Delivery:'#f59e0b',Return:'#8b5cf6','Returned to brand':'#f97316',Damage:'#ef4444',Expired:'#f97316',Loss:'#dc2626',Adjustment:'#6b7280','BBE Adjustment':'#0ea5e9'};
   const getWhName=id=>S.warehouses.find(w=>w.id===id)?.name||id||'—';
 
   // Read all filter values FIRST (before rebuilding DOM)
@@ -1725,7 +1727,7 @@ function renderLog(){
   let h=`<div class="fb" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">
     <select class="fsel" id="log-type" onchange="renderLog()">
       <option value="">— All Types —</option>
-      ${['Receive','Transfer','Delivery','Return','Returned to brand','Damage','Expired','Loss','Adjustment'].map(t=>`<option${typeF===t?' selected':''}>${t}</option>`).join('')}
+      ${['Receive','Transfer','Delivery','Return','Returned to brand','Damage','Expired','Loss','Adjustment','BBE Adjustment'].map(t=>`<option${typeF===t?' selected':''}>${t}</option>`).join('')}
     </select>
     <select class="fsel" id="log-wh" onchange="renderLog()">
       <option value="">— All Locations —</option>
@@ -1790,6 +1792,7 @@ function renderLog(){
         return`<tr>
           <td style="white-space:nowrap;font-size:12px">${m.date?fmtDate(m.date):'—'}</td>
           <td><span class="badge" style="background:${tc}20;color:${tc}">${m.type}</span>
+              ${m.type==='BBE Adjustment'?'<div style="font-size:10px;color:#0ea5e9;margin-top:2px;white-space:nowrap">🗓️ Lot date reclassified</div>':''}
               ${m.fifoWarning?'<span title="FIFO override: '+esc(m.fifoOverrideReason)+'" style="cursor:help;font-size:10px;color:#d97706"> ⚠️FIFO</span>':''}
               ${m.batchId?`<div style="font-size:10px;color:#d97706;margin-top:2px;cursor:pointer;white-space:nowrap" onclick="filterLogByBatch('${esc(m.batchId)}')" title="Click to filter this batch">📦 ${esc(m.batchId)}</div>`:''}</td>
           <td><div style="font-weight:600">${esc(m.productName)||esc(m.productCode)}</div>
@@ -4249,10 +4252,58 @@ function monthsBetweenDates(startDateStr, endDateStr){
   return Math.max(0,months);
 }
 
-function getBBEAdjThreshold(shelfLifeMonths){
-  const m=parseFloat(shelfLifeMonths)||0;
-  if(m<=0) return 0;
-  return Math.ceil(m*0.30);
+function daysBetweenDates(startDateStr, endDateStr){
+  const startIso=normDate(startDateStr);
+  const endIso=normDate(endDateStr);
+  if(!startIso||!endIso) return 0;
+  const start=new Date(startIso+'T00:00:00');
+  const end=new Date(endIso+'T00:00:00');
+  return Math.floor((end-start)/(1000*60*60*24));
+}
+
+function getBBEStatusRank(status){
+  const s=String(status||'').toLowerCase();
+  if(s.includes('expired')) return 1;
+  if(s.includes('critical')) return 2;
+  if(s.includes('warning')) return 3;
+  if(s.includes('normal')) return 4;
+  return 5;
+}
+
+function sortBBEAdjLots(a,b,sortBy){
+  if(!sortBy||sortBy==='bbeUrgency'){
+    const rA=getBBEStatusRank(a.bbeStatus), rB=getBBEStatusRank(b.bbeStatus);
+    if(rA!==rB) return rA-rB;
+    const bbeA=a.bbeDate?new Date(a.bbeDate).getTime():Infinity;
+    const bbeB=b.bbeDate?new Date(b.bbeDate).getTime():Infinity;
+    if(bbeA!==bbeB) return bbeA-bbeB;
+    const pA=typeof a.agePercent==='number'?a.agePercent:-1;
+    const pB=typeof b.agePercent==='number'?b.agePercent:-1;
+    if(pA!==pB) return pB-pA;
+    const lA=a.lotDate?new Date(a.lotDate).getTime():Infinity;
+    const lB=b.lotDate?new Date(b.lotDate).getTime():Infinity;
+    if(lA!==lB) return lA-lB;
+    return String(a.productName||'').localeCompare(String(b.productName||''));
+  }
+  if(sortBy==='oldestLot'){
+    const lA=a.lotDate?new Date(a.lotDate).getTime():Infinity;
+    const lB=b.lotDate?new Date(b.lotDate).getTime():Infinity;
+    return lA-lB;
+  }
+  if(sortBy==='newestLot'){
+    const lA=a.lotDate?new Date(a.lotDate).getTime():0;
+    const lB=b.lotDate?new Date(b.lotDate).getTime():0;
+    return lB-lA;
+  }
+  if(sortBy==='earliestBBE'){
+    const bA=a.bbeDate?new Date(a.bbeDate).getTime():Infinity;
+    const bB=b.bbeDate?new Date(b.bbeDate).getTime():Infinity;
+    return bA-bB;
+  }
+  if(sortBy==='highestQty') return b.baseQty-a.baseQty;
+  if(sortBy==='productName') return String(a.productName||'').localeCompare(String(b.productName||''));
+  if(sortBy==='warehouseName') return String(a.warehouseName||'').localeCompare(String(b.warehouseName||''));
+  return 0;
 }
 
 function getBBEAdjustmentLots(){
@@ -4264,24 +4315,32 @@ function getBBEAdjustmentLots(){
       const prod=S.whProducts.find(p=>p.code===l.productCode);
       if(!wh||!prod) return null;
       if(wh.type!=='Internal') return null;
+      const lotDate=normDate(l.lotDate);
+      if(!lotDate) return null;
       const shelfLifeMonths=parseFloat(prod.shelfLife)||0;
-      if(shelfLifeMonths<=0) return null;
-      const thresholdMonths=getBBEAdjThreshold(shelfLifeMonths);
-      const ageMonths=monthsBetweenDates(l.lotDate,today);
-      const eligible=ageMonths>=thresholdMonths;
-      const bbeStatus=getBBEStatus(l.bbeDate,l.lotDate);
+      const bbeDate=normDate(l.bbeDate)||(shelfLifeMonths>0?addMonths(lotDate,shelfLifeMonths):'');
+      const bbeStatus=getBBEStatus(bbeDate,lotDate);
+      const ageMonths=monthsBetweenDates(lotDate,today);
+      const ageDays=daysBetweenDates(lotDate,today);
+      const remainingDays=bbeDate?daysBetweenDates(today,bbeDate):null;
+      const totalShelfDays=shelfLifeMonths>0?Math.max(1,Math.round(shelfLifeMonths*30.4375)):0;
+      const agePercent=totalShelfDays>0?Math.min(999,Math.round((ageDays/totalShelfDays)*100)):null;
       return{
         ...l,
+        lotDate,
+        bbeDate,
         warehouseName:wh.name||'',
         warehouseType:wh.type||'',
         productName:prod.name||'',
         brand:prod.brand||'',
         supplierName:prod.supplierName||'',
         shelfLifeMonths,
-        thresholdMonths,
         ageMonths,
-        eligible,
+        ageDays,
+        remainingDays,
+        agePercent,
         bbeStatus,
+        visibleForAdjustment:true,
       };
     })
     .filter(Boolean);
@@ -4294,122 +4353,141 @@ function renderBBEAdjustment(){
   const f=S.bbeAdjFilter;
   const allLots=getBBEAdjustmentLots();
 
-  // Apply filters
-  let lots=allLots;
-  if(f.eligibleOnly) lots=lots.filter(l=>l.eligible);
+  // Apply filters + sort
+  let lots=allLots.slice();
   if(f.warehouseId) lots=lots.filter(l=>l.warehouseId===f.warehouseId);
   if(f.brand) lots=lots.filter(l=>l.brand===f.brand);
   if(f.bbeStatus) lots=lots.filter(l=>l.bbeStatus===f.bbeStatus);
+  if(f.urgency){
+    if(f.urgency==='expired') lots=lots.filter(l=>l.bbeStatus==='Expired');
+    else if(f.urgency==='almostOver') lots=lots.filter(l=>l.bbeStatus==='Critical'||l.bbeStatus==='Warning');
+    else if(f.urgency==='normal') lots=lots.filter(l=>l.bbeStatus==='Normal');
+  }
   if(f.query){
     const q=f.query.toLowerCase();
-    lots=lots.filter(l=>
-      l.productCode.toLowerCase().includes(q)||
-      l.productName.toLowerCase().includes(q)||
-      l.brand.toLowerCase().includes(q)||
-      (l.lotName||'').toLowerCase().includes(q)
-    );
+    lots=lots.filter(l=>[l.productCode,l.productName,l.brand,l.lotName||'',l.supplierName||'',l.warehouseName].join(' ').toLowerCase().includes(q));
   }
+  lots.sort((a,b)=>sortBBEAdjLots(a,b,f.sortBy||'bbeUrgency'));
 
-  // Summary stats
-  const eligibleLots=allLots.filter(l=>l.eligible);
-  const totalQty=eligibleLots.reduce((s,l)=>s+l.baseQty,0);
-  const internalWhs=new Set(eligibleLots.map(l=>l.warehouseId)).size;
-  const critWarn=eligibleLots.filter(l=>l.bbeStatus==='Critical'||l.bbeStatus==='Warning'||l.bbeStatus==='Expired').length;
+  // Summary cards (from all internal lots, no filters)
+  const expiredCount=allLots.filter(l=>l.bbeStatus==='Expired').length;
+  const critWarnCount=allLots.filter(l=>l.bbeStatus==='Critical'||l.bbeStatus==='Warning').length;
+  const totalQty=allLots.reduce((s,l)=>s+l.baseQty,0);
 
-  const internalWarehouseOptions=S.warehouses.filter(w=>w.type==='Internal'&&w.isActive!=='false');
+  const internalWhOpts=S.warehouses.filter(w=>w.type==='Internal'&&w.isActive!=='false');
   const brands=[...new Set(allLots.map(l=>l.brand).filter(Boolean))].sort();
+  const sel=v=>n=>n===v?'selected':'';
 
   el.innerHTML=`
 <div style="padding:24px">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
     <span style="font-size:22px">🗓️</span>
     <h2 style="margin:0;font-size:20px;font-weight:700">BBE Adjustment</h2>
   </div>
-  <p style="margin:0 0 20px;color:var(--muted);font-size:13px">Adjust filling date and recalculate BBE status for eligible internal warehouse stock (lots ≥ 30% of shelf life age)</p>
+  <p style="margin:0 0 18px;color:var(--muted);font-size:13px">Adjust filling date and recalculate BBE status for internal warehouse stock</p>
 
   <!-- Summary cards -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Eligible Lots</div>
-      <div style="font-size:24px;font-weight:700">${eligibleLots.length}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Internal Lots</div>
+      <div style="font-size:26px;font-weight:700">${allLots.length}</div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Total Base Qty</div>
-      <div style="font-size:24px;font-weight:700">${totalQty.toLocaleString()}</div>
+    <div style="background:var(--card);border:1px solid ${expiredCount>0?'#fecaca':'var(--border)'};border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Expired Lots</div>
+      <div style="font-size:26px;font-weight:700;color:${expiredCount>0?'#dc2626':'inherit'}">${expiredCount}</div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Internal Warehouses</div>
-      <div style="font-size:24px;font-weight:700">${internalWhs}</div>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+    <div style="background:var(--card);border:1px solid ${critWarnCount>0?'#fed7aa':'var(--border)'};border-radius:8px;padding:14px">
       <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Critical / Warning</div>
-      <div style="font-size:24px;font-weight:700;color:${critWarn>0?'#ef4444':'inherit'}">${critWarn}</div>
+      <div style="font-size:26px;font-weight:700;color:${critWarnCount>0?'#d97706':'inherit'}">${critWarnCount}</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Total Available Qty</div>
+      <div style="font-size:26px;font-weight:700">${totalQty.toLocaleString()}</div>
     </div>
   </div>
 
   <!-- Filters -->
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-    <select onchange="S.bbeAdjFilter.warehouseId=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-      <option value="">All Warehouses</option>
-      ${internalWarehouseOptions.map(w=>`<option value="${w.id}" ${f.warehouseId===w.id?'selected':''}>${w.name}</option>`).join('')}
-    </select>
-    <input type="text" placeholder="Search product / lot name…" value="${f.query||''}"
-      oninput="S.bbeAdjFilter.query=this.value;renderBBEAdjustment()"
-      style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);width:220px">
-    <select onchange="S.bbeAdjFilter.brand=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-      <option value="">All Brands</option>
-      ${brands.map(b=>`<option value="${b}" ${f.brand===b?'selected':''}>${b}</option>`).join('')}
-    </select>
-    <select onchange="S.bbeAdjFilter.bbeStatus=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-      <option value="">All BBE Status</option>
-      <option value="Normal" ${f.bbeStatus==='Normal'?'selected':''}>Normal</option>
-      <option value="Warning" ${f.bbeStatus==='Warning'?'selected':''}>Warning</option>
-      <option value="Critical" ${f.bbeStatus==='Critical'?'selected':''}>Critical</option>
-      <option value="Expired" ${f.bbeStatus==='Expired'?'selected':''}>Expired</option>
-    </select>
-    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-      <input type="checkbox" ${f.eligibleOnly?'checked':''} onchange="S.bbeAdjFilter.eligibleOnly=this.checked;renderBBEAdjustment()" style="cursor:pointer">
-      Eligible lots only
-    </label>
-    <span style="color:var(--muted);font-size:12px;margin-left:auto">${lots.length} lot${lots.length!==1?'s':''} shown</span>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <select onchange="S.bbeAdjFilter.warehouseId=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <option value="">All Internal Warehouses</option>
+        ${internalWhOpts.map(w=>`<option value="${w.id}" ${sel(f.warehouseId)(w.id)}>${esc(w.name)}</option>`).join('')}
+      </select>
+      <input type="text" placeholder="Search product / lot / supplier…" value="${f.query||''}"
+        oninput="S.bbeAdjFilter.query=this.value;renderBBEAdjustment()"
+        style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);width:220px">
+      <select onchange="S.bbeAdjFilter.brand=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <option value="">All Brands</option>
+        ${brands.map(b=>`<option value="${b}" ${sel(f.brand)(b)}>${esc(b)}</option>`).join('')}
+      </select>
+      <select onchange="S.bbeAdjFilter.bbeStatus=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <option value="">All Statuses</option>
+        <option value="Expired" ${sel(f.bbeStatus)('Expired')}>Expired</option>
+        <option value="Critical" ${sel(f.bbeStatus)('Critical')}>Critical</option>
+        <option value="Warning" ${sel(f.bbeStatus)('Warning')}>Warning</option>
+        <option value="Normal" ${sel(f.bbeStatus)('Normal')}>Normal</option>
+        <option value="Unknown" ${sel(f.bbeStatus)('Unknown')}>Unknown</option>
+      </select>
+      <select onchange="S.bbeAdjFilter.urgency=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <option value="">All Urgency</option>
+        <option value="expired" ${sel(f.urgency)('expired')}>Expired only</option>
+        <option value="almostOver" ${sel(f.urgency)('almostOver')}>Almost over BBE</option>
+        <option value="normal" ${sel(f.urgency)('normal')}>Normal only</option>
+      </select>
+      <select onchange="S.bbeAdjFilter.sortBy=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <option value="bbeUrgency" ${sel(f.sortBy||'bbeUrgency')('bbeUrgency')}>Sort: BBE Urgency</option>
+        <option value="oldestLot" ${sel(f.sortBy)('oldestLot')}>Sort: Oldest Lot First</option>
+        <option value="newestLot" ${sel(f.sortBy)('newestLot')}>Sort: Newest Lot First</option>
+        <option value="earliestBBE" ${sel(f.sortBy)('earliestBBE')}>Sort: Earliest BBE</option>
+        <option value="highestQty" ${sel(f.sortBy)('highestQty')}>Sort: Highest Qty</option>
+        <option value="productName" ${sel(f.sortBy)('productName')}>Sort: Product A–Z</option>
+        <option value="warehouseName" ${sel(f.sortBy)('warehouseName')}>Sort: Warehouse A–Z</option>
+      </select>
+      <span style="color:var(--muted);font-size:12px;margin-left:auto">${lots.length} of ${allLots.length} lot${allLots.length!==1?'s':''}</span>
+    </div>
   </div>
 
   <!-- Table -->
   ${lots.length===0?`
   <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:40px;text-align:center;color:var(--muted)">
     <div style="font-size:32px;margin-bottom:12px">🗓️</div>
-    <div style="font-weight:600;margin-bottom:6px">No eligible lots found</div>
-    <div style="font-size:13px">Products appear here once their lot age reaches 30% of shelf life in an internal warehouse.</div>
-  </div>`:
-  `<div style="overflow-x:auto">
-  <table class="tbl" style="min-width:1100px">
+    <div style="font-weight:600;margin-bottom:6px">${allLots.length===0?'No internal warehouse stock found':'No lots match your filters'}</div>
+    <div style="font-size:13px">${allLots.length===0?'Products appear here when they have active lot stock in an internal warehouse.':'Try clearing some filters.'}</div>
+  </div>`:`
+  <div style="overflow-x:auto">
+  <table class="tbl" style="min-width:1200px">
     <thead><tr>
       <th>Warehouse</th><th>Product Code</th><th>Product Name</th><th>Brand</th>
-      <th>Lot Name</th><th>Filling Date</th><th>BBE Date</th><th>BBE Status</th>
-      <th>Shelf Life</th><th>Age</th><th>30% Threshold</th><th>Qty (Base)</th><th>Unit</th><th>Action</th>
+      <th>Lot Name</th><th>Filling Date</th><th>BBE Date</th><th style="text-align:center">BBE Status</th>
+      <th style="text-align:center">Shelf Life</th><th style="text-align:center">Age</th>
+      <th style="text-align:center">Age %</th><th style="text-align:center">Remaining</th>
+      <th style="text-align:right">Qty</th><th>Unit</th><th>Action</th>
     </tr></thead>
     <tbody>
     ${lots.map(l=>{
       const lotKey=encodeURIComponent(JSON.stringify({warehouseId:l.warehouseId,productCode:l.productCode,lotDate:l.lotDate}));
-      const rowBg=l.eligible?'background:#fefce8':'';
+      const statusRank=getBBEStatusRank(l.bbeStatus);
+      const rowBg=statusRank===1?'background:#fff1f2':statusRank===2?'background:#fff7ed':statusRank===3?'background:#fffbeb':'';
+      const agePctColor=l.agePercent===null?'var(--muted)':l.agePercent>=75?'#dc2626':l.agePercent>=50?'#d97706':'#16a34a';
+      const remColor=l.remainingDays===null?'var(--muted)':l.remainingDays<0?'#dc2626':l.remainingDays<30?'#dc2626':l.remainingDays<90?'#d97706':'#16a34a';
+      const adjBadge=S.bbeAdjustments.some(a=>a.productCode===l.productCode&&a.warehouseId===l.warehouseId)
+        ?`<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:8px;margin-left:4px" title="Filling date was previously adjusted">🗓️ Adj</span>`:'';
       return `<tr style="${rowBg}">
-        <td style="font-size:12px">${l.warehouseName}</td>
-        <td><code style="font-size:11px">${l.productCode}</code></td>
-        <td style="font-size:12px">${l.productName}</td>
-        <td style="font-size:12px">${l.brand||'—'}</td>
-        <td style="font-size:12px;color:var(--muted)">${l.lotName||'—'}</td>
-        <td style="font-size:12px">${l.lotDate}</td>
-        <td style="font-size:12px">${l.bbeDate||'—'}</td>
+        <td style="font-size:12px">${esc(l.warehouseName)}</td>
+        <td><code style="font-size:11px">${esc(l.productCode)}</code></td>
+        <td style="font-size:12px">${esc(l.productName)}${adjBadge}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(l.brand||'—')}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(l.lotName||'—')}</td>
+        <td style="font-size:12px;white-space:nowrap">${l.lotDate}</td>
+        <td style="font-size:12px;white-space:nowrap">${l.bbeDate||'—'}</td>
         <td style="text-align:center">${bbeBadge(l.bbeStatus)}</td>
-        <td style="font-size:12px;text-align:center">${l.shelfLifeMonths}m</td>
-        <td style="font-size:12px;text-align:center">
-          <span style="color:${l.ageMonths>=l.thresholdMonths?'#16a34a':'var(--muted)'}">${l.ageMonths}m</span>
-          <span style="color:var(--muted)"> / ${l.shelfLifeMonths}m</span>
-        </td>
-        <td style="font-size:12px;text-align:center">${l.thresholdMonths}m</td>
-        <td style="font-size:12px;text-align:right">${l.baseQty.toLocaleString()}</td>
-        <td style="font-size:12px">${l.baseUnit||'—'}</td>
-        <td><button class="btn" onclick="openBBEAdjModal('${lotKey}')" style="font-size:12px;padding:4px 10px">Adjust</button></td>
+        <td style="font-size:12px;text-align:center;color:var(--muted)">${l.shelfLifeMonths?l.shelfLifeMonths+'m':'—'}</td>
+        <td style="font-size:12px;text-align:center">${l.ageMonths}m</td>
+        <td style="font-size:12px;text-align:center;font-weight:600;color:${agePctColor}">${l.agePercent!==null?l.agePercent+'%':'—'}</td>
+        <td style="font-size:12px;text-align:center;color:${remColor}">${l.remainingDays!==null?(l.remainingDays<0?'Expired':l.remainingDays+'d'):'—'}</td>
+        <td style="font-size:12px;text-align:right;font-weight:700">${l.baseQty.toLocaleString()}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(l.baseUnit||'—')}</td>
+        <td><button class="btn" onclick="openBBEAdjModal('${lotKey}')" style="font-size:12px;padding:4px 10px;white-space:nowrap">Adjust</button></td>
       </tr>`;
     }).join('')}
     </tbody>
@@ -4417,13 +4495,13 @@ function renderBBEAdjustment(){
 </div>
 
 <!-- BBE Adjustment Modal -->
-<div id="bbeAdjustmentModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center">
-  <div style="background:var(--card);border-radius:12px;padding:28px;width:580px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h3 style="margin:0;font-size:17px">🗓️ Adjust Filling Date / BBE</h3>
-      <button onclick="closeModal('bbeAdjustmentModal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+<div id="bbeAdjustmentModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:var(--card);border-radius:12px;width:600px;max-width:96vw;max-height:94vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <h3 style="margin:0;font-size:16px;font-weight:700">🗓️ Adjust Filling Date / BBE</h3>
+      <button onclick="closeModal('bbeAdjustmentModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1">×</button>
     </div>
-    <div id="bbeAdjModal-body"></div>
+    <div id="bbeAdjModal-body" style="padding:20px 24px;overflow-y:auto"></div>
   </div>
 </div>
 `;
@@ -4443,74 +4521,119 @@ function openBBEAdjModal(lotKeyEncoded){
   const wh=S.warehouses.find(w=>w.id===lot.warehouseId);
   const prod=S.whProducts.find(p=>p.code===lot.productCode);
   const shelfLifeMonths=parseFloat(prod?.shelfLife)||0;
-  const bbeStatus=getBBEStatus(lot.bbeDate,lot.lotDate);
+  const bbeDate=normDate(lot.bbeDate)||(shelfLifeMonths>0?addMonths(lot.lotDate,shelfLifeMonths):'');
+  const bbeStatus=getBBEStatus(bbeDate,lot.lotDate);
+  const today=new Date().toISOString().split('T')[0];
+  const ageDays=daysBetweenDates(lot.lotDate,today);
+  const ageMonths=monthsBetweenDates(lot.lotDate,today);
+  const remainingDays=bbeDate?daysBetweenDates(today,bbeDate):null;
+  const totalShelfDays=shelfLifeMonths>0?Math.max(1,Math.round(shelfLifeMonths*30.4375)):0;
+  const agePercent=totalShelfDays>0?Math.min(999,Math.round((ageDays/totalShelfDays)*100)):null;
 
-  // Store current lot reference for submit
-  S._bbeAdjLot={...lot, warehouseName:wh?.name||'', productName:prod?.name||'', brand:prod?.brand||'', supplierName:prod?.supplierName||'', shelfLifeMonths};
+  // Previous adjustments for this lot
+  const prevAdjs=S.bbeAdjustments.filter(a=>a.productCode===lot.productCode&&a.warehouseId===lot.warehouseId);
+
+  S._bbeAdjLot={...lot, bbeDate, warehouseName:wh?.name||'', productName:prod?.name||'', brand:prod?.brand||'', supplierName:prod?.supplierName||'', shelfLifeMonths};
 
   const modalEl=document.getElementById('bbeAdjustmentModal');
   const bodyEl=document.getElementById('bbeAdjModal-body');
   bodyEl.innerHTML=`
-    <!-- Read-only info -->
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:18px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-        <div><span style="color:var(--muted)">Warehouse</span><br><strong>${lot.warehouseId}</strong> ${wh?.name||''}</div>
-        <div><span style="color:var(--muted)">Product</span><br><strong>${lot.productCode}</strong> ${prod?.name||''}</div>
-        <div><span style="color:var(--muted)">Brand</span><br>${prod?.brand||'—'}</div>
-        <div><span style="color:var(--muted)">Lot Name</span><br>${lot.lotName||'—'}</div>
-        <div><span style="color:var(--muted)">Current Filling Date</span><br><strong>${lot.lotDate}</strong></div>
-        <div><span style="color:var(--muted)">Current BBE Date</span><br><strong>${lot.bbeDate||'—'}</strong></div>
-        <div><span style="color:var(--muted)">Current BBE Status</span><br>${bbeBadge(bbeStatus)}</div>
-        <div><span style="color:var(--muted)">Shelf Life</span><br>${shelfLifeMonths} months</div>
-        <div><span style="color:var(--muted)">Available Qty</span><br><strong>${lot.baseQty.toLocaleString()} ${lot.baseUnit||''}</strong></div>
+    <!-- Lot info bar -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Warehouse</div>
+          <div style="font-weight:600">${esc(wh?.name||lot.warehouseId)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Product</div>
+          <div style="font-weight:600">${esc(prod?.name||lot.productCode)}</div>
+          <div style="font-size:10px;color:var(--muted)">${esc(lot.productCode)} · ${esc(prod?.brand||'')}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Lot Name</div>
+          <div>${esc(lot.lotName||'—')}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Available Qty</div>
+          <div style="font-weight:700;color:#16a34a">${lot.baseQty.toLocaleString()} ${esc(lot.baseUnit||'')}</div>
+        </div>
       </div>
     </div>
 
-    <!-- Editable fields -->
-    <div style="margin-bottom:14px">
-      <label style="font-size:13px;font-weight:600">Quantity to Adjust <span style="color:#ef4444">*</span></label>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+    <!-- Current BBE status strip -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Current BBE Info</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px">
+        <div>
+          <div style="color:var(--muted);font-size:11px">Filling Date</div>
+          <div style="font-weight:600">${lot.lotDate}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px">BBE Date</div>
+          <div style="font-weight:600">${bbeDate||'—'}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px">Status</div>
+          <div style="margin-top:2px">${bbeBadge(bbeStatus)}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px">Age / Shelf Life</div>
+          <div style="font-weight:600">${ageMonths}m${agePercent!==null?' ('+agePercent+'%)':''}</div>
+          <div style="font-size:10px;color:var(--muted)">${remainingDays!==null?(remainingDays<0?'Expired':remainingDays+' days left'):''}${shelfLifeMonths?' · '+shelfLifeMonths+'m shelf':''}</div>
+        </div>
+      </div>
+    </div>
+
+    ${prevAdjs.length>0?`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#1d4ed8">
+      🗓️ <strong>Previously adjusted ${prevAdjs.length} time${prevAdjs.length>1?'s':''}.</strong> Last: ${prevAdjs[prevAdjs.length-1].newLotDate} → BBE ${prevAdjs[prevAdjs.length-1].newBBEDate}
+    </div>`:''}
+
+    <!-- Form fields -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px">Quantity to Adjust <span style="color:#ef4444">*</span></label>
         <input id="bbe-adj-qty" type="number" min="1" step="1" max="${lot.baseQty}" placeholder="Enter qty"
           oninput="updateBBEAdjPreview()"
-          style="width:140px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-        <span style="font-size:13px;color:var(--muted)">/ ${lot.baseQty.toLocaleString()} ${lot.baseUnit||''} available</span>
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Max: ${lot.baseQty.toLocaleString()} ${esc(lot.baseUnit||'')}</div>
+      </div>
+      <div>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px">New Filling Date <span style="color:#ef4444">*</span></label>
+        <input id="bbe-adj-new-date" type="date" oninput="updateBBEAdjPreview()"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
       </div>
     </div>
     <div style="margin-bottom:14px">
-      <label style="font-size:13px;font-weight:600">New Filling Date <span style="color:#ef4444">*</span></label>
-      <input id="bbe-adj-new-date" type="date" oninput="updateBBEAdjPreview()"
-        style="display:block;margin-top:5px;width:200px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-    </div>
-    <div style="margin-bottom:18px">
-      <label style="font-size:13px;font-weight:600">Reason / Notes <span style="color:#ef4444">*</span></label>
-      <textarea id="bbe-adj-reason" rows="3" placeholder="Reason is required for audit trail"
-        style="display:block;margin-top:5px;width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);resize:vertical"></textarea>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px">Reason / Notes <span style="color:#ef4444">*</span></label>
+      <textarea id="bbe-adj-reason" rows="2" placeholder="Required for audit trail"
+        style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);resize:vertical"></textarea>
     </div>
 
-    <!-- Preview -->
-    <div id="bbe-adj-preview" style="display:none;margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+    <!-- Before / After preview (hidden until date entered) -->
+    <div id="bbe-adj-preview" style="display:none;margin-bottom:14px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
       <div style="display:grid;grid-template-columns:1fr 1fr">
-        <div style="padding:12px;background:#f0fdf4;border-right:1px solid var(--border)">
-          <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Before</div>
-          <div style="font-size:12px"><span style="color:var(--muted)">Filling Date:</span> <strong>${lot.lotDate}</strong></div>
-          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Date:</span> <strong>${lot.bbeDate||'—'}</strong></div>
-          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Status:</span> ${bbeBadge(bbeStatus)}</div>
+        <div style="padding:12px 14px;background:#f0fdf4;border-right:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Before</div>
+          <div style="font-size:12px"><span style="color:var(--muted)">Filling Date</span><br><strong>${lot.lotDate}</strong></div>
+          <div style="font-size:12px;margin-top:6px"><span style="color:var(--muted)">BBE Date</span><br><strong>${bbeDate||'—'}</strong></div>
+          <div style="font-size:12px;margin-top:6px"><span style="color:var(--muted)">BBE Status</span><br>${bbeBadge(bbeStatus)}</div>
         </div>
-        <div style="padding:12px;background:#eff6ff">
-          <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">After</div>
-          <div style="font-size:12px"><span style="color:var(--muted)">Filling Date:</span> <strong id="prev-new-date">—</strong></div>
-          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Date:</span> <strong id="prev-new-bbe">—</strong></div>
-          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Status:</span> <span id="prev-new-status">—</span></div>
+        <div style="padding:12px 14px;background:#eff6ff">
+          <div style="font-size:10px;font-weight:700;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">After</div>
+          <div style="font-size:12px"><span style="color:var(--muted)">Filling Date</span><br><strong id="prev-new-date">—</strong></div>
+          <div style="font-size:12px;margin-top:6px"><span style="color:var(--muted)">BBE Date</span><br><strong id="prev-new-bbe">—</strong></div>
+          <div style="font-size:12px;margin-top:6px"><span style="color:var(--muted)">BBE Status</span><br><span id="prev-new-status">—</span></div>
         </div>
       </div>
-      <div id="bbe-adj-confirm-msg" style="padding:10px 14px;background:#fefce8;border-top:1px solid var(--border);font-size:12px;color:#713f12"></div>
+      <div id="bbe-adj-confirm-msg" style="padding:8px 14px;background:#fefce8;border-top:1px solid var(--border);font-size:12px;color:#713f12"></div>
     </div>
 
-    <div id="bbe-adj-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;font-size:13px;color:#b91c1c;margin-bottom:14px"></div>
+    <div id="bbe-adj-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;font-size:13px;color:#b91c1c;margin-bottom:12px"></div>
 
-    <div style="display:flex;justify-content:flex-end;gap:10px">
+    <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:4px;border-top:1px solid var(--border)">
       <button onclick="closeModal('bbeAdjustmentModal')" style="padding:8px 18px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);cursor:pointer;font-size:13px">Cancel</button>
-      <button onclick="submitBBEAdjustment()" style="padding:8px 18px;border-radius:6px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600">Submit Adjustment</button>
+      <button onclick="submitBBEAdjustment()" style="padding:8px 20px;border-radius:6px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600">Submit Adjustment</button>
     </div>
   `;
 
