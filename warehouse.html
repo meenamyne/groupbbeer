@@ -298,6 +298,17 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <div id="bbeAdjustment-content"></div>
     </div>
 
+    <!-- BBE Adjustment Modal — lives outside dynamic content so position:fixed works correctly -->
+    <div id="bbeAdjustmentModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+      <div style="background:var(--card);border-radius:12px;width:620px;max-width:96vw;max-height:94vh;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.4);display:flex;flex-direction:column;position:relative">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--card)">
+          <h3 style="margin:0;font-size:16px;font-weight:700">🗓️ Adjust Filling Date / BBE</h3>
+          <button onclick="closeModal('bbeAdjustmentModal')" style="background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px;border-radius:4px" title="Close">×</button>
+        </div>
+        <div id="bbeAdjModal-body" style="padding:20px 22px;overflow-y:auto;flex:1"></div>
+      </div>
+    </div>
+
   </div><!-- /main-content -->
 </div><!-- /app -->
 
@@ -1421,7 +1432,8 @@ function renderOverview(){
             const wh=S.warehouses.find(w=>w.id===l.warehouseId);
             const bbeSt=getBBEStatus(l.bbeDate,l.lotDate);
             const bc=bbeColors[bbeSt]||'#94a3b8';
-            const lotWasAdj=S.bbeAdjustments.some(a=>a.productCode===l.productCode&&a.warehouseId===l.warehouseId&&(a.newLotDate===l.lotDate||a.oldLotDate===l.lotDate));
+            const adjLotDate=normDate(l.lotDate)||l.lotDate;
+            const lotWasAdj=S.bbeAdjustments.some(a=>a.productCode===l.productCode&&a.warehouseId===l.warehouseId&&(normDate(a.oldLotDate)===adjLotDate||normDate(a.newLotDate)===adjLotDate));
             return`<tr style="border-top:1px solid #f1f5f9${lotWasAdj?';background:#f0f9ff':''}">
               <td style="padding:5px 10px;font-weight:500;color:var(--text)">${esc(l.lotName||'—')}${lotWasAdj?` <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:6px" title="This lot was involved in a BBE filling date adjustment">🗓️</span>`:''}</td>
               <td style="padding:5px 10px;color:var(--muted)">${esc(l.lotDate||'—')}</td>
@@ -4470,7 +4482,7 @@ function renderBBEAdjustment(){
       const rowBg=statusRank===1?'background:#fff1f2':statusRank===2?'background:#fff7ed':statusRank===3?'background:#fffbeb':'';
       const agePctColor=l.agePercent===null?'var(--muted)':l.agePercent>=75?'#dc2626':l.agePercent>=50?'#d97706':'#16a34a';
       const remColor=l.remainingDays===null?'var(--muted)':l.remainingDays<0?'#dc2626':l.remainingDays<30?'#dc2626':l.remainingDays<90?'#d97706':'#16a34a';
-      const adjBadge=S.bbeAdjustments.some(a=>a.productCode===l.productCode&&a.warehouseId===l.warehouseId)
+      const adjBadge=S.bbeAdjustments.some(a=>a.productCode===l.productCode&&a.warehouseId===l.warehouseId&&(a.oldLotDate===l.lotDate||a.newLotDate===l.lotDate))
         ?`<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:8px;margin-left:4px" title="Filling date was previously adjusted">🗓️ Adj</span>`:'';
       return `<tr style="${rowBg}">
         <td style="font-size:12px">${esc(l.warehouseName)}</td>
@@ -4492,17 +4504,6 @@ function renderBBEAdjustment(){
     }).join('')}
     </tbody>
   </table></div>`}
-</div>
-
-<!-- BBE Adjustment Modal -->
-<div id="bbeAdjustmentModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
-  <div style="background:var(--card);border-radius:12px;width:600px;max-width:96vw;max-height:94vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);display:flex;flex-direction:column">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);flex-shrink:0">
-      <h3 style="margin:0;font-size:16px;font-weight:700">🗓️ Adjust Filling Date / BBE</h3>
-      <button onclick="closeModal('bbeAdjustmentModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1">×</button>
-    </div>
-    <div id="bbeAdjModal-body" style="padding:20px 24px;overflow-y:auto"></div>
-  </div>
 </div>
 `;
 }
