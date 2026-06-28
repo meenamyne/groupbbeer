@@ -188,6 +188,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <div class="snl">Inventory</div>
       <button class="ni active" id="nav-overview" onclick="navigate('overview')"><span class="ic">📊</span> Overview</button>
       <button class="ni" id="nav-warehouses" onclick="navigate('warehouses')"><span class="ic">🏭</span> Warehouses</button>
+      <button class="ni" id="nav-bbeAdjustment" onclick="navigate('bbeAdjustment')"><span class="ic">🗓️</span> BBE Adjustment</button>
       <div class="snl" style="margin-top:6px">Analytics</div>
       <button class="ni" id="nav-reports" onclick="navigate('reports')"><span class="ic">📈</span> Reports</button>
       <button class="ni" id="nav-log" onclick="navigate('log')"><span class="ic">📋</span> Movement Log</button>
@@ -291,6 +292,10 @@ tr:hover td{background:rgba(0,0,0,.012)}
     <!-- UPLOAD DELIVERY -->
     <div class="page" id="page-uploadDelivery">
       <div id="uploadDelivery-content"></div>
+    </div>
+
+    <div class="page" id="page-bbeAdjustment">
+      <div id="bbeAdjustment-content"></div>
     </div>
 
   </div><!-- /main-content -->
@@ -624,7 +629,7 @@ const CONFIG = {
   // CRM_SHEET_ID removed — client/shop linking not used in warehouse module
 };
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance', SUPPLIERS:'Suppliers', BRANDS:'Brands' };
+const WH_SHEETS = { PRODUCTS:'product_info', WAREHOUSES:'Warehouses', STOCK:'Stock', MOVEMENTS:'StockMovements', PROD_SETTINGS:'ProductSettings', STOCK_LOT:'Stock_Lot_Balance', SUPPLIERS:'Suppliers', BRANDS:'Brands', BBE_ADJUSTMENTS:'BBE_Adjustments' };
 
 // ══════════════════════════════════════════
 // STATE
@@ -635,6 +640,8 @@ const S = {
   // clients removed — shop/client linking not used in warehouse module
   movementsLoadError:'', // set by loadStockMovements on API failure
   uploadDeliveryRows:[], uploadDeliveryBatchId:'', uploadValidationErrors:[],
+  bbeAdjustments:[],
+  bbeAdjFilter:{warehouseId:'',query:'',brand:'',bbeStatus:'',eligibleOnly:true},
   page:'overview', rptTab:'category',
 };
 
@@ -790,6 +797,7 @@ async function ensureWarehouseSheets(){
       {title:WH_SHEETS.BRANDS,       h:[['BrandID','BrandName','SupplierName','Notes']]},
       {title:WH_SHEETS.PROD_SETTINGS, h:[['ProductCode','MinQty','BaseUnit','CaseUnitName','UnitsPerCase']]},
       {title:WH_SHEETS.STOCK_LOT,  h:[['LotID','WarehouseID','ProductCode','LotDate','BBEDate','BaseQty','BaseUnit','LastUpdated','LotName']]},
+      {title:WH_SHEETS.BBE_ADJUSTMENTS, h:[['AdjustmentID','AdjustmentDate','WarehouseID','WarehouseName','ProductCode','ProductName','Brand','OldLotDate','OldBBEDate','OldBBEStatus','NewLotDate','NewBBEDate','NewBBEStatus','AdjustedQty','BaseUnit','OldLotName','NewLotName','Reason','CreatedBy','CreatedAt']]},
     ];
 
     // Create any missing sheets and capture their new sheetIds
@@ -834,7 +842,7 @@ async function loadAllData(){
   try{
     await ensureWarehouseSheets();
     await Promise.all([
-      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands(),
+      loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands(), loadBBEAdjustments(),
     ]);
     renderCurrentPage();
   }catch(e){ showToast('Load error: '+e.message,'error'); }
@@ -1046,7 +1054,7 @@ function clearOvFilters(){
 async function refreshWhData(){
   showLoader(true);
   try{
-    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands()]);
+    await Promise.all([loadWarehouses(), loadWhProducts(), loadStock(), loadStockMovements(), loadProdSettings(), loadStockLots(), loadSuppliers(), loadBrands(), loadBBEAdjustments()]);
     renderCurrentPage();
     showToast('Data refreshed','success');
   }catch(e){ showToast('Refresh error: '+e.message,'error'); }
@@ -1243,6 +1251,7 @@ function renderCurrentPage(){
   else if(p==='brands') renderBrands();
   else if(p==='suppliers') renderSuppliers();
   else if(p==='uploadDelivery') renderUploadDeliveryPage();
+  else if(p==='bbeAdjustment') renderBBEAdjustment();
 }
 
 // ══════════════════════════════════════════
@@ -1298,25 +1307,25 @@ function renderOverview(){
         <div style="text-align:center;padding:8px 0">
           <div style="font-size:22px;font-weight:800;color:#16a34a">${bbeCounts.Normal}</div>
           <div style="font-size:11px;color:#16a34a;font-weight:600">✅ Normal</div>
-          <div style="font-size:10px;color:var(--muted)">lots</div>
+          <div style="font-size:10px;color:var(--muted)">&lt;50% shelf life used</div>
         </div></div>
       <div class="sc" style="cursor:pointer;border-left:4px solid #d97706" onclick="showBbeLots('Warning')">
         <div style="text-align:center;padding:8px 0">
           <div style="font-size:22px;font-weight:800;color:#d97706">${bbeCounts.Warning}</div>
           <div style="font-size:11px;color:#d97706;font-weight:600">🟡 Warning</div>
-          <div style="font-size:10px;color:var(--muted)">&lt;6 months</div>
+          <div style="font-size:10px;color:var(--muted)">50–74% shelf life used</div>
         </div></div>
       <div class="sc" style="cursor:pointer;border-left:4px solid #dc2626" onclick="showBbeLots('Critical')">
         <div style="text-align:center;padding:8px 0">
           <div style="font-size:22px;font-weight:800;color:#dc2626">${bbeCounts.Critical}</div>
           <div style="font-size:11px;color:#dc2626;font-weight:600">🔴 Critical</div>
-          <div style="font-size:10px;color:var(--muted)">&lt;3 months</div>
+          <div style="font-size:10px;color:var(--muted)">≥75% shelf life used</div>
         </div></div>
       <div class="sc" style="cursor:pointer;border-left:4px solid #6b7280" onclick="showBbeLots('Expired')">
         <div style="text-align:center;padding:8px 0">
           <div style="font-size:22px;font-weight:800;color:#6b7280">${bbeCounts.Expired}</div>
           <div style="font-size:11px;color:#6b7280;font-weight:600">💀 Expired</div>
-          <div style="font-size:10px;color:var(--muted)">lots</div>
+          <div style="font-size:10px;color:var(--muted)">past BBE date</div>
         </div></div>
     </div>
     ${bbeAlert>0?`<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:12px;color:#dc2626">
@@ -1503,13 +1512,27 @@ function toggleOvLots(safeId){
 
 function showBbeLots(filterStatus){
   const lots=S.stockLots.filter(l=>l.baseQty>0&&(l.bbeDate?getBBEStatus(l.bbeDate,l.lotDate):getBBEStatus(''))===(filterStatus||getBBEStatus('')));
-  // Build and show detail in a modal-style overlay inside the overview content area
   const el=document.getElementById('overview-content');
   if(!el) return;
   const statusColors={Normal:'#16a34a',Warning:'#d97706',Critical:'#dc2626',Expired:'#6b7280'};
   const color=statusColors[filterStatus]||'#6b7280';
   const getWhName=id=>S.warehouses.find(w=>w.id===id)?.name||id||'—';
   const getProdName=code=>S.whProducts.find(p=>p.code===code)?.name||code||'—';
+  const today=new Date().toISOString().split('T')[0];
+
+  // Compute age info for a lot: ageMonths, pctConsumed
+  function lotAgeInfo(l){
+    const ageMonths=monthsBetweenDates(l.lotDate,today);
+    if(!l.bbeDate||!l.lotDate) return {ageMonths,pct:null};
+    const lot=new Date(normDate(l.lotDate)||l.lotDate);
+    const bbe=new Date(normDate(l.bbeDate)||l.bbeDate);
+    const now=new Date(); now.setHours(0,0,0,0);
+    const totalDays=Math.floor((bbe-lot)/86400000);
+    if(totalDays<=0) return {ageMonths,pct:null};
+    const consumed=Math.floor((now-lot)/86400000);
+    const pct=Math.round(Math.max(0,Math.min(consumed/totalDays,1))*100);
+    return {ageMonths,pct};
+  }
 
   let h=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
     <button class="btn bo" onclick="renderOverview()">← Back to Overview</button>
@@ -1523,17 +1546,24 @@ function showBbeLots(filterStatus){
   h+=`<div class="tbl-wrap"><table>
     <thead><tr>
       <th>Product</th><th>Warehouse</th><th>Lot Date</th>
+      <th style="text-align:center">Age</th>
       <th style="text-align:center">Qty</th><th>Unit</th>
       <th>BBE Date</th><th style="text-align:center">Status</th>
     </tr></thead>
     <tbody>
-    ${lots.sort((a,b)=>a.bbeDate.localeCompare(b.bbeDate)).map(l=>{
+    ${lots.sort((a,b)=>(a.bbeDate||'').localeCompare(b.bbeDate||'')).map(l=>{
       const st=l.bbeDate?getBBEStatus(l.bbeDate,l.lotDate):'Normal';
+      const {ageMonths,pct}=lotAgeInfo(l);
+      const ageColor=pct===null?'var(--muted)':pct>=75?'#dc2626':pct>=50?'#d97706':'#16a34a';
+      const ageLabel=`${ageMonths}m${pct!==null?' ('+pct+'%)':''}`;
       return`<tr>
         <td><div style="font-weight:600">${esc(getProdName(l.productCode))}</div>
             <div style="font-size:10px;color:var(--muted)">${esc(l.productCode)}</div></td>
         <td style="font-size:12px">${esc(getWhName(l.warehouseId))}</td>
         <td style="font-size:12px;white-space:nowrap">${l.lotDate||'—'}</td>
+        <td style="text-align:center;white-space:nowrap">
+          <span style="font-size:12px;font-weight:600;color:${ageColor}">${ageLabel}</span>
+        </td>
         <td style="text-align:center;font-weight:700">${l.baseQty}</td>
         <td style="font-size:12px;color:var(--muted)">${esc(l.baseUnit)||'units'}</td>
         <td style="font-size:12px;white-space:nowrap;color:${color}">${l.bbeDate||'—'}</td>
@@ -4187,6 +4217,428 @@ function downloadUploadErrorReport(){
   ws['!cols']=headers.map((_,i)=>({wch:i===2?45:16}));
   XLSX.utils.book_append_sheet(wb,ws,'Upload_Review');
   XLSX.writeFile(wb,'Delivery_Upload_Error_Report.xlsx');
+}
+
+// ══════════════════════════════════════════
+// BBE ADJUSTMENT
+// ══════════════════════════════════════════
+
+async function loadBBEAdjustments(){
+  try{
+    const rows=await whGet(`${WH_SHEETS.BBE_ADJUSTMENTS}!A:T`);
+    S.bbeAdjustments=(rows||[]).slice(1).map(r=>({
+      id:r[0]||'', date:r[1]||'', warehouseId:r[2]||'', warehouseName:r[3]||'',
+      productCode:r[4]||'', productName:r[5]||'', brand:r[6]||'',
+      oldLotDate:r[7]||'', oldBBEDate:r[8]||'', oldBBEStatus:r[9]||'',
+      newLotDate:r[10]||'', newBBEDate:r[11]||'', newBBEStatus:r[12]||'',
+      adjQty:parseFloat(r[13])||0, baseUnit:r[14]||'',
+      oldLotName:r[15]||'', newLotName:r[16]||'',
+      reason:r[17]||'', createdBy:r[18]||'', createdAt:r[19]||'',
+    })).filter(a=>a.id);
+  }catch(e){ S.bbeAdjustments=[]; }
+}
+
+function monthsBetweenDates(startDateStr, endDateStr){
+  const startIso=normDate(startDateStr);
+  const endIso=normDate(endDateStr);
+  if(!startIso||!endIso) return 0;
+  const s=new Date(startIso);
+  const e=new Date(endIso);
+  let months=(e.getFullYear()-s.getFullYear())*12+(e.getMonth()-s.getMonth());
+  if(e.getDate()<s.getDate()) months-=1;
+  return Math.max(0,months);
+}
+
+function getBBEAdjThreshold(shelfLifeMonths){
+  const m=parseFloat(shelfLifeMonths)||0;
+  if(m<=0) return 0;
+  return Math.ceil(m*0.30);
+}
+
+function getBBEAdjustmentLots(){
+  const today=new Date().toISOString().split('T')[0];
+  return S.stockLots
+    .filter(l=>(parseFloat(l.baseQty)||0)>0)
+    .map(l=>{
+      const wh=S.warehouses.find(w=>w.id===l.warehouseId);
+      const prod=S.whProducts.find(p=>p.code===l.productCode);
+      if(!wh||!prod) return null;
+      if(wh.type!=='Internal') return null;
+      const shelfLifeMonths=parseFloat(prod.shelfLife)||0;
+      if(shelfLifeMonths<=0) return null;
+      const thresholdMonths=getBBEAdjThreshold(shelfLifeMonths);
+      const ageMonths=monthsBetweenDates(l.lotDate,today);
+      const eligible=ageMonths>=thresholdMonths;
+      const bbeStatus=getBBEStatus(l.bbeDate,l.lotDate);
+      return{
+        ...l,
+        warehouseName:wh.name||'',
+        warehouseType:wh.type||'',
+        productName:prod.name||'',
+        brand:prod.brand||'',
+        supplierName:prod.supplierName||'',
+        shelfLifeMonths,
+        thresholdMonths,
+        ageMonths,
+        eligible,
+        bbeStatus,
+      };
+    })
+    .filter(Boolean);
+}
+
+function renderBBEAdjustment(){
+  const el=document.getElementById('bbeAdjustment-content');
+  if(!el) return;
+
+  const f=S.bbeAdjFilter;
+  const allLots=getBBEAdjustmentLots();
+
+  // Apply filters
+  let lots=allLots;
+  if(f.eligibleOnly) lots=lots.filter(l=>l.eligible);
+  if(f.warehouseId) lots=lots.filter(l=>l.warehouseId===f.warehouseId);
+  if(f.brand) lots=lots.filter(l=>l.brand===f.brand);
+  if(f.bbeStatus) lots=lots.filter(l=>l.bbeStatus===f.bbeStatus);
+  if(f.query){
+    const q=f.query.toLowerCase();
+    lots=lots.filter(l=>
+      l.productCode.toLowerCase().includes(q)||
+      l.productName.toLowerCase().includes(q)||
+      l.brand.toLowerCase().includes(q)||
+      (l.lotName||'').toLowerCase().includes(q)
+    );
+  }
+
+  // Summary stats
+  const eligibleLots=allLots.filter(l=>l.eligible);
+  const totalQty=eligibleLots.reduce((s,l)=>s+l.baseQty,0);
+  const internalWhs=new Set(eligibleLots.map(l=>l.warehouseId)).size;
+  const critWarn=eligibleLots.filter(l=>l.bbeStatus==='Critical'||l.bbeStatus==='Warning'||l.bbeStatus==='Expired').length;
+
+  const internalWarehouseOptions=S.warehouses.filter(w=>w.type==='Internal'&&w.isActive!=='false');
+  const brands=[...new Set(allLots.map(l=>l.brand).filter(Boolean))].sort();
+
+  el.innerHTML=`
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+    <span style="font-size:22px">🗓️</span>
+    <h2 style="margin:0;font-size:20px;font-weight:700">BBE Adjustment</h2>
+  </div>
+  <p style="margin:0 0 20px;color:var(--muted);font-size:13px">Adjust filling date and recalculate BBE status for eligible internal warehouse stock (lots ≥ 30% of shelf life age)</p>
+
+  <!-- Summary cards -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Eligible Lots</div>
+      <div style="font-size:24px;font-weight:700">${eligibleLots.length}</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Total Base Qty</div>
+      <div style="font-size:24px;font-weight:700">${totalQty.toLocaleString()}</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Internal Warehouses</div>
+      <div style="font-size:24px;font-weight:700">${internalWhs}</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Critical / Warning</div>
+      <div style="font-size:24px;font-weight:700;color:${critWarn>0?'#ef4444':'inherit'}">${critWarn}</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+    <select onchange="S.bbeAdjFilter.warehouseId=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+      <option value="">All Warehouses</option>
+      ${internalWarehouseOptions.map(w=>`<option value="${w.id}" ${f.warehouseId===w.id?'selected':''}>${w.name}</option>`).join('')}
+    </select>
+    <input type="text" placeholder="Search product / lot name…" value="${f.query||''}"
+      oninput="S.bbeAdjFilter.query=this.value;renderBBEAdjustment()"
+      style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);width:220px">
+    <select onchange="S.bbeAdjFilter.brand=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+      <option value="">All Brands</option>
+      ${brands.map(b=>`<option value="${b}" ${f.brand===b?'selected':''}>${b}</option>`).join('')}
+    </select>
+    <select onchange="S.bbeAdjFilter.bbeStatus=this.value;renderBBEAdjustment()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+      <option value="">All BBE Status</option>
+      <option value="Normal" ${f.bbeStatus==='Normal'?'selected':''}>Normal</option>
+      <option value="Warning" ${f.bbeStatus==='Warning'?'selected':''}>Warning</option>
+      <option value="Critical" ${f.bbeStatus==='Critical'?'selected':''}>Critical</option>
+      <option value="Expired" ${f.bbeStatus==='Expired'?'selected':''}>Expired</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+      <input type="checkbox" ${f.eligibleOnly?'checked':''} onchange="S.bbeAdjFilter.eligibleOnly=this.checked;renderBBEAdjustment()" style="cursor:pointer">
+      Eligible lots only
+    </label>
+    <span style="color:var(--muted);font-size:12px;margin-left:auto">${lots.length} lot${lots.length!==1?'s':''} shown</span>
+  </div>
+
+  <!-- Table -->
+  ${lots.length===0?`
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:40px;text-align:center;color:var(--muted)">
+    <div style="font-size:32px;margin-bottom:12px">🗓️</div>
+    <div style="font-weight:600;margin-bottom:6px">No eligible lots found</div>
+    <div style="font-size:13px">Products appear here once their lot age reaches 30% of shelf life in an internal warehouse.</div>
+  </div>`:
+  `<div style="overflow-x:auto">
+  <table class="tbl" style="min-width:1100px">
+    <thead><tr>
+      <th>Warehouse</th><th>Product Code</th><th>Product Name</th><th>Brand</th>
+      <th>Lot Name</th><th>Filling Date</th><th>BBE Date</th><th>BBE Status</th>
+      <th>Shelf Life</th><th>Age</th><th>30% Threshold</th><th>Qty (Base)</th><th>Unit</th><th>Action</th>
+    </tr></thead>
+    <tbody>
+    ${lots.map(l=>{
+      const lotKey=encodeURIComponent(JSON.stringify({warehouseId:l.warehouseId,productCode:l.productCode,lotDate:l.lotDate}));
+      const rowBg=l.eligible?'background:#fefce8':'';
+      return `<tr style="${rowBg}">
+        <td style="font-size:12px">${l.warehouseName}</td>
+        <td><code style="font-size:11px">${l.productCode}</code></td>
+        <td style="font-size:12px">${l.productName}</td>
+        <td style="font-size:12px">${l.brand||'—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${l.lotName||'—'}</td>
+        <td style="font-size:12px">${l.lotDate}</td>
+        <td style="font-size:12px">${l.bbeDate||'—'}</td>
+        <td style="text-align:center">${bbeBadge(l.bbeStatus)}</td>
+        <td style="font-size:12px;text-align:center">${l.shelfLifeMonths}m</td>
+        <td style="font-size:12px;text-align:center">
+          <span style="color:${l.ageMonths>=l.thresholdMonths?'#16a34a':'var(--muted)'}">${l.ageMonths}m</span>
+          <span style="color:var(--muted)"> / ${l.shelfLifeMonths}m</span>
+        </td>
+        <td style="font-size:12px;text-align:center">${l.thresholdMonths}m</td>
+        <td style="font-size:12px;text-align:right">${l.baseQty.toLocaleString()}</td>
+        <td style="font-size:12px">${l.baseUnit||'—'}</td>
+        <td><button class="btn" onclick="openBBEAdjModal('${lotKey}')" style="font-size:12px;padding:4px 10px">Adjust</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`}
+</div>
+
+<!-- BBE Adjustment Modal -->
+<div id="bbeAdjustmentModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--card);border-radius:12px;padding:28px;width:580px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:17px">🗓️ Adjust Filling Date / BBE</h3>
+      <button onclick="closeModal('bbeAdjustmentModal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div id="bbeAdjModal-body"></div>
+  </div>
+</div>
+`;
+}
+
+function openBBEAdjModal(lotKeyEncoded){
+  let lotKey;
+  try{ lotKey=JSON.parse(decodeURIComponent(lotKeyEncoded)); }catch(e){ return; }
+
+  const lot=S.stockLots.find(l=>
+    l.warehouseId===lotKey.warehouseId&&
+    l.productCode===lotKey.productCode&&
+    l.lotDate===lotKey.lotDate
+  );
+  if(!lot){ showToast('Lot not found — please refresh','error'); return; }
+
+  const wh=S.warehouses.find(w=>w.id===lot.warehouseId);
+  const prod=S.whProducts.find(p=>p.code===lot.productCode);
+  const shelfLifeMonths=parseFloat(prod?.shelfLife)||0;
+  const bbeStatus=getBBEStatus(lot.bbeDate,lot.lotDate);
+
+  // Store current lot reference for submit
+  S._bbeAdjLot={...lot, warehouseName:wh?.name||'', productName:prod?.name||'', brand:prod?.brand||'', supplierName:prod?.supplierName||'', shelfLifeMonths};
+
+  const modalEl=document.getElementById('bbeAdjustmentModal');
+  const bodyEl=document.getElementById('bbeAdjModal-body');
+  bodyEl.innerHTML=`
+    <!-- Read-only info -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:18px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+        <div><span style="color:var(--muted)">Warehouse</span><br><strong>${lot.warehouseId}</strong> ${wh?.name||''}</div>
+        <div><span style="color:var(--muted)">Product</span><br><strong>${lot.productCode}</strong> ${prod?.name||''}</div>
+        <div><span style="color:var(--muted)">Brand</span><br>${prod?.brand||'—'}</div>
+        <div><span style="color:var(--muted)">Lot Name</span><br>${lot.lotName||'—'}</div>
+        <div><span style="color:var(--muted)">Current Filling Date</span><br><strong>${lot.lotDate}</strong></div>
+        <div><span style="color:var(--muted)">Current BBE Date</span><br><strong>${lot.bbeDate||'—'}</strong></div>
+        <div><span style="color:var(--muted)">Current BBE Status</span><br>${bbeBadge(bbeStatus)}</div>
+        <div><span style="color:var(--muted)">Shelf Life</span><br>${shelfLifeMonths} months</div>
+        <div><span style="color:var(--muted)">Available Qty</span><br><strong>${lot.baseQty.toLocaleString()} ${lot.baseUnit||''}</strong></div>
+      </div>
+    </div>
+
+    <!-- Editable fields -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:13px;font-weight:600">Quantity to Adjust <span style="color:#ef4444">*</span></label>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+        <input id="bbe-adj-qty" type="number" min="1" step="1" max="${lot.baseQty}" placeholder="Enter qty"
+          oninput="updateBBEAdjPreview()"
+          style="width:140px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <span style="font-size:13px;color:var(--muted)">/ ${lot.baseQty.toLocaleString()} ${lot.baseUnit||''} available</span>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:13px;font-weight:600">New Filling Date <span style="color:#ef4444">*</span></label>
+      <input id="bbe-adj-new-date" type="date" oninput="updateBBEAdjPreview()"
+        style="display:block;margin-top:5px;width:200px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+    </div>
+    <div style="margin-bottom:18px">
+      <label style="font-size:13px;font-weight:600">Reason / Notes <span style="color:#ef4444">*</span></label>
+      <textarea id="bbe-adj-reason" rows="3" placeholder="Reason is required for audit trail"
+        style="display:block;margin-top:5px;width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);resize:vertical"></textarea>
+    </div>
+
+    <!-- Preview -->
+    <div id="bbe-adj-preview" style="display:none;margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:1fr 1fr">
+        <div style="padding:12px;background:#f0fdf4;border-right:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Before</div>
+          <div style="font-size:12px"><span style="color:var(--muted)">Filling Date:</span> <strong>${lot.lotDate}</strong></div>
+          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Date:</span> <strong>${lot.bbeDate||'—'}</strong></div>
+          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Status:</span> ${bbeBadge(bbeStatus)}</div>
+        </div>
+        <div style="padding:12px;background:#eff6ff">
+          <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">After</div>
+          <div style="font-size:12px"><span style="color:var(--muted)">Filling Date:</span> <strong id="prev-new-date">—</strong></div>
+          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Date:</span> <strong id="prev-new-bbe">—</strong></div>
+          <div style="font-size:12px;margin-top:4px"><span style="color:var(--muted)">BBE Status:</span> <span id="prev-new-status">—</span></div>
+        </div>
+      </div>
+      <div id="bbe-adj-confirm-msg" style="padding:10px 14px;background:#fefce8;border-top:1px solid var(--border);font-size:12px;color:#713f12"></div>
+    </div>
+
+    <div id="bbe-adj-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;font-size:13px;color:#b91c1c;margin-bottom:14px"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button onclick="closeModal('bbeAdjustmentModal')" style="padding:8px 18px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);cursor:pointer;font-size:13px">Cancel</button>
+      <button onclick="submitBBEAdjustment()" style="padding:8px 18px;border-radius:6px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600">Submit Adjustment</button>
+    </div>
+  `;
+
+  modalEl.style.display='flex';
+}
+
+function updateBBEAdjPreview(){
+  const lot=S._bbeAdjLot;
+  if(!lot) return;
+  const newDateRaw=document.getElementById('bbe-adj-new-date')?.value||'';
+  const newDateIso=normDate(newDateRaw)||newDateRaw;
+  const qty=Math.round(parseFloat(document.getElementById('bbe-adj-qty')?.value)||0);
+  const preview=document.getElementById('bbe-adj-preview');
+  const errEl=document.getElementById('bbe-adj-error');
+  if(errEl) errEl.style.display='none';
+  if(!newDateIso||!/^\d{4}-\d{2}-\d{2}$/.test(newDateIso)){
+    if(preview) preview.style.display='none';
+    return;
+  }
+  const newBBEDate=addMonths(newDateIso,lot.shelfLifeMonths);
+  const newBBEStatus=getBBEStatus(newBBEDate,newDateIso);
+  if(preview){
+    preview.style.display='block';
+    const ndEl=document.getElementById('prev-new-date');
+    const nbEl=document.getElementById('prev-new-bbe');
+    const nsEl=document.getElementById('prev-new-status');
+    const confEl=document.getElementById('bbe-adj-confirm-msg');
+    if(ndEl) ndEl.textContent=newDateIso;
+    if(nbEl) nbEl.textContent=newBBEDate;
+    if(nsEl) nsEl.innerHTML=bbeBadge(newBBEStatus);
+    const today=new Date().toISOString().split('T')[0];
+    let warn='';
+    if(newDateIso>today) warn=' ⚠️ Note: new filling date is in the future.';
+    if(newDateIso<lot.lotDate) warn=' ⚠️ Note: new filling date is earlier than current filling date.';
+    if(confEl) confEl.textContent=qty>0?`This will move ${qty} ${lot.baseUnit} from lot ${lot.lotDate} to new filling date ${newDateIso}. Total stock will remain unchanged.${warn}`:'Enter quantity above.';
+  }
+}
+
+async function submitBBEAdjustment(){
+  const lot=S._bbeAdjLot;
+  if(!lot){ showToast('No lot selected','error'); return; }
+
+  const qty=Math.round(parseFloat(document.getElementById('bbe-adj-qty')?.value)||0);
+  const newDateRaw=document.getElementById('bbe-adj-new-date')?.value||'';
+  const newLotDate=normDate(newDateRaw)||newDateRaw;
+  const reason=(document.getElementById('bbe-adj-reason')?.value||'').trim();
+
+  const today=new Date().toISOString().split('T')[0];
+  const errEl=document.getElementById('bbe-adj-error');
+
+  const errs=[];
+  if(!(qty>0)) errs.push('Quantity must be greater than 0.');
+  if(qty>lot.baseQty) errs.push(`Quantity (${qty}) cannot exceed available lot quantity (${lot.baseQty}).`);
+  if(!newLotDate) errs.push('Please enter a new filling date.');
+  else if(!/^\d{4}-\d{2}-\d{2}$/.test(newLotDate)) errs.push('New filling date must be a valid date (YYYY-MM-DD).');
+  else if(newLotDate===lot.lotDate) errs.push('New filling date is the same as current filling date.');
+  else if(newLotDate>today) errs.push('New filling date cannot be in the future.');
+  if(!reason) errs.push('Reason is required for BBE adjustment.');
+
+  if(errs.length){
+    if(errEl){ errEl.textContent=errs.join(' '); errEl.style.display='block'; }
+    return;
+  }
+  if(errEl) errEl.style.display='none';
+
+  const shelfLifeMonths=lot.shelfLifeMonths;
+  const newBBEDate=addMonths(newLotDate,shelfLifeMonths);
+  const newBBEStatus=getBBEStatus(newBBEDate,newLotDate);
+  const oldBBEStatus=getBBEStatus(lot.bbeDate,lot.lotDate);
+
+  const adjustmentId=genId('BBE');
+  const now=new Date().toISOString();
+  const createdBy=S.user?.name||S.user?.email||'';
+
+  const newLotName=lot.lotName
+    ?`${lot.lotName} / BBE Adj ${newLotDate}`
+    :`BBE Adj ${lot.productCode} ${newLotDate}`;
+
+  showLoader(true);
+  try{
+    // 1. Deduct from old lot
+    await applyLotStock(lot.warehouseId,lot.productCode,lot.lotDate,lot.bbeDate,-qty,lot.baseUnit,false,lot.lotName||'');
+
+    // 2. Add to new lot date (allowCreate=true)
+    await applyLotStock(lot.warehouseId,lot.productCode,newLotDate,newBBEDate,qty,lot.baseUnit,true,newLotName);
+
+    // 3. Audit row in BBE_Adjustments
+    const auditRow=[
+      adjustmentId, today,
+      lot.warehouseId, lot.warehouseName,
+      lot.productCode, lot.productName, lot.brand||'',
+      lot.lotDate, lot.bbeDate||'', oldBBEStatus,
+      newLotDate, newBBEDate, newBBEStatus,
+      qty, lot.baseUnit||'',
+      lot.lotName||'', newLotName,
+      reason, createdBy, now
+    ];
+    await whAppend(WH_SHEETS.BBE_ADJUSTMENTS,[auditRow]);
+
+    // 4. StockMovements audit row (no stock qty change — informational only)
+    const prod=S.whProducts.find(p=>p.code===lot.productCode);
+    const mvRow=[
+      genId('MV'), 'BBE Adjustment', today,
+      lot.warehouseId, '',
+      lot.productCode, prod?.name||'', prod?.brand||'',
+      lot.baseUnit||'', qty,
+      adjustmentId,
+      `BBE adjusted from ${lot.lotDate} / ${lot.bbeDate||''} to ${newLotDate} / ${newBBEDate}. Reason: ${reason}`,
+      createdBy, now,
+      newLotDate, qty, lot.baseUnit||'',
+      'FALSE', '',
+      newBBEDate, newBBEStatus, '',
+      prod?.supplierName||'', newLotName
+    ];
+    await whAppend(WH_SHEETS.MOVEMENTS,[mvRow]);
+
+    // Reload
+    await Promise.all([loadStockLots(), loadStockMovements(), loadBBEAdjustments()]);
+
+    closeModal('bbeAdjustmentModal');
+    renderBBEAdjustment();
+    showToast('BBE adjustment completed successfully','success');
+
+  }catch(e){
+    showToast('BBE adjustment failed: '+e.message,'error');
+  }finally{
+    showLoader(false);
+  }
 }
 </script>
 </body>
