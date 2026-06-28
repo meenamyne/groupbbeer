@@ -458,7 +458,6 @@ td.tds{font-weight:600;color:var(--primary)}
         <div class="pt"><h1>📅 Monthly Activity</h1><p id="actMonthLabel">Update monthly client status</p></div>
         <div class="flex gap2">
           <button class="btn bo bsm" onclick="archiveAndReset(true)">📦 Archive & Reset</button>
-          <button class="btn bp bsm" onclick="openStatusModal()">⚡ Update Status</button>
         </div>
       </div>
       <div id="arcBanner" style="display:none" class="arc-banner">
@@ -1159,6 +1158,21 @@ async function shUpdate(range,vals){ return api(`${BASE()}/values/${encodeURICom
 // shBatchUpdate: used to create new sheet tabs (addSheet requests)
 async function shBatchUpdate(requests){ return api(`${BASE()}:batchUpdate`,{method:'POST',body:JSON.stringify({requests})}); }
 
+// shDeleteRow: proper row deletion via Sheets batchUpdate deleteDimension
+let _sheetIdCache={};
+async function _getSheetId(sheetName){
+  if(_sheetIdCache[sheetName]!==undefined) return _sheetIdCache[sheetName];
+  const d=await api(BASE()+'?fields=sheets.properties');
+  (d.sheets||[]).forEach(s=>{ _sheetIdCache[s.properties.title]=s.properties.sheetId; });
+  return _sheetIdCache[sheetName]??null;
+}
+async function shDeleteRow(sheetName, rowNumber){
+  const sheetId=await _getSheetId(sheetName);
+  if(sheetId===null) throw new Error(`Sheet "${sheetName}" not found`);
+  const idx=rowNumber-1;
+  return shBatchUpdate([{deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:idx,endIndex:idx+1}}}]);
+}
+
 // ensurePlanSheets: checks which of the three planning tabs exist and creates any that are missing,
 // then writes their headers. Safe to call on every load — no-ops if tabs already exist.
 async function ensurePlanSheets(){
@@ -1266,7 +1280,7 @@ async function loadSalesTeam(){
 // ══════════════════════════════════════════
 // MONTH RESET LOGIC
 // ══════════════════════════════════════════
-function currMonth(){ return new Date().toISOString().slice(0,7); }
+function currMonth(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 
 async function checkMonthReset(){
   if(!S.clients.length) return;
@@ -1657,7 +1671,7 @@ function renderActivity2(){
 function clientCard(c){
   const scls=`status-${(c.monthlyStatus||'Grey').toLowerCase()}`;
   const pills={Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'};
-  const pv=c.products?c.products.split(',').map(p=>`<span class="badge bk2" style="font-size:10px">${p.trim()}</span>`).join(' '):'';
+  const pv=c.products?c.products.split(',').map(p=>`<span class="badge bk2" style="font-size:10px">${esc(p.trim())}</span>`).join(' '):'';
   const{score,level}=calcPriority(c);
   return `<div class="cc ${scls}" onclick="open360Modal(${c.row})">
     <div class="cc-top">
@@ -1711,7 +1725,7 @@ function renderClientsTable(){
   const pills={Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'};
   const tbody=document.getElementById('clBody');
   if(!tbody) return;
-  if(!list.length){ tbody.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="ei">🔍</div><h3>No clients found</h3></div></td></tr>`; return; }
+  if(!list.length){ tbody.innerHTML=`<tr><td colspan="13"><div class="empty"><div class="ei">🔍</div><h3>No clients found</h3></div></td></tr>`; return; }
   tbody.innerHTML=list.map(c=>{const{score,level}=calcPriority(c);return`<tr onclick="open360Modal(${c.row})" style="cursor:pointer">
     <td style="font-family:monospace;font-size:11px">${esc(c.code)||'—'}</td>
     <td>${tierBadge(c.accountTier)}</td>
@@ -1719,7 +1733,7 @@ function renderClientsTable(){
     <td>${esc(c.contact)||'—'}${c.phone?`<br><span class="tsm tmu">${esc(c.phone)}</span>`:''}</td>
     <td>${c.storeType?`<span class="badge bk2">${esc(c.storeType)}</span>`:'—'}</td>
     <td>${esc(c.province)||'—'}</td>
-    <td>${c.products?c.products.split(',').map(p=>`<span class="badge bi2" style="font-size:10px">${p.trim()}</span>`).join(' '):'—'}</td>
+    <td>${c.products?c.products.split(',').map(p=>`<span class="badge bi2" style="font-size:10px">${esc(p.trim())}</span>`).join(' '):'—'}</td>
     <td>${c.creditDays} days</td>
     <td><span class="${creditCls(c.creditStatus)}">${c.creditStatus||'Normal'}</span></td>
     <td>${esc(c.salesperson)||'—'}</td>
@@ -1764,7 +1778,8 @@ function renderSalesPage(){
       </td>
       <td><span class="tsm tmu">${esc(s.notes)||'—'}</span></td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <button class="btn bo bxs" title="Edit" onclick="openSalesModal(${s.row})">✏️</button>
+        <button class="btn bo bxs" title="View Accounts" onclick="openSalesRepModal('${esc(s.name)}')">👤</button>
+        <button class="btn bo bxs" title="Edit" onclick="openSalesModal(${s.row})" style="margin-left:4px">✏️</button>
         <button class="btn bxs" style="background:#fee2e2;color:#991b1b;margin-left:4px" title="Delete" onclick="deleteSalesMember(${s.row})">🗑️</button>
       </td>
     </tr>`;
@@ -1852,9 +1867,9 @@ async function deleteHistoryRecord(row){
   if(!confirm('Delete this history record? This cannot be undone.')) return;
   showLoader(true);
   try{
-    // FIX#5: clear all 20 history columns so row is fully blank
-    await shUpdate(`${SHEETS.HISTORY}!A${row}:T${row}`,[Array(20).fill('')]);
-    S.history=S.history.filter(h=>h.row!==row);
+    await shDeleteRow(SHEETS.HISTORY, row);
+    _sheetIdCache={};  // invalidate cache — row numbers shifted
+    await loadHistory();
     showToast('Record deleted','success');
     renderHistory();
   }catch(e){ showToast('Error: '+e.message,'error'); }
@@ -2126,8 +2141,9 @@ async function deleteClient(row){
   if(!confirm(`Delete "${c.shop}"?\n\nThis cannot be undone.`)) return;
   showLoader(true);
   try{
-    await shUpdate(`${SHEETS.CLIENTS}!A${row}:Y${row}`,[Array(25).fill('')]);
-    S.clients=S.clients.filter(x=>x.row!==row);
+    await shDeleteRow(SHEETS.CLIENTS, row);
+    _sheetIdCache={};  // invalidate cache — row numbers shifted
+    await loadClients();
     showToast(`"${c.shop}" deleted`,'success');
     renderClientsTable();
   }catch(e){ showToast('Error: '+e.message,'error'); }
@@ -2140,8 +2156,9 @@ async function deleteSalesMember(row){
   if(!confirm(`Remove "${s.name}" from Sales Team?\n\nThis cannot be undone.`)) return;
   showLoader(true);
   try{
-    await shUpdate(`${SHEETS.SALES}!A${row}:E${row}`,[['','','','','']]);
-    S.salesTeam=S.salesTeam.filter(x=>x.row!==row);
+    await shDeleteRow(SHEETS.SALES, row);
+    _sheetIdCache={};  // invalidate cache — row numbers shifted
+    await loadSalesTeam();
     showToast(`"${s.name}" removed`,'success');
     renderSalesPage();
   }catch(e){ showToast('Error: '+e.message,'error'); }
@@ -2396,7 +2413,7 @@ async function loadPlanTasks(){
   try{
     const rows=await shGet(`${SHEETS.PLAN_TASKS}!A:O`);
     S.planTasks=rows.slice(1).map((r,i)=>({
-      row:i+2, id:r[0]||'', planId:r[1]||'', shopRowId:r[2]||'',
+      row:i+2, id:r[0]||'', planId:r[1]||'', shopId:r[2]||'',
       clientCode:r[3]||'', shopName:r[4]||'', taskName:r[5]||'',
       desc:r[6]||'', assignedTo:r[7]||'', dueDate:r[8]||'',
       priority:r[9]||'Medium', status:r[10]||'Not Started',
@@ -2610,7 +2627,7 @@ function renderPlanDetail(planId){
     </div>
     ${shops.length===0?'<div class="empty" style="padding:30px"><div class="ei">🏪</div><h3>No shops added yet</h3><p>Click "+ Add Shops" to select shops from your client list</p></div>':''}
     ${shops.map(ps=>{
-      const shopTasks=tasks.filter(t=>t.shopRowId===String(ps.row));
+      const shopTasks=tasks.filter(t=>t.shopId&&t.shopId===ps.shopId);
       const doneTasks=shopTasks.filter(t=>t.status==='Done').length;
       return `<div class="plan-shop-row">
         <div>
@@ -2623,7 +2640,7 @@ function renderPlanDetail(planId){
               <span class="badge ${(tsCls[ps.taskStatus]||'ts-not-started')}">${ps.taskStatus||'Not Started'}</span>
               <span class="s-pill ${{Grey:'sp-grey',Yellow:'sp-yellow',Green:'sp-green',Red:'sp-red'}[ps.currentStatus]||'sp-grey'}">${ps.currentStatus||'Grey'}</span>
               <button class="btn bo bxs" onclick="openPlanShopModal('${esc(planId)}',${ps.row})">✏️ Details</button>
-              <button class="btn bp bxs" onclick="openPlanTaskModal('${esc(planId)}',${ps.row},'${esc(ps.shopName)}')">+ Task</button>
+              <button class="btn bp bxs" onclick="openPlanTaskModal('${esc(planId)}','${esc(ps.shopId)}','${esc(ps.shopName)}')">+ Task</button>
               <button class="btn bxs" style="background:#fee2e2;color:#991b1b" onclick="removePlanShop(${ps.row})">🗑️</button>
             </div>
           </div>
@@ -2659,10 +2676,10 @@ function renderPlanDetail(planId){
 
     <!-- Plan-level tasks -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px">
-      <div style="font-size:14px;font-weight:700;color:var(--primary)">📋 Plan-level Tasks <span class="badge bk2">${tasks.filter(t=>!t.shopRowId).length}</span></div>
+      <div style="font-size:14px;font-weight:700;color:var(--primary)">📋 Plan-level Tasks <span class="badge bk2">${tasks.filter(t=>!t.shopId).length}</span></div>
       <button class="btn bp bsm" onclick="openPlanTaskModal('${esc(planId)}','','')">+ Add Task</button>
     </div>
-    ${tasks.filter(t=>!t.shopRowId).map(t=>{
+    ${tasks.filter(t=>!t.shopId).map(t=>{
       const tsCls2={'Not Started':'ts-not-started','In Progress':'ts-in-progress','Done':'ts-done','Blocked':'ts-blocked','Cancelled':'ts-cancelled'};
       return`<div class="task-item ${t.status==='Done'?'task-done':''}">
         <span class="badge ${tsCls2[t.status]||'ts-not-started'}" style="flex-shrink:0">${t.status}</span>
@@ -2709,7 +2726,7 @@ function openShopSelector(planId){
   }
   const ptSel=document.getElementById('sss-producttype');
   if(ptSel&&ptSel.options.length<=1){
-    [...new Set(S.clients.flatMap(c=>(c.productTypes||'').split(',').map(p=>p.trim())).filter(Boolean))].sort()
+    [...new Set(S.clients.flatMap(c=>(c.products||'').split(',').map(p=>p.trim())).filter(Boolean))].sort()
       .forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;ptSel.appendChild(o);});
   }
   setVal('sss-search','');
@@ -2734,7 +2751,7 @@ function filterSelectableShops(){
       (!creditF||c.creditStatus===creditF)&&(!statusF||c.monthlyStatus===statusF)&&
       (!potF||c.clientPotential===potF)&&
       (!stF||c.storeType===stF)&&
-      (!ptF||(c.productTypes||'').split(',').map(p=>p.trim()).includes(ptF));
+      (!ptF||(c.products||'').split(',').map(p=>p.trim()).includes(ptF));
   });
   const el=document.getElementById('sss-list');
   if(!el) return;
@@ -2803,8 +2820,9 @@ async function removePlanShop(shopRow){
   if(!confirm('Remove this shop from the plan?')) return;
   showLoader(true);
   try{
-    await shUpdate(`${SHEETS.PLAN_SHOPS}!A${shopRow}:AB${shopRow}`,[Array(28).fill('')]);
-    S.planShops=S.planShops.filter(ps=>ps.row!==shopRow);
+    await shDeleteRow(SHEETS.PLAN_SHOPS, shopRow);
+    _sheetIdCache={};  // invalidate cache — row numbers shifted
+    await loadPlanShops();
     showToast('Shop removed','success');
     renderPlanDetail(S_activePlanId);
   }catch(e){ showToast('Error: '+e.message,'error'); }
@@ -2895,10 +2913,10 @@ This cannot be undone.`)) return;
 }
 
 // ── Tasks ─────────────────────────────────
-function openPlanTaskModal(planId, shopRow, shopName){
+function openPlanTaskModal(planId, shopId, shopName){
   setText('ptmTitle', shopName?`Add Task — ${shopName}`:'Add Plan Task');
   setVal('ptm-row',''); setVal('ptm-planid',planId);
-  setVal('ptm-shoprow',shopRow||'');
+  setVal('ptm-shoprow',shopId||'');
   setVal('ptm-name',''); setVal('ptm-desc','');
   setVal('ptm-due',''); setVal('ptm-priority','Medium');
   setVal('ptm-status','Not Started'); setVal('ptm-notes','');
@@ -2927,12 +2945,12 @@ async function savePlanTask(){
   const name=val('ptm-name').trim();
   if(!name){ showToast('Task name is required','warning'); return; }
   const planId=val('ptm-planid');
-  const shopRow=val('ptm-shoprow');
-  const existingPlanShop=shopRow?S.planShops.find(x=>x.row===parseInt(shopRow)):null;
+  const shopId=val('ptm-shoprow');
+  const existingPlanShop=shopId?S.planShops.find(x=>x.shopId===shopId):null;
   const now=new Date().toISOString();
   const id=genId('TSK');
   const row=[
-    id,planId,shopRow,existingPlanShop?.clientCode||'',existingPlanShop?.shopName||'',
+    id,planId,shopId,existingPlanShop?.clientCode||'',existingPlanShop?.shopName||'',
     name,val('ptm-desc'),getCheckedAssignees('ptm-assignee'),val('ptm-due'),
     val('ptm-priority'),val('ptm-status'),'',val('ptm-notes'),now,now
   ];
