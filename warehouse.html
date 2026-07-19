@@ -189,6 +189,7 @@ tr:hover td{background:rgba(0,0,0,.012)}
       <button class="ni active" id="nav-overview" onclick="navigate('overview')"><span class="ic">📊</span> Overview</button>
       <button class="ni" id="nav-warehouses" onclick="navigate('warehouses')"><span class="ic">🏭</span> Warehouses</button>
       <button class="ni" id="nav-bbeAdjustment" onclick="navigate('bbeAdjustment')"><span class="ic">🗓️</span> BBE Adjustment</button>
+      <button class="ni" id="nav-openingStock" onclick="navigate('openingStock')"><span class="ic">📥</span> Import Stock</button>
       <div class="snl" style="margin-top:6px">Analytics</div>
       <button class="ni" id="nav-reports" onclick="navigate('reports')"><span class="ic">📈</span> Reports</button>
       <button class="ni" id="nav-log" onclick="navigate('log')"><span class="ic">📋</span> Movement Log</button>
@@ -296,6 +297,10 @@ tr:hover td{background:rgba(0,0,0,.012)}
 
     <div class="page" id="page-bbeAdjustment">
       <div id="bbeAdjustment-content"></div>
+    </div>
+
+    <div class="page" id="page-openingStock">
+      <div id="openingStock-content"></div>
     </div>
 
     <!-- BBE Adjustment Modal — uses the standard .mo modal system -->
@@ -1263,6 +1268,7 @@ function renderCurrentPage(){
   else if(p==='suppliers') renderSuppliers();
   else if(p==='uploadDelivery') renderUploadDeliveryPage();
   else if(p==='bbeAdjustment') renderBBEAdjustment();
+  else if(p==='openingStock') renderOpeningStockPage();
 }
 
 // ══════════════════════════════════════════
@@ -4760,6 +4766,374 @@ async function submitBBEAdjustment(){
     showToast('BBE adjustment failed: '+e.message,'error');
   }finally{
     showLoader(false);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// OPENING STOCK IMPORT
+// ══════════════════════════════════════════════════════════════
+
+// Template column order (must match downloadImportTemplate + parseImportPaste)
+const IMPORT_COLS = [
+  'WarehouseName','ProductCode','LotDate','BBEDate','Quantity','Unit','LotName'
+];
+
+function downloadImportTemplate(){
+  const warehouseList = S.warehouses.map(w=>w.name).join(' / ');
+  const productList   = S.whProducts.slice(0,3).map(p=>p.code).join(', ')+(S.whProducts.length>3?', …':'');
+  const rows = [
+    IMPORT_COLS,
+    // Example row 1
+    [S.warehouses[0]?.name||'Main Warehouse', S.whProducts[0]?.code||'SKU-001',
+     '2025-01-15','2026-01-15','48','Bottle','Lot Jan 2025'],
+    // Example row 2
+    [S.warehouses[0]?.name||'Main Warehouse', S.whProducts[1]?.code||'SKU-002',
+     '2025-03-01','','12','Keg',''],
+  ];
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Opening_Stock_Template.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// State for the import session
+let _importRows = [];
+
+function renderOpeningStockPage(){
+  const el = document.getElementById('openingStock-content');
+  if(!el) return;
+
+  const whOpts = S.warehouses.map(w=>`<option value="${esc(w.id)}">${esc(w.name)} (${w.type})</option>`).join('');
+
+  el.innerHTML = `
+    <div class="ph">
+      <div class="pt"><h1>📥 Import Opening Stock</h1>
+        <p>Batch-load current inventory from a spreadsheet into all three sheets (Stock, Lot Balance, Movement log).</p>
+      </div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="card mb4">
+      <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:10px">Step 1 — Download &amp; fill the template</div>
+      <p style="font-size:13px;color:var(--text);margin:0 0 12px">Download the CSV template below, open it in Google Sheets or Excel, fill in your current stock, then come back to Step 2.</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:12px">
+        <table style="border-collapse:collapse;width:100%">
+          <tr style="background:#e8f5e9">
+            ${IMPORT_COLS.map(c=>`<th style="padding:5px 10px;border:1px solid #b2dfdb;text-align:left;font-size:11px">${c}</th>`).join('')}
+          </tr>
+          <tr style="color:var(--muted);font-style:italic">
+            <td style="padding:4px 10px;border:1px solid var(--border)">${esc(S.warehouses[0]?.name||'Main Warehouse')}</td>
+            <td style="padding:4px 10px;border:1px solid var(--border)">${esc(S.whProducts[0]?.code||'SKU-001')}</td>
+            <td style="padding:4px 10px;border:1px solid var(--border)">2025-01-15</td>
+            <td style="padding:4px 10px;border:1px solid var(--border)">2026-01-15</td>
+            <td style="padding:4px 10px;border:1px solid var(--border)">48</td>
+            <td style="padding:4px 10px;border:1px solid var(--border)">Bottle</td>
+            <td style="padding:4px 10px;border:1px solid var(--border)">Lot Jan 2025</td>
+          </tr>
+        </table>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        <b>Column notes:</b><br>
+        • <b>WarehouseName</b> — must match exactly: <em>${S.warehouses.map(w=>w.name).join(', ')||'(no warehouses yet)'}</em><br>
+        • <b>ProductCode</b> — must match a product already in the catalogue<br>
+        • <b>LotDate</b> — filling/production date, format YYYY-MM-DD<br>
+        • <b>BBEDate</b> — best-before date, format YYYY-MM-DD; leave blank to auto-calculate from shelf life<br>
+        • <b>Quantity</b> — base unit quantity (bottles, cans, kegs …)<br>
+        • <b>Unit</b> — optional; leave blank to use the product's default unit<br>
+        • <b>LotName</b> — optional label, e.g. "Lot Feb 2026"
+      </div>
+      <button class="btn bp bsm" onclick="downloadImportTemplate()">⬇️ Download Template CSV</button>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="card mb4">
+      <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:10px">Step 2 — Paste your data</div>
+      <p style="font-size:13px;color:var(--text);margin:0 0 10px">In Google Sheets / Excel, select all data rows (not the header), copy, then paste here. Tab-separated or comma-separated both work.</p>
+      <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;font-weight:600">Reference label for this import:</label>
+        <input id="imp-ref" type="text" class="fi" style="width:240px" placeholder="Opening Balance 2025-07" value="Opening Balance ${new Date().toISOString().slice(0,7)}">
+      </div>
+      <textarea id="imp-paste" rows="8"
+        style="width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:6px;padding:10px;resize:vertical;background:var(--bg)"
+        placeholder="Paste rows here — each row is one lot entry. Include or exclude the header line; both are fine."
+        oninput="previewImport()"></textarea>
+      <div id="imp-parse-error" style="display:none;color:var(--danger);font-size:12px;margin-top:6px"></div>
+    </div>
+
+    <!-- Step 3 — Preview -->
+    <div id="imp-preview-section" style="display:none">
+      <div class="card mb4">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:700;color:var(--primary)">Step 3 — Review &amp; Import
+            <span id="imp-valid-badge" class="badge" style="margin-left:8px"></span>
+            <span id="imp-error-badge" class="badge" style="margin-left:4px"></span>
+          </div>
+          <button id="imp-submit-btn" class="btn bp bsm" onclick="runOpeningStockImport()" disabled>📥 Import Valid Rows</button>
+        </div>
+        <div id="imp-progress" style="display:none;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px" id="imp-progress-label">Importing…</div>
+          <div style="background:var(--border);border-radius:4px;height:8px">
+            <div id="imp-progress-bar" style="height:8px;border-radius:4px;background:var(--success);width:0%;transition:width 0.2s"></div>
+          </div>
+        </div>
+        <div class="tw" style="overflow-x:auto">
+          <table style="min-width:700px">
+            <thead><tr>
+              <th>#</th><th>Warehouse</th><th>Product</th><th>Lot Date</th><th>BBE Date</th>
+              <th>Qty</th><th>Unit</th><th>Lot Name</th><th>Status</th>
+            </tr></thead>
+            <tbody id="imp-preview-body"></tbody>
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Rows with errors will be skipped. Fix the source data and re-paste to retry.</div>
+      </div>
+    </div>
+  `;
+}
+
+function previewImport(){
+  const raw = document.getElementById('imp-paste')?.value||'';
+  if(!raw.trim()){ document.getElementById('imp-preview-section').style.display='none'; _importRows=[]; return; }
+
+  const errEl = document.getElementById('imp-parse-error');
+  const lines = raw.trim().split(/\r?\n/).filter(l=>l.trim());
+
+  // Detect separator: if first line has more tabs than commas → TSV, else CSV
+  const first = lines[0];
+  const sep = (first.split('\t').length > first.split(',').length) ? '\t' : ',';
+
+  function parseLine(line){
+    if(sep==='\t') return line.split('\t').map(v=>v.trim());
+    // Basic CSV: handle quoted fields
+    const res=[]; let cur='', inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ inQ=!inQ; }
+      else if(ch===','&&!inQ){ res.push(cur.trim()); cur=''; }
+      else cur+=ch;
+    }
+    res.push(cur.trim());
+    return res;
+  }
+
+  const parsed = lines.map(parseLine);
+
+  // Skip header row if it looks like one (first cell matches column name, case-insensitive)
+  const firstCell = (parsed[0][0]||'').toLowerCase().replace(/\s/g,'');
+  const isHeader = ['warehousename','warehouse','wh'].includes(firstCell);
+  const dataRows = isHeader ? parsed.slice(1) : parsed;
+
+  if(!dataRows.length){ errEl.textContent='No data rows found after header.'; errEl.style.display=''; _importRows=[]; return; }
+  errEl.style.display='none';
+
+  // Map each row to an object + validate
+  _importRows = dataRows.map((cols, idx) => {
+    const [whName='', prodCode='', lotDateRaw='', bbeDateRaw='', qtyRaw='', unitRaw='', lotNameRaw=''] = cols;
+    const errors = [];
+
+    // Warehouse lookup
+    const wh = S.warehouses.find(w=>w.name.trim()===whName.trim());
+    if(!whName.trim()) errors.push('Warehouse name is blank');
+    else if(!wh) errors.push(`Warehouse "${whName}" not found`);
+
+    // Product lookup
+    const prod = S.whProducts.find(p=>p.code.trim()===prodCode.trim());
+    if(!prodCode.trim()) errors.push('Product code is blank');
+    else if(!prod) errors.push(`Product "${prodCode}" not found`);
+
+    // Lot date
+    const lotDate = normImportDate(lotDateRaw.trim());
+    if(!lotDateRaw.trim()) errors.push('LotDate is blank');
+    else if(!lotDate) errors.push(`LotDate "${lotDateRaw}" is not a valid date (use YYYY-MM-DD)`);
+
+    // BBE date (optional — auto-compute from shelf life if blank)
+    let bbeDate = '';
+    if(bbeDateRaw.trim()){
+      bbeDate = normImportDate(bbeDateRaw.trim());
+      if(!bbeDate) errors.push(`BBEDate "${bbeDateRaw}" is not a valid date (use YYYY-MM-DD)`);
+    } else if(prod&&lotDate){
+      const sl = parseFloat(prod.shelfLife)||0;
+      if(sl>0) bbeDate = addMonths(lotDate, sl);
+    }
+
+    // Quantity
+    const qty = parseFloat(qtyRaw);
+    if(!qtyRaw.trim()) errors.push('Quantity is blank');
+    else if(isNaN(qty)||qty<=0) errors.push(`Quantity "${qtyRaw}" must be a positive number`);
+
+    // Unit
+    const unit = unitRaw.trim() || (prod?.baseUnit||'');
+
+    // Lot name
+    const lotName = lotNameRaw.trim();
+
+    return {
+      rowNum: idx+1+(isHeader?1:0),  // display row number
+      whName: whName.trim(), wh,
+      prodCode: prodCode.trim(), prod,
+      lotDate, bbeDate,
+      qty: isNaN(qty)?0:qty,
+      unit, lotName,
+      errors,
+      status: errors.length===0 ? 'ready' : 'error'
+    };
+  });
+
+  renderImportPreview();
+}
+
+function normImportDate(s){
+  if(!s) return '';
+  // YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const d=new Date(s+'T00:00:00'); return isNaN(d)?'':s;
+  }
+  // DD/MM/YYYY or D/M/YYYY (Thai/EU style)
+  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // Try native parse as fallback
+  const d=new Date(s); if(!isNaN(d)) return d.toISOString().split('T')[0];
+  return '';
+}
+
+function renderImportPreview(){
+  const validRows = _importRows.filter(r=>r.status==='ready');
+  const errorRows = _importRows.filter(r=>r.status==='error');
+
+  document.getElementById('imp-preview-section').style.display='';
+
+  const vb = document.getElementById('imp-valid-badge');
+  vb.textContent = `${validRows.length} ready`;
+  vb.style.background = validRows.length>0 ? '#dcfce7' : '#f1f5f9';
+  vb.style.color = validRows.length>0 ? '#166534' : '#64748b';
+
+  const eb = document.getElementById('imp-error-badge');
+  eb.textContent = `${errorRows.length} errors`;
+  eb.style.background = errorRows.length>0 ? '#fee2e2' : '#f1f5f9';
+  eb.style.color = errorRows.length>0 ? '#991b1b' : '#64748b';
+  eb.style.display = errorRows.length>0 ? '' : 'none';
+
+  const btn = document.getElementById('imp-submit-btn');
+  btn.disabled = validRows.length===0;
+  btn.textContent = `📥 Import ${validRows.length} Valid Row${validRows.length!==1?'s':''}`;
+
+  const tbody = document.getElementById('imp-preview-body');
+  tbody.innerHTML = _importRows.map(r=>{
+    const ok = r.status==='ready';
+    const bg = ok ? '' : 'background:#fff5f5';
+    const bbeLbl = r.bbeDate || '<span style="color:var(--muted)">—</span>';
+    const unitLbl = esc(r.unit) || '<span style="color:var(--muted)">—</span>';
+    const lotLbl  = r.lotName ? esc(r.lotName) : '<span style="color:var(--muted)">—</span>';
+    return `<tr style="${bg}">
+      <td style="font-size:11px;color:var(--muted)">${r.rowNum}</td>
+      <td>${esc(r.whName)||'<span style="color:var(--danger)">blank</span>'}</td>
+      <td style="font-family:monospace;font-size:12px">${esc(r.prodCode)||'<span style="color:var(--danger)">blank</span>'}
+        ${r.prod?`<br><span style="font-size:10px;color:var(--muted)">${esc(r.prod.name)}</span>`:''}
+      </td>
+      <td>${esc(r.lotDate)||'<span style="color:var(--danger)">invalid</span>'}</td>
+      <td>${bbeLbl}</td>
+      <td style="font-weight:700;text-align:right">${r.qty>0?r.qty:'<span style="color:var(--danger)">?</span>'}</td>
+      <td>${unitLbl}</td>
+      <td>${lotLbl}</td>
+      <td>
+        ${ok
+          ? '<span style="color:#166534;font-weight:600">✅ Ready</span>'
+          : `<span style="color:#991b1b;font-size:11px">❌ ${r.errors.map(e=>esc(e)).join('<br>')}</span>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function runOpeningStockImport(){
+  const validRows = _importRows.filter(r=>r.status==='ready');
+  if(!validRows.length){ showToast('No valid rows to import','warning'); return; }
+
+  const ref = document.getElementById('imp-ref')?.value.trim() || 'Opening Balance';
+  if(!confirm(`Import ${validRows.length} stock row${validRows.length!==1?'s':''} with reference "${ref}"?\n\nThis will ADD to existing stock — it does not replace or reset anything.`)) return;
+
+  const btn = document.getElementById('imp-submit-btn');
+  const progressSection = document.getElementById('imp-progress');
+  const progressBar = document.getElementById('imp-progress-bar');
+  const progressLabel = document.getElementById('imp-progress-label');
+
+  btn.disabled = true;
+  progressSection.style.display = '';
+  showLoader(true);
+
+  const now = new Date().toISOString();
+  const batchRef = ref + ' · ' + new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  let imported = 0, failed = 0;
+
+  // Process rows one at a time to avoid read-write race conditions in applyWhStock/applyLotStock
+  for(let i=0; i<validRows.length; i++){
+    const r = validRows[i];
+    const pct = Math.round((i/validRows.length)*100);
+    progressBar.style.width = pct+'%';
+    progressLabel.textContent = `Importing ${i+1} / ${validRows.length} — ${esc(r.prodCode)} @ ${esc(r.whName)}`;
+
+    try{
+      const whId = r.wh.id;
+      const pc   = r.prodCode;
+      const unit = r.unit || r.prod?.baseUnit || '';
+
+      // 1. Reload in-memory stock data for this product to get fresh row numbers
+      //    (after previous row wrote, existing rows may now exist)
+      //    We do a targeted re-read of Stock for this wh+product before each applyWhStock
+      //    Actually: applyWhStock/applyLotStock read from S.stock / S.stockLots in memory.
+      //    Since we process sequentially and update S.stock/S.stockLots in applyWhStock/applyLotStock,
+      //    we need to keep those in sync. The functions update in-memory after each write.
+      await applyWhStock(whId, pc, r.qty);
+      await applyLotStock(whId, pc, r.lotDate, r.bbeDate, r.qty, unit, /*allowCreate*/true, r.lotName);
+
+      // 2. Write a StockMovements row as audit trail
+      const mvId = 'MV-'+Date.now().toString(36).toUpperCase()+'-'+i;
+      const mvRow = [
+        mvId, 'Receive', r.lotDate,
+        '', whId,                   // fromWh empty, toWh = destination
+        pc, r.prod?.name||pc, r.prod?.brand||'',
+        unit, r.qty,               // movementUnit, inputQty
+        batchRef, 'Opening stock import',
+        'import', now,
+        r.lotDate, r.qty, unit,
+        '', '',                    // fifoWarning, fifoOverride
+        r.bbeDate, r.bbeDate ? getBBEStatus(r.bbeDate, r.lotDate) : '',
+        '', r.prod?.supplierName||'', r.lotName
+      ];
+      await whAppend(WH_SHEETS.MOVEMENTS, [mvRow]);
+
+      // 3. Mark row as done in preview
+      r.status = 'done';
+      imported++;
+    } catch(e){
+      r.status = 'failed';
+      r.errors = [e.message];
+      failed++;
+    }
+
+    // Re-render preview row to reflect status change
+    renderImportPreview();
+  }
+
+  progressBar.style.width = '100%';
+  progressLabel.textContent = `Done — ${imported} imported${failed>0?`, ${failed} failed`:''}`;
+  showLoader(false);
+
+  // Reload all stock data so the Overview reflects the new quantities immediately
+  await Promise.all([loadStock(), loadStockLots(), loadStockMovements()]);
+
+  if(failed===0){
+    showToast(`✅ ${imported} lot${imported!==1?'s':''} imported successfully`,'success');
+  } else {
+    showToast(`Imported ${imported}, failed ${failed} — see highlighted rows`,'warning');
+    btn.disabled = false;
+    btn.textContent = `📥 Retry ${failed} Failed Row${failed!==1?'s':''}`;
+    // Re-filter _importRows so only failed ones remain for retry
+    _importRows = _importRows.filter(r=>r.status==='failed'||r.status==='error');
+    renderImportPreview();
   }
 }
 </script>
