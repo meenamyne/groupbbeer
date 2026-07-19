@@ -4891,7 +4891,8 @@ function downloadImportStockTemplate(){
   (activeProds.length?activeProds:[]).forEach(p=>{
     const cfg=S.minQtyMap[p.code]||{};
     md.push([p.code,p.name,p.brand||'',p.supplierName||'',p.shelfLife||'',
-      cfg.baseUnit||'',cfg.caseUnitName||'',cfg.unitsPerCase||'',p.status||'Active']);
+      cfg.baseUnit||getMvUnitConversion(p.code,'').baseUnit||p.type||'',
+      cfg.caseUnitName||'',cfg.unitsPerCase||'',p.status||'Active']);
   });
   md.push(['']);
 
@@ -4986,6 +4987,7 @@ function normalizeImportStockRows(rawRows){
     const qty=parseFloat(qtyRaw)||0;
     const cfg=S.minQtyMap[productCode]||{};
     const unit=String(r['Unit']||'').trim()||cfg.baseUnit||
+      getMvUnitConversion(productCode,'').baseUnit||
       (S.stockLots.find(l=>l.productCode===productCode&&l.baseUnit)?.baseUnit||'');
     const lotName=String(r['LotName']||'').trim();
 
@@ -5031,7 +5033,10 @@ function validateImportStockRows(){
     if(!row.lotDate) row.errors.push('LotDate is required and must be YYYY-MM-DD');
     if(row.bbeDate&&row.lotDate&&row.bbeDate<row.lotDate) row.warnings.push('BBEDate is before LotDate — check dates');
     if(!(row.qty>0)) row.errors.push('Quantity must be greater than 0');
-    if(!row.unit) row.warnings.push('Unit is blank — will default to product setting');
+    if(!row.unit){
+      const inferrable=!!(S.minQtyMap[row.productCode]?.baseUnit||getMvUnitConversion(row.productCode,'').baseUnit);
+      if(!inferrable) row.warnings.push('Unit is blank and cannot be inferred — please fill in manually');
+    }
     // Duplicate lot check
     const dupes=_importStockRows.filter(r2=>r2!==row&&r2.warehouseId===row.warehouseId&&r2.productCode===row.productCode&&r2.lotDate===row.lotDate);
     if(dupes.length) row.warnings.push('Duplicate lot in this file — quantities will stack on the same lot');
@@ -5069,7 +5074,8 @@ function renderImportStockReview(el){
 
     // Unit dropdown — list known units for this product
     const cfg=S.minQtyMap[row.productCode]||{};
-    const knownUnits=[cfg.baseUnit,cfg.caseUnitName].filter(Boolean);
+    const inferredBase=getMvUnitConversion(row.productCode,'').baseUnit||'';
+    const knownUnits=[...new Set([cfg.baseUnit,inferredBase,cfg.caseUnitName].filter(Boolean))];
     if(row.unit&&!knownUnits.includes(row.unit)) knownUnits.push(row.unit);
     const unitOpts=`<option value="">— default —</option>`+
       knownUnits.map(u=>`<option value="${esc(u)}"${row.unit===u?' selected':''}>${esc(u)}</option>`).join('');
@@ -5177,7 +5183,7 @@ function updateImportStockRow(idx, field, value){
     }
     // Auto-fill unit from product settings
     const cfg=S.minQtyMap[value]||{};
-    if(!row.unit&&cfg.baseUnit) row.unit=cfg.baseUnit;
+    if(!row.unit) row.unit=cfg.baseUnit||getMvUnitConversion(value,'').baseUnit||'';
   } else if(field==='lotDate'){
     row.lotDate=value;
     // Recalculate BBE date if it was auto-generated
@@ -5246,6 +5252,7 @@ async function submitImportStock(){
   for(const row of rowsToSubmit){
     try{
       const unit=row.unit||S.minQtyMap[row.productCode]?.baseUnit||
+        getMvUnitConversion(row.productCode,'').baseUnit||
         S.stockLots.find(l=>l.productCode===row.productCode&&l.baseUnit)?.baseUnit||'';
 
       await applyWhStock(row.warehouseId, row.productCode, row.qty);
